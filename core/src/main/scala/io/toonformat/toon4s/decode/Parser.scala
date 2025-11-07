@@ -125,8 +125,8 @@ object Parser {
     (len, delimiter, hasMarker)
   }
 
-  def parseDelimitedValues(input: String, delim: Delimiter): List[String] = {
-    val out      = List.newBuilder[String]
+  def parseDelimitedValues(input: String, delim: Delimiter): Vector[String] = {
+    val out      = scala.collection.mutable.ArrayBuffer.empty[String]
     val builder  = new StringBuilder
     var i        = 0
     var inQuotes = false
@@ -148,11 +148,11 @@ object Parser {
         i += 1
       }
     }
-    if (builder.nonEmpty || out.result().nonEmpty) out += builder.result().trim
-    out.result()
+    if (builder.nonEmpty || out.nonEmpty) out += builder.result().trim
+    out.toVector
   }
 
-  def mapRowValuesToPrimitives(values: List[String]): Vector[JsonValue] = {
+  def mapRowValuesToPrimitives(values: Vector[String]): Vector[JsonValue] = {
     values.map {
       token =>
         parsePrimitiveToken(token) match {
@@ -165,7 +165,7 @@ object Parser {
               s"Tabular rows must contain primitive values, but found: $other"
             )
         }
-    }.toVector
+    }
   }
 
   def parsePrimitiveToken(token: String): JsonValue = {
@@ -188,13 +188,14 @@ object Parser {
   private def isBooleanOrNullLiteral(value: String): Boolean =
     value == C.TrueLiteral || value == C.FalseLiteral || value == C.NullLiteral
 
+  // Fast pre-check before constructing BigDecimal: simple numeric regex
+  private val NumericPattern                           = "^-?[0-9]+(?:\\.[0-9]+)?(?:[eE][+-]?[0-9]+)?$".r
   private def isNumericLiteral(token: String): Boolean = {
     if (token.isEmpty) false
     else {
-      val unsigned       =
-        if (token.head == '-' || token.head == '+') token.tail else token
+      val unsigned       = if (token.head == '-' || token.head == '+') token.tail else token
       val hasLeadingZero = unsigned.length > 1 && unsigned.head == '0' && unsigned(1) != '.'
-      unsigned.nonEmpty && !hasLeadingZero && Try(BigDecimal(token)).isSuccess
+      unsigned.nonEmpty && !hasLeadingZero && NumericPattern.matches(token)
     }
   }
 

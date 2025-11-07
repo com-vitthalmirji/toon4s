@@ -57,4 +57,78 @@ final class StreamLineWriter(indentSize: Int, out: Writer) extends EncodeLineWri
     out.write("- ")
     out.write(line)
   }
+
+  // Optimized helpers to avoid building large intermediate strings
+  def pushDelimitedPrimitives(
+      depth: Int,
+      header: String,
+      values: Vector[io.toonformat.toon4s.JsonValue],
+      delim: io.toonformat.toon4s.Delimiter
+  ): Unit = {
+    if (!first) out.write('\n') else first = false
+    pad(depth)
+    out.write(header)
+    out.write(' ')
+    var i = 0
+    while (i < values.length) {
+      if (i > 0) out.write(delim.char)
+      io.toonformat.toon4s.encode.Primitives.writePrimitive(values(i), delim, out)
+      i += 1
+    }
+  }
+
+  def pushRowPrimitives(
+      depth: Int,
+      values: Vector[io.toonformat.toon4s.JsonValue],
+      delim: io.toonformat.toon4s.Delimiter
+  ): Unit = {
+    if (!first) out.write('\n') else first = false
+    pad(depth)
+    var i = 0
+    while (i < values.length) {
+      if (i > 0) out.write(delim.char)
+      io.toonformat.toon4s.encode.Primitives.writePrimitive(values(i), delim, out)
+      i += 1
+    }
+  }
+
+  def pushListItemDelimitedPrimitives(
+      depth: Int,
+      header: String,
+      values: Vector[io.toonformat.toon4s.JsonValue],
+      delim: io.toonformat.toon4s.Delimiter
+  ): Unit = {
+    if (!first) out.write('\n') else first = false
+    pad(depth)
+    out.write("- ")
+    out.write(header)
+    if (values.nonEmpty) out.write(' ')
+    var i = 0
+    while (i < values.length) {
+      if (i > 0) out.write(delim.char)
+      io.toonformat.toon4s.encode.Primitives.writePrimitive(values(i), delim, out)
+      i += 1
+    }
+  }
+
+  def pushKeyOnly(depth: Int, key: String): Unit = {
+    if (!first) out.write('\n') else first = false
+    pad(depth)
+    out.write(io.toonformat.toon4s.encode.Primitives.encodeKey(key))
+    out.write(':')
+  }
+
+  def pushKeyValuePrimitive(
+      depth: Int,
+      key: String,
+      value: io.toonformat.toon4s.JsonValue,
+      delim: io.toonformat.toon4s.Delimiter
+  ): Unit = {
+    if (!first) out.write('\n') else first = false
+    pad(depth)
+    out.write(io.toonformat.toon4s.encode.Primitives.encodeKey(key))
+    out.write(':')
+    out.write(' ')
+    io.toonformat.toon4s.encode.Primitives.writePrimitive(value, delim, out)
+  }
 }

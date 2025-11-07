@@ -46,7 +46,7 @@ val commonScalacOptions = Seq(
 // SONATYPE_USERNAME, SONATYPE_PASSWORD, SONATYPE_HOST (optional, defaults to s01.oss.sonatype.org)
 
 lazy val root = (project in file("."))
-  .aggregate(core, cli, benchmarks)
+  .aggregate(core, cli, jmh, compare)
   .settings(
     name := "toon4s",
     publish / skip := true
@@ -77,13 +77,35 @@ lazy val cli = (project in file("cli"))
     publish / skip := true
   )
 
-lazy val benchmarks = (project in file("benchmarks"))
-  .dependsOn(core, cli)
+lazy val jmh = (project in file("benchmarks-jmh"))
+  .dependsOn(core)
+  .enablePlugins(JmhPlugin)
   .settings(
-    name := "toon4s-benchmarks",
-    libraryDependencies ++= Seq(
-      "com.knuddels" % "jtokkit" % "1.1.0"
-    ),
+    name := "toon4s-jmh",
     publish / skip := true,
     scalacOptions ++= commonScalacOptions
   )
+
+lazy val compare = (project in file("compare"))
+  .dependsOn(core)
+  .settings(
+    name := "toon4s-compare",
+    publish / skip := true,
+    scalacOptions ++= commonScalacOptions,
+    libraryDependencies ++= Seq(
+      "com.fasterxml.jackson.core" % "jackson-databind" % "2.17.2"
+    ),
+    Compile / unmanagedJars ++= {
+      sys.env.get("JTOON_JAR").toList.map(file)
+    }
+  )
+// sbt aliases for quick vs heavy JMH runs
+addCommandAlias(
+  "jmhDev",
+  "jmh/jmh:run -i 1 -wi 1 -r 500ms -w 500ms -f1 -t1 io.toonformat.toon4s.jmh.EncodeDecodeBench.*"
+)
+
+addCommandAlias(
+  "jmhFull",
+  "jmh/jmh:run -i 5 -wi 5 -r 2s -w 2s -f1 -t1 io.toonformat.toon4s.jmh.EncodeDecodeBench.decode_tabular io.toonformat.toon4s.jmh.EncodeDecodeBench.decode_list io.toonformat.toon4s.jmh.EncodeDecodeBench.decode_nested io.toonformat.toon4s.jmh.EncodeDecodeBench.encode_object"
+)

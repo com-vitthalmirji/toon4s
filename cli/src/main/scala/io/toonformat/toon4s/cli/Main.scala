@@ -6,6 +6,7 @@ import scopt.OParser
 
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path, Paths}
+import io.toonformat.toon4s.util.EitherUtils._
 
 object Main {
   sealed trait Mode
@@ -40,6 +41,36 @@ object Main {
     }
   }
 
+  private def readUtf8(path: Path): Either[String, String] =
+    scala.util
+      .Try(Files.readString(path, StandardCharsets.UTF_8))
+      .toEither
+      .left
+      .map(
+        t => s"Failed to read input: ${t.getMessage}"
+      )
+
+  private def emitWithStats(
+      inputText: String,
+      outputText: String,
+      output: Option[Path],
+      stats: Boolean,
+      tokenizer: String
+  ): Either[String, Unit] = {
+    val write = () => writeOutput(outputText, output)
+    if (!stats) write()
+    else {
+      val name = token.TokenEstimator.canonicalName(tokenizer)
+      val in   = token.TokenEstimator.estimateTokens(inputText, tokenizer)
+      val out  = token.TokenEstimator.estimateTokens(outputText, tokenizer)
+      val pct  = if (in > 0) Math.round((1.0 - out.toDouble / in) * 100).toInt else 0
+      System.err.println(
+        s"[stats] tokenizer=$name input=$in output=$out delta=${out - in} savings=${pct}%"
+      )
+      write()
+    }
+  }
+
   private def run(config: Config): Either[String, Unit] = config.mode match {
     case Some(EncodeMode) => runEncode(config)
     case Some(DecodeMode) => runDecode(config)
@@ -48,18 +79,10 @@ object Main {
 
   private def runEncode(config: Config): Either[String, Unit] = {
     for {
-      jsonInput  <- scala.util
-                      .Try(Files.readString(config.input, StandardCharsets.UTF_8))
-                      .toEither
-                      .left
-                      .map(
-                        t => s"Failed to read input: ${t.getMessage}"
-                      )
+      jsonInput  <- readUtf8(config.input)
       scalaValue <- scala.util
                       .Try(SimpleJson.toScala(SimpleJson.parse(jsonInput)))
-                      .toEither
-                      .left
-                      .map(
+                      .toEitherMap(
                         t => s"Invalid JSON input: ${t.getMessage}"
                       )
       base        = EncodeOptions(
@@ -69,18 +92,7 @@ object Main {
                     )
       opt        <- if (config.optimize) optimize(scalaValue, base, config.tokenizer) else Right(base)
       encoded    <- Toon.encode(scalaValue, opt).left.map(_.message)
-      _          <- {
-        if (config.stats) {
-          val name = token.TokenEstimator.canonicalName(config.tokenizer)
-          val in   = token.TokenEstimator.estimateTokens(jsonInput, config.tokenizer)
-          val out  = token.TokenEstimator.estimateTokens(encoded, config.tokenizer)
-          val pct  = if (in > 0) Math.round((1.0 - out.toDouble / in) * 100).toInt else 0
-          System.err.println(
-            s"[stats] tokenizer=$name input=$in output=$out delta=${out - in} savings=${pct}%"
-          )
-        }
-        writeOutput(encoded, config.output)
-      }
+      _          <- emitWithStats(jsonInput, encoded, config.output, config.stats, config.tokenizer)
     } yield ()
   }
 
@@ -91,27 +103,10 @@ object Main {
       strictness = asStrictness(config.strictness)
     )
     for {
-      toonInput <- scala.util
-                     .Try(Files.readString(config.input, StandardCharsets.UTF_8))
-                     .toEither
-                     .left
-                     .map(
-                       t => s"Failed to read input: ${t.getMessage}"
-                     )
+      toonInput <- readUtf8(config.input)
       json      <- Toon.decode(toonInput, options).left.map(_.message)
       rendered   = SimpleJson.stringify(json)
-      _         <- {
-        if (config.stats) {
-          val name = token.TokenEstimator.canonicalName(config.tokenizer)
-          val in   = token.TokenEstimator.estimateTokens(toonInput, config.tokenizer)
-          val out  = token.TokenEstimator.estimateTokens(rendered, config.tokenizer)
-          val pct  = if (in > 0) Math.round((1.0 - out.toDouble / in) * 100).toInt else 0
-          System.err.println(
-            s"[stats] tokenizer=$name input=$in output=$out delta=${out - in} savings=${pct}%"
-          )
-        }
-        writeOutput(rendered, config.output)
-      }
+      _         <- emitWithStats(toonInput, rendered, config.output, config.stats, config.tokenizer)
     } yield ()
   }
 
@@ -173,7 +168,9 @@ object Main {
         .action(
           (flag, c) => c.copy(strict = flag)
         )
-        .text("Strict decoding (default: true)."),
+        .text(
+          "[DEPRECATED] Strict decoding boolean (default: true). Prefer --strictness strict|lenient|audit."
+        ),
       opt[String]("strictness")
         .valueName("strict|lenient|audit")
         .validate(
@@ -211,7 +208,7 @@ object Main {
         .text("Emit #length markers for encoded arrays."),
       opt[Unit]("optimize")
         .action(
-          (_, c) => c.copy(stats = true)
+          (_, c) => c.copy(optimize = true, stats = true)
         )
         .text("Optimize delimiter and markers for token savings (enables --stats)."),
       opt[Unit]("stats")

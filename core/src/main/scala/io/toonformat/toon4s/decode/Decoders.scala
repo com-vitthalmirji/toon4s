@@ -80,25 +80,25 @@ object Decoders {
       baseDepth: Int,
       options: DecodeOptions
   ): JsonValue = {
-    @tailrec
-    def loop(
-        obj: VectorMap[String, JsonValue],
-        computedDepth: Option[Int]
-    ): VectorMap[String, JsonValue] =
+    val builder     = Vector.newBuilder[(String, JsonValue)]
+    var targetDepth = Option.empty[Int]
+    var continue    = true
+    while (continue) {
       cursor.peek match {
-        case None                                 => obj
-        case Some(line) if line.depth < baseDepth => obj
+        case None                                 => continue = false
+        case Some(line) if line.depth < baseDepth => continue = false
         case Some(line)                           =>
-          val targetDepth = computedDepth.orElse(Some(line.depth))
-          if (targetDepth.contains(line.depth)) {
+          val td = targetDepth.orElse(Some(line.depth))
+          if (td.contains(line.depth)) {
             cursor.advance()
             val KeyValueParse(key, value, _) =
               decodeKeyValue(line.content, cursor, line.depth, options)
-            loop(obj.updated(key, value), targetDepth)
-          } else obj
+            builder += ((key, value))
+            targetDepth = td
+          } else continue = false
       }
-
-    JObj(loop(VectorMap.empty, None))
+    }
+    JObj(VectorMap.from(builder.result()))
   }
 
   private def decodeKeyValue(
@@ -236,7 +236,7 @@ object Decoders {
         case Some(line) if line.depth == rowDepth =>
           if (startLine.isEmpty) startLine = Some(line.lineNumber)
           cursor.advance()
-          val values: List[String]          = parseDelimitedValues(line.content, header.delimiter)
+          val values: Vector[String]        = parseDelimitedValues(line.content, header.delimiter)
           assertExpectedCount(values.length, header.fields.length, "tabular row values")(
             options.strictness,
             WarningSink.Noop
@@ -320,7 +320,8 @@ object Decoders {
     val afterHyphen                                      = firstLine.content.drop(C.ListItemPrefix.length)
     val KeyValueParse(firstKey, firstValue, followDepth) =
       decodeKeyValue(afterHyphen, cursor, baseDepth, options)
-    var obj                                              = VectorMap(firstKey -> firstValue)
+    val builder                                          = Vector.newBuilder[(String, JsonValue)]
+    builder += ((firstKey, firstValue))
     var continue                                         = true
 
     while (continue && !cursor.atEnd) {
@@ -331,12 +332,12 @@ object Decoders {
             if line.depth == followDepth && !line.content.startsWith(C.ListItemPrefix) =>
           cursor.advance()
           val KeyValueParse(k, v, _) = decodeKeyValue(line.content, cursor, followDepth, options)
-          obj = obj.updated(k, v)
+          builder += ((k, v))
         case _                                      =>
           continue = false
       }
     }
 
-    JObj(obj)
+    JObj(VectorMap.from(builder.result()))
   }
 }

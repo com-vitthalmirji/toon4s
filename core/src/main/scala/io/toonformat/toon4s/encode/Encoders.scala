@@ -54,7 +54,7 @@ object Encoders {
   }
 
   private def encodeObject(
-      fields: Map[String, JsonValue],
+      fields: scala.collection.immutable.VectorMap[String, JsonValue],
       writer: EncodeLineWriter,
       depth: Int,
       options: EncodeOptions
@@ -73,11 +73,18 @@ object Encoders {
       options: EncodeOptions
   ): Unit = value match {
     case JNull | JBool(_) | JNumber(_) | JString(_) =>
-      writer.push(depth, s"${encodeKey(key)}: ${encodePrimitive(value, options.delimiter)}")
+      writer match {
+        case sw: StreamLineWriter => sw.pushKeyValuePrimitive(depth, key, value, options.delimiter)
+        case _                    =>
+          writer.push(depth, s"${encodeKey(key)}: ${encodePrimitive(value, options.delimiter)}")
+      }
     case JArray(values)                             =>
       encodeArray(Some(key), values, writer, depth, options)
     case JObj(obj)                                  =>
-      writer.push(depth, s"${encodeKey(key)}:")
+      writer match {
+        case sw: StreamLineWriter => sw.pushKeyOnly(depth, key)
+        case _                    => writer.push(depth, s"${encodeKey(key)}:")
+      }
       if (obj.nonEmpty) {
         encodeObject(obj, writer, depth + 1, options)
       }
@@ -95,7 +102,9 @@ object Encoders {
       case _       => false
     }
 
-  private def extractTabularHeader(rows: Vector[Map[String, JsonValue]]): Option[List[String]] = {
+  private def extractTabularHeader(
+      rows: Vector[scala.collection.immutable.VectorMap[String, JsonValue]]
+  ): Option[List[String]] = {
     rows.headOption.flatMap {
       first =>
         val keys    = first.keys.toList
@@ -125,13 +134,21 @@ object Encoders {
       writer.push(depth, formatHeader(0, key, Nil, options.delimiter, options.lengthMarker))
     } else if (isArrayOfPrimitives(values)) {
       val header = formatHeader(values.length, key, Nil, options.delimiter, options.lengthMarker)
-      val joined = values
-        .map(
-          v => encodePrimitive(v, options.delimiter)
-        )
-        .mkString(options.delimiter.char.toString)
-      val line   = if (values.isEmpty) header else s"$header $joined"
-      writer.push(depth, line)
+      writer match {
+        case sw: StreamLineWriter =>
+          sw.pushDelimitedPrimitives(depth, header, values, options.delimiter)
+        case _                    =>
+          val sb     = new StringBuilder
+          var i      = 0
+          while (i < values.length) {
+            if (i > 0) sb.append(options.delimiter.char)
+            sb.append(encodePrimitive(values(i), options.delimiter))
+            i += 1
+          }
+          val joined = sb.result()
+          val line   = s"$header $joined"
+          writer.push(depth, line)
+      }
     } else if (isArrayOfObjects(values)) {
       val rows = values.collect {
         case JObj(m) => m
@@ -143,12 +160,25 @@ object Encoders {
           writer.push(depth, header)
           rows.foreach {
             row =>
-              val line = headerFields
-                .map(
-                  k => encodePrimitive(row(k), options.delimiter)
-                )
-                .mkString(options.delimiter.char.toString)
-              writer.push(depth + 1, line)
+              writer match {
+                case sw: StreamLineWriter =>
+                  val vs = headerFields.iterator
+                    .map(
+                      k => row(k)
+                    )
+                    .toVector
+                  sw.pushRowPrimitives(depth + 1, vs, options.delimiter)
+                case _                    =>
+                  val sb = new StringBuilder
+                  var i  = 0
+                  while (i < headerFields.length) {
+                    if (i > 0) sb.append(options.delimiter.char)
+                    val k = headerFields(i)
+                    sb.append(encodePrimitive(row(k), options.delimiter))
+                    i += 1
+                  }
+                  writer.push(depth + 1, sb.result())
+              }
           }
         case None               =>
           val header =
@@ -177,13 +207,21 @@ object Encoders {
       writer.pushListItem(depth, encodePrimitive(value, options.delimiter))
     case JArray(inner) if isArrayOfPrimitives(inner) =>
       val header = formatHeader(inner.length, None, Nil, options.delimiter, options.lengthMarker)
-      val joined = inner
-        .map(
-          elem => encodePrimitive(elem, options.delimiter)
-        )
-        .mkString(options.delimiter.char.toString)
-      val line   = if (inner.isEmpty) header else s"$header $joined"
-      writer.pushListItem(depth, line)
+      writer match {
+        case sw: StreamLineWriter =>
+          sw.pushListItemDelimitedPrimitives(depth, header, inner, options.delimiter)
+        case _                    =>
+          val sb     = new StringBuilder
+          var i      = 0
+          while (i < inner.length) {
+            if (i > 0) sb.append(options.delimiter.char)
+            sb.append(encodePrimitive(inner(i), options.delimiter))
+            i += 1
+          }
+          val joined = sb.result()
+          val line   = if (inner.isEmpty) header else s"$header $joined"
+          writer.pushListItem(depth, line)
+      }
     case JObj(fields)                                =>
       if (fields.isEmpty) {
         writer.pushListItem(depth, "")
@@ -198,13 +236,21 @@ object Encoders {
           case JArray(arr) if isArrayOfPrimitives(arr)    =>
             val header =
               formatHeader(arr.length, Some(firstKey), Nil, options.delimiter, options.lengthMarker)
-            val joined = arr
-              .map(
-                elem => encodePrimitive(elem, options.delimiter)
-              )
-              .mkString(options.delimiter.char.toString)
-            val line   = if (arr.isEmpty) header else s"$header $joined"
-            writer.pushListItem(depth, line)
+            writer match {
+              case sw: StreamLineWriter =>
+                sw.pushListItemDelimitedPrimitives(depth, header, arr, options.delimiter)
+              case _                    =>
+                val sb     = new StringBuilder
+                var i      = 0
+                while (i < arr.length) {
+                  if (i > 0) sb.append(options.delimiter.char)
+                  sb.append(encodePrimitive(arr(i), options.delimiter))
+                  i += 1
+                }
+                val joined = sb.result()
+                val line   = if (arr.isEmpty) header else s"$header $joined"
+                writer.pushListItem(depth, line)
+            }
           case JArray(arr) if isArrayOfObjects(arr)       =>
             val objectRows = arr.collect {
               case JObj(m) => m
@@ -221,12 +267,15 @@ object Encoders {
                 writer.pushListItem(depth, header)
                 objectRows.foreach {
                   row =>
-                    val line = headerFields
-                      .map(
-                        key => encodePrimitive(row(key), options.delimiter)
-                      )
-                      .mkString(options.delimiter.char.toString)
-                    writer.push(depth + 1, line)
+                    val sb = new StringBuilder
+                    var i  = 0
+                    while (i < headerFields.length) {
+                      if (i > 0) sb.append(options.delimiter.char)
+                      val key = headerFields(i)
+                      sb.append(encodePrimitive(row(key), options.delimiter))
+                      i += 1
+                    }
+                    writer.push(depth + 1, sb.result())
                 }
               case None               =>
                 val header = formatHeader(

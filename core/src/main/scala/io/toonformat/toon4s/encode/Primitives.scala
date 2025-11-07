@@ -54,8 +54,13 @@ private[toon4s] object Primitives {
   private def isNumericLike(value: String): Boolean =
     NumericLikePattern.matches(value) || LeadingZeroPattern.matches(value)
 
+  private val tlBuilder = new ThreadLocal[StringBuilder] {
+    override def initialValue(): StringBuilder = new StringBuilder
+  }
+
   def escapeString(s: String): String = {
-    val builder = new StringBuilder
+    val builder = tlBuilder.get()
+    builder.clear()
     s.foreach {
       case '\\'             => builder.append("\\\\")
       case '"'              => builder.append("\\\"")
@@ -66,5 +71,39 @@ private[toon4s] object Primitives {
       case c                => builder.append(c)
     }
     builder.result()
+  }
+
+  // Writer-based primitive emission (avoids intermediate strings)
+  def writePrimitive(p: JsonValue, delim: Delimiter, out: java.io.Writer): Unit = p match {
+    case JNull      => out.write(C.NullLiteral)
+    case JBool(b)   => if (b) out.write(C.TrueLiteral) else out.write(C.FalseLiteral)
+    case JNumber(n) => out.write(normalizeNumber(n))
+    case JString(s) => writeStringLiteral(s, delim, out)
+    case other      => throw new IllegalArgumentException(s"Not a primitive: $other")
+  }
+
+  def writeStringLiteral(s: String, delim: Delimiter, out: java.io.Writer): Unit = {
+    if (isSafeUnquoted(s, delim)) out.write(s)
+    else {
+      out.write('"')
+      writeEscaped(s, out)
+      out.write('"')
+    }
+  }
+
+  private def writeEscaped(s: String, out: java.io.Writer): Unit = {
+    var i = 0
+    while (i < s.length) {
+      s.charAt(i) match {
+        case '\\'             => out.write("\\\\")
+        case '"'              => out.write("\\\"")
+        case '\n'             => out.write("\\n")
+        case '\r'             => out.write("\\r")
+        case '\t'             => out.write("\\t")
+        case c if c.isControl => out.write(f"\\u${c.toInt}%04x")
+        case c                => out.write(c)
+      }
+      i += 1
+    }
   }
 }

@@ -25,6 +25,9 @@ object DecodeError {
   final case class InvalidHeader(override val message: String)
       extends RuntimeException(message)
       with DecodeError
+  final case class Mapping(override val message: String)
+      extends RuntimeException(message)
+      with DecodeError
   final case class Unexpected(override val message: String)
       extends RuntimeException(message)
       with DecodeError

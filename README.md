@@ -33,14 +33,16 @@
 
 | Theme | What you get | Why it matters on the JVM |
 | ----- | ------------ | ------------------------- |
-| **Spec-complete** | Passes the language-agnostic conformance suite copied from `toon-format/spec`. | Guarantees parity with TypeScript `toon` and Java `JToon`, so mixed stacks stay consistent. |
-| **Pure functional core** | `Encoders`/`Decoders` are side-effect free, returning `Either[ToonError, *]`. | Slot nicely into Cats/ZIO pipelines or simple Futures without adapters. |
-| **Sealed ADTs** | `JsonValue` (`JString`, `JNumber`, `JBool`, `JNull`, `JArray`, `JObj`) represents decoded trees with vector-backed determinism. | Enables exhaustive pattern matching, type-driven IDE help, and safe refactors. |
-| **Automatic normalization** | `Normalize.toJson` ingests Scala collections, case classes (`Product`), Options, maps, arrays, Java time, etc. | No third-party JSON dependency; TOON output comes straight from your Scala data. |
-| **Zero third-party deps (core)** | Only uses the standard library. CLI uses `scopt` + `jtokkit` for UX/token estimation. | Smaller jars, easier audit/compliance, faster cold starts on serverless/JVM. |
-| **CLI parity** | `toon4s-cli` mirrors the TypeScript CLI (encode/decode, indent, delimiter, length markers, strict mode). | One binary for pipelines, CI smoke, or human conversions. |
-| **Token introspection** | `TokenEstimator` (CLI) leverages `jtokkit` to preview GPT token counts before/after conversion. | Plan budgets, pick delimiters, and justify TOON adoption with data. |
-| **LLM-friendly guardrails** | Explicit lengths, column headers, and strict validation (tabs, indentation, quoting). | Gives you deterministic prompts and enables server-side verification of model responses. |
+| **Spec‑complete** | Conformance suite parity with `toon` (TS) and `JToon` (Java). | Mixed stacks behave the same; token math is consistent. |
+| **Typed APIs (2 & 3)** | Scala 3 derivation for `Encoder`/`Decoder`; Scala 2 typeclasses via `ToonTyped`. | Compile‑time guarantees, no `Any`; safer refactors. |
+| **Pure & total** | Encoders/Decoders are pure; decode returns `Either[DecodeError, A/JsonValue]`. | Idiomatic FP: easy to compose in Cats/ZIO/FS2. |
+| **Deterministic ADTs** | `JsonValue` as a sealed ADT with `VectorMap` for objects. | Stable ordering and exhaustive pattern matches. |
+| **Streaming visitors** | `foreachTabular` and nested `foreachArrays` (tail‑recursive). | Validate/process rows without building a full AST. |
+| **Zero‑dep core** | Core depends only on the standard library; CLI uses `scopt` + `jtokkit`. | Small footprint, simpler audits, predictable deploys. |
+| **Strictness profiles** | `Strict | Lenient | Audit` with clear validations and warnings. | Safer ingestion of model outputs and human input. |
+| **CLI with budgets** | `--stats` (token counts), `--optimize` (delimiter/marker), same flags across OSes. | Track savings in CI and pick the best delimiter. |
+
+<img src="docs/images/toon4s-usp2.svg" alt="toon4s Scala USP diagram" width="760" />
 
 See also: [Encoding rules](./SCALA-TOON-SPECIFICATION.md#encoding-rules), [Strict mode](./SCALA-TOON-SPECIFICATION.md#strict-mode-semantics), [Delimiters & markers](./SCALA-TOON-SPECIFICATION.md#delimiters--length-markers)
 
@@ -59,27 +61,37 @@ Use the CLI or the benchmark runner to measure your payloads:
 # Option A: CLI (quick)
 toon4s-cli --encode payload.json --stats --tokenizer o200k -o payload.toon
 
-# Option B: Bench runner (reproducible set)
-sbt benchmarks/run
+# Option B: JMH runner (reproducible set)
+sbt jmhDev
 ```
 
-Current sample results (o200k/cl100k on our synthetic fixtures):
+Throughput (JMH, macOS M‑series, Java 21; indicative only):
 
 ```
-tags-small        | CL100K_BASE | json=18  | toon=10  | savings=44%
-uniform-objects   | CL100K_BASE | json=73  | toon=32  | savings=56%
-nested-irregular  | CL100K_BASE | json=167 | toon=122 | savings=27%
+Quick (1×500ms W/M):
+  decode_tabular    ~ 1051 ops/ms
+  decode_list       ~  920 ops/ms
+  encode_object     ~  200 ops/ms
+  decode_nested     ~  561 ops/ms
+
+Heavy (5×2s W/M):
+  decode_tabular    ~ 1089 ops/ms
+  decode_list       ~   968 ops/ms
+  decode_nested     ~   692 ops/ms
+  encode_object     ~   209 ops/ms
 ```
+
+Note: numbers vary widely by JVM/OS/data shape. Run your own payloads with JMH for apples‑to‑apples.
 
 ### Where we stand vs JToon / toon
 
-- Token savings: the same (format-driven). Implementation language doesn’t change token math.
-- Accuracy: also format-driven; expect parity with other conformant implementations.
-- Scala advantages (when you’re on Scala): sealed ADTs, exhaustive matching, FP‑friendly APIs, zero‑dep core, deterministic ordering.
-- CLI ergonomics: tokenizer‑aware `--stats` (with `--tokenizer`) to validate savings in CI.
-- If you’re writing Java, prefer JToon; if TypeScript, prefer toon. If you’re on Scala, toon4s is the most ergonomic choice.
+- Token savings: format‑driven and therefore similar across implementations. Expect ~30–60% on uniform/tabular data. Example: `{ "tags": ["jazz","chill","lofi"] }` → `tags[3]: jazz,chill,lofi`.
+- Accuracy: prompt‑ and data‑dependent. Community reports: JSON ≈ 70%, TOON ≈ 65% on some tasks. Measure on your prompts before switching.
+- Throughput: toon4s encode throughput is on par with JToon on small/mid shapes (JMH quick: ~200 ops/ms). Decoding is implemented and fast in toon4s (tabular ~1k ops/ms). If/when JToon adds decoding, compare like‑for‑like.
+- Scala ergonomics: typed derivation (3.x), typeclasses (2.13), sealed ADTs, VectorMap ordering, streaming visitors, zero‑dep core.
+- Guidance: use toon (TS) for Node stacks, JToon for Java codebases, toon4s for Scala. Token savings are equivalent; choose by ecosystem fit.
 
-![Comparison: toon vs JToon vs toon4s](./docs/images/toon4s-compare.svg)
+<img src="docs/images/toon4s-compare.svg" alt="Comparison: toon vs JToon vs toon4s" width="820" />
 
 Savings are model/tokenizer-sensitive; treat ranges as guidance, not guarantees.
 
@@ -129,9 +141,10 @@ println(json)
 
 ### JVM ergonomics
 
-- Works with Scala 3.3.3 and Scala 2.13.14 (tested in CI).
-- Accepts Scala collections, Java collections, `java.time.*`, `Option`, `Either`, `Product` (case classes, tuples), and `IterableOnce`.
-- Deterministic ordering when encoding maps via `VectorMap`.
+ - Works with Scala 3.3.3 and Scala 2.13.14 (tested in CI).
+ - Accepts Scala collections, Java collections, `java.time.*`, `Option`, `Either`, `Product` (case classes, tuples), and `IterableOnce`.
+ - Deterministic ordering when encoding maps via `VectorMap`.
+ - Scala 3 derivation: `codec.Encoder` and `codec.Decoder` derive for case classes. Prefer typed `ToonTyped.encode[A: Encoder]` / `ToonTyped.decodeAs[A: Decoder]` over `Any`-based methods.
 
 ---
 
@@ -259,9 +272,10 @@ See also: [Encoding rules](./SCALA-TOON-SPECIFICATION.md#encoding-rules)
 
 | Package | Purpose |
 | ------- | ------- |
-| `io.toonformat.toon4s` | Core types: `Toon`, `JsonValue`, `EncodeOptions`, `DecodeOptions`, `Delimiter`. |
+| `io.toonformat.toon4s` | Core types: `Toon`, `JsonValue`, `EncodeOptions`, `DecodeOptions`, `Delimiter`. Typed entry points live in `ToonTyped`: `ToonTyped.encode[A: Encoder]`, `ToonTyped.decodeAs[A: Decoder]`. |
 | `io.toonformat.toon4s.encode.*` | `Encoders`, primitive formatting helpers. |
 | `io.toonformat.toon4s.decode.*` | `Decoders`, parser/validation utilities. |
+| `io.toonformat.toon4s.decode.Streaming` | Streaming visitors for tabular arrays (`foreachTabular`) and nested arrays (`foreachArrays`). |
 | `io.toonformat.toon4s.json.SimpleJson` | Lightweight JSON AST + parser/stringifier used in tests/CLI. |
 | `io.toonformat.toon4s.cli.*` | CLI wiring (`Main`, token estimator). |
 
@@ -283,7 +297,29 @@ See also: [JsonValue ADT](./SCALA-TOON-SPECIFICATION.md#representation-jsonvalue
 | `Product` (case classes / tuples) | Converted through `productElementNames` + `productIterator`. |
 | `Java time` (`Instant`, `ZonedDateTime`, etc.) | ISO‑8601 strings, UTC-normalized for deterministic prompts. |
 
-Decoding always yields the `JsonValue` ADT. To get back to Scala types, use `SimpleJson.toScala` (gives `Any`) or write pattern matches / Circe-like decoders over `JsonValue`.
+Preferred (Scala 3): typed APIs with type classes.
+
+```scala
+import io.toonformat.toon4s._
+import io.toonformat.toon4s.codec.{Encoder, Decoder}
+
+case class User(id: Int, name: String) derives Encoder, Decoder
+
+val s: String = Toon.encode(User(1, "Ada")).fold(throw _, identity)
+val u: User   = ToonTyped.decodeAs[User](s).fold(throw _, identity)
+```
+
+Fallbacks:
+- Decoding always yields the `JsonValue` ADT; pattern-match it if you prefer.
+- `SimpleJson.toScala` yields `Any` for quick-and-dirty interop.
+
+Why another TOON for Scala?
+
+- Ergonomics: native Scala APIs and derivation reduce boilerplate versus Java/TS bindings in Scala codebases.
+- Footprint: zero-dep core minimizes transitive risk compared to libraries built atop general JSON stacks.
+- Streaming: visitors let you validate/model-check row counts without paying for full tree allocation.
+- Parity: same token savings as JToon/toon because the format drives savings, not the implementation.
+- Throughput: competitive decode throughput (see JMH); encode throughput is solid and easy to reason about.
 
 See also: [Encoding model](./SCALA-TOON-SPECIFICATION.md#encoding-model), [JsonValue ADT](./SCALA-TOON-SPECIFICATION.md#representation-jsonvalue-adt)
 
@@ -377,6 +413,76 @@ GitHub Actions runs:
 2. **Matrix tests**: Linux/macOS/Windows × Scala 2.13 & 3.3, with test-report artifacts when a shard fails.
 3. **Smoke**: CLI round trip script on Ubuntu.
 4. **All checks pass** “gate” job.
+
+### Performance (JMH)
+
+- Quick run (single iteration, small windows):
+
+```
+sbt "jmh/jmh:run -i 1 -wi 1 -r 500ms -w 500ms -f1 -t1 io.toonformat.toon4s.jmh.EncodeDecodeBench.*"
+```
+
+- Typical run:
+
+```
+sbt "jmh/jmh:run -i 5 -wi 5 -f1 -t1 io.toonformat.toon4s.jmh.EncodeDecodeBench.*"
+```
+
+Or use aliases:
+
+```
+sbt jmhDev   # quick check
+sbt jmhFull  # heavy run
+```
+
+#### Benchmarks Methodology
+
+- Intent: publish indicative throughput numbers for common shapes (tabular, lists, nested objects) under reproducible settings.
+- Harness: JMH via `sbt-jmh` 0.4.5. Single thread (`-t1`), single fork (`-f1`).
+- Quick config: `-i 1 -wi 1 -r 500ms -w 500ms` (fast sanity; noisy but useful for local checks).
+- Heavy config: `-i 5 -wi 5 -r 2s -w 2s` (more stable). CI runs this set with a soft 150s guard.
+- Reporting: CI also emits JSON (`-rf json -rff /tmp/jmh.json`) and posts a summary table on PRs.
+- Machine baseline (indicative): macOS Apple M‑series (M2/M3), Temurin Java 21, default power settings.
+- Guidance: close heavy apps/IDEs, plug in AC power, warm JVM before measurement. Numbers vary by OS/JVM/data shapes—treat them as relative, not absolute.
+
+### Streaming visitors
+
+- Tabular rows only:
+
+```scala
+import io.toonformat.toon4s.decode.Streaming
+val reader = new java.io.StringReader("""
+users[2]{id,name}:
+  1,Ada
+  2,Bob
+""".stripMargin)
+Streaming.foreachTabular(reader) { (key, fields, values) =>
+  // key = Some("users"), fields = List("id","name"), values = Vector("1","Ada") then Vector("2","Bob")
+}
+```
+
+- Nested arrays with path:
+
+```scala
+val reader2 = new java.io.StringReader("""
+orders[1]{id,items}:
+  1001,[2]{sku,qty}:
+    A1,2
+    B2,1
+""".stripMargin)
+Streaming.foreachArrays(reader2)({ (path, header) =>
+  // path: Vector("orders") when header key is bound
+})( { (path, header, values) =>
+  // values: Vector("A1","2"), then Vector("B2","1")
+})
+```
+
+When to use streaming
+
+- Validate/model‑check tabular sections quickly (row counts, required columns) without allocating a full AST.
+- Pipe rows directly to sinks (CSV writers, database ingesters, online aggregation) for large payloads.
+- Pre‑filter/transform rows on the fly before passing trimmed data to LLMs.
+- Keep full `Toon.decode` for non‑tabular or when you need the entire tree (e.g., complex nested edits).
 
 ---
 

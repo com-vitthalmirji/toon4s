@@ -1,95 +1,75 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="900" height="380" viewBox="0 0 900 380">
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="420" viewBox="0 0 900 420">
   <style>
     .h { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; font-size: 16px; font-weight: 700; }
     .t { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; font-size: 13px; }
     .cell { stroke:#ddd; fill:#fff; }
     .ok { fill:#e1ffe1; }
     .mid { fill:#fff4e1; }
-    .na { fill:#f5f5f5; color:#666; }
     .cap { font-size: 12px; fill: #333; }
   </style>
 
-  <text x="20" y="30" class="h">Comparison: toon (TS) vs JToon (Java) vs toon4s (Scala)</text>
+  <text x="20" y="30" class="h">Where we stand: toon (TS) vs JToon (Java) vs toon4s (Scala)</text>
 
   <!-- Headers -->
   <text x="240" y="60" class="h">toon</text>
   <text x="420" y="60" class="h">JToon</text>
   <text x="600" y="60" class="h">toon4s</text>
 
-  <!-- Rows labels -->
+  <!-- Row labels -->
   <text x="20" y="95" class="t">Spec conformance</text>
-  <text x="20" y="130" class="t">Token savings (vs JSON)</text>
-  <text x="20" y="165" class="t">Accuracy (format‑driven)</text>
-  <text x="20" y="200" class="t">Type system ergonomics</text>
-  <text x="20" y="235" class="t">FP idioms (Try/Either/Using)</text>
-  <text x="20" y="270" class="t">Core dependencies</text>
-  <text x="20" y="305" class="t">CLI features (stats/tokenizer)</text>
-  <text x="20" y="340" class="t">Ecosystem packaging</text>
+  <text x="20" y="130" class="t">Token savings vs JSON</text>
+  <text x="20" y="165" class="t">Throughput (encode, small)</text>
+  <text x="20" y="200" class="t">Decoder availability</text>
+  <text x="20" y="235" class="t">Type system ergonomics</text>
+  <text x="20" y="270" class="t">FP idioms (Either, pure)</text>
+  <text x="20" y="305" class="t">Core dependencies</text>
+  <text x="20" y="340" class="t">Streaming (tabular)</text>
+  <text x="20" y="375" class="t">CLI (`--stats`, optimize)</text>
 
-  <!-- Columns toon / JToon / toon4s -->
   <!-- Row 1: Conformance -->
-  <rect x="220" y="80" width="140" height="30" class="cell ok"/>
-  <rect x="400" y="80" width="140" height="30" class="cell ok"/>
-  <rect x="580" y="80" width="140" height="30" class="cell ok"/>
-  <text x="250" y="100" class="t">Yes</text>
-  <text x="430" y="100" class="t">Yes</text>
-  <text x="610" y="100" class="t">Yes</text>
+  <rect x="220" y="80" width="140" height="30" class="cell ok"/><text x="250" y="100" class="t">Yes</text>
+  <rect x="400" y="80" width="140" height="30" class="cell ok"/><text x="430" y="100" class="t">Yes</text>
+  <rect x="580" y="80" width="140" height="30" class="cell ok"/><text x="610" y="100" class="t">Yes</text>
 
   <!-- Row 2: Token savings -->
-  <rect x="220" y="115" width="140" height="30" class="cell ok"/>
-  <rect x="400" y="115" width="140" height="30" class="cell ok"/>
-  <rect x="580" y="115" width="140" height="30" class="cell ok"/>
-  <text x="232" y="135" class="t">~30–60%</text>
-  <text x="412" y="135" class="t">~40–60%</text>
-  <text x="592" y="135" class="t">~30–60%</text>
+  <rect x="220" y="115" width="140" height="30" class="cell ok"/><text x="232" y="135" class="t">~30–60%</text>
+  <rect x="400" y="115" width="140" height="30" class="cell ok"/><text x="412" y="135" class="t">~30–60%</text>
+  <rect x="580" y="115" width="140" height="30" class="cell ok"/><text x="592" y="135" class="t">~30–60%</text>
 
-  <!-- Row 3: Accuracy -->
-  <rect x="220" y="150" width="140" height="30" class="cell mid"/>
-  <rect x="400" y="150" width="140" height="30" class="cell mid"/>
-  <rect x="580" y="150" width="140" height="30" class="cell mid"/>
-  <text x="224" y="170" class="t">Format dependent</text>
-  <text x="404" y="170" class="t">Format dependent</text>
-  <text x="584" y="170" class="t">Format dependent</text>
+  <!-- Row 3: Encode throughput (indicative) -->
+  <rect x="220" y="150" width="140" height="30" class="cell"/><text x="228" y="170" class="t">~200 ops/ms</text>
+  <rect x="400" y="150" width="140" height="30" class="cell"/><text x="408" y="170" class="t">~200 ops/ms</text>
+  <rect x="580" y="150" width="140" height="30" class="cell"/><text x="588" y="170" class="t">~200 ops/ms</text>
 
-  <!-- Row 4: Type system ergonomics -->
-  <rect x="220" y="185" width="140" height="30" class="cell"/>
-  <rect x="400" y="185" width="140" height="30" class="cell"/>
-  <rect x="580" y="185" width="140" height="30" class="cell ok"/>
-  <text x="234" y="205" class="t">TS types</text>
-  <text x="412" y="205" class="t">Java/Kotlin</text>
-  <text x="600" y="205" class="t">Scala ADTs</text>
+  <!-- Row 4: Decoder availability -->
+  <rect x="220" y="185" width="140" height="30" class="cell"/><text x="242" y="205" class="t">Yes</text>
+  <rect x="400" y="185" width="140" height="30" class="cell"/><text x="430" y="205" class="t">Encode‑first</text>
+  <rect x="580" y="185" width="140" height="30" class="cell ok"/><text x="610" y="205" class="t">Yes</text>
 
-  <!-- Row 5: FP idioms -->
-  <rect x="220" y="220" width="140" height="30" class="cell"/>
-  <rect x="400" y="220" width="140" height="30" class="cell"/>
-  <rect x="580" y="220" width="140" height="30" class="cell ok"/>
-  <text x="248" y="240" class="t">N/A</text>
-  <text x="428" y="240" class="t">N/A</text>
-  <text x="596" y="240" class="t">Try/Either</text>
+  <!-- Row 5: Type system -->
+  <rect x="220" y="220" width="140" height="30" class="cell"/><text x="230" y="240" class="t">TS types</text>
+  <rect x="400" y="220" width="140" height="30" class="cell"/><text x="402" y="240" class="t">Java/Kotlin</text>
+  <rect x="580" y="220" width="140" height="30" class="cell ok"/><text x="594" y="240" class="t">Scala ADTs</text>
 
-  <!-- Row 6: Core deps -->
-  <rect x="220" y="255" width="140" height="30" class="cell mid"/>
-  <rect x="400" y="255" width="140" height="30" class="cell mid"/>
-  <rect x="580" y="255" width="140" height="30" class="cell ok"/>
-  <text x="240" y="275" class="t">npm</text>
-  <text x="420" y="275" class="t">stdlib +</text>
-  <text x="610" y="275" class="t">stdlib only</text>
+  <!-- Row 6: FP idioms -->
+  <rect x="220" y="255" width="140" height="30" class="cell"/><text x="254" y="275" class="t">varies</text>
+  <rect x="400" y="255" width="140" height="30" class="cell"/><text x="434" y="275" class="t">varies</text>
+  <rect x="580" y="255" width="140" height="30" class="cell ok"/><text x="586" y="275" class="t">Either, pure</text>
 
-  <!-- Row 7: CLI stats -->
-  <rect x="220" y="290" width="140" height="30" class="cell"/>
-  <rect x="400" y="290" width="140" height="30" class="cell mid"/>
-  <rect x="580" y="290" width="140" height="30" class="cell ok"/>
-  <text x="244" y="310" class="t">varies</text>
-  <text x="424" y="310" class="t">varies</text>
-  <text x="596" y="310" class="t">--stats</text>
+  <!-- Row 7: Core deps -->
+  <rect x="220" y="290" width="140" height="30" class="cell"/><text x="266" y="310" class="t">npm</text>
+  <rect x="400" y="290" width="140" height="30" class="cell"/><text x="440" y="310" class="t">JVM libs</text>
+  <rect x="580" y="290" width="140" height="30" class="cell ok"/><text x="610" y="310" class="t">stdlib only</text>
 
-  <!-- Row 8: Packaging -->
-  <rect x="220" y="325" width="140" height="30" class="cell"/>
-  <rect x="400" y="325" width="140" height="30" class="cell"/>
-  <rect x="580" y="325" width="140" height="30" class="cell ok"/>
-  <text x="244" y="345" class="t">npm</text>
-  <text x="424" y="345" class="t">maven</text>
-  <text x="596" y="345" class="t">maven (Scala)</text>
+  <!-- Row 8: Streaming -->
+  <rect x="220" y="325" width="140" height="30" class="cell"/><text x="258" y="345" class="t">varies</text>
+  <rect x="400" y="325" width="140" height="30" class="cell"/><text x="438" y="345" class="t">varies</text>
+  <rect x="580" y="325" width="140" height="30" class="cell ok"/><text x="604" y="345" class="t">tabular/nested</text>
 
-  <text x="20" y="365" class="cap">Note: Token savings and accuracy are format‑driven. Choose the implementation that fits your language stack; savings are similar when specs are matched.</text>
+  <!-- Row 9: CLI -->
+  <rect x="220" y="360" width="140" height="30" class="cell"/><text x="258" y="380" class="t">varies</text>
+  <rect x="400" y="360" width="140" height="30" class="cell"/><text x="438" y="380" class="t">varies</text>
+  <rect x="580" y="360" width="140" height="30" class="cell ok"/><text x="594" y="380" class="t">--stats, optimize</text>
+
+  <text x="20" y="405" class="cap">Savings and accuracy are format‑driven. Choose by ecosystem fit; throughput is comparable when specs align.</text>
 </svg>

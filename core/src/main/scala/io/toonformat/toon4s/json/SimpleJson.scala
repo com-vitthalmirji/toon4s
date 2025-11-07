@@ -141,10 +141,11 @@ object SimpleJson {
     private def parseObject(): JsonValue = {
       expect('{')
       skipWhitespace()
-      var fields = VectorMap.empty[String, JsonValue]
       if (peek('}')) {
         index += 1
+        JObj(VectorMap.empty)
       } else {
+        val b        = Vector.newBuilder[(String, JsonValue)]
         var continue = true
         while (continue) {
           skipWhitespace()
@@ -152,7 +153,7 @@ object SimpleJson {
           skipWhitespace()
           expect(':')
           val value = parseValue()
-          fields = fields.updated(key, value)
+          b += ((key, value))
           skipWhitespace()
           if (peek(',')) {
             index += 1
@@ -163,8 +164,8 @@ object SimpleJson {
             throw JsonParseException(s"Expected ',' or '}' at position $index")
           }
         }
+        JObj(VectorMap.from(b.result()))
       }
-      JObj(fields)
     }
 
     private def parseArray(): JsonValue = {

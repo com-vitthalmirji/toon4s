@@ -9,6 +9,6 @@ object Strictness {
 
 final case class DecodeOptions(
     indent: Int = 2,
-    strict: Boolean = true,                    // legacy flag (kept for compatibility)
+    strict: Boolean = true,                    // [DEPRECATED] prefer `strictness` (kept for compatibility)
     strictness: Strictness = Strictness.Strict // preferred
 )

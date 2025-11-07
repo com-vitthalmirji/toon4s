@@ -60,7 +60,7 @@ Savings vary with schema complexity, but any payload where you repeat columns ac
 
 ## Encoding model
 
-`Toon.encode(value, EncodeOptions)` performs two steps:
+Preferred (Scala 3): `ToonTyped.encode[A: Encoder](value, options)` and `ToonTyped.decodeAs[A: Decoder](string, options)` provide typed entry points. Under the hood, the encoding path performs two steps:
 
 1. **Normalization** – Convert arbitrary Scala values to the `JsonValue` ADT (`Normalize.toJson`).
 2. **Rendering** – Convert the `JsonValue` tree to TOON text using `Encoders.encode`.
@@ -114,7 +114,17 @@ object JsonValue {
 }
 ```
 
-This ADT underpins both encoding and decoding. Pattern match on it to extract fields, or call `SimpleJson.stringify` to hop back to JSON.
+This ADT underpins both encoding and decoding. Pattern match on it to extract fields, or call `SimpleJson.stringify` to hop back to JSON. For domain types, prefer the Scala 3 type classes:
+
+```scala
+import io.toonformat.toon4s._
+import io.toonformat.toon4s.codec.{Encoder, Decoder}
+
+case class Data(users: List[String]) derives Encoder, Decoder
+
+val s   = Toon.encode(Data(List("Ada")))
+val d   = ToonTyped.decodeAs[Data](s.fold(throw _, identity))
+```
 
 ```mermaid
 graph TD
@@ -364,6 +374,26 @@ sbt scalafmtCheckAll
 sbt +test
 ./smoke-tests/run-smoke.sh
 ```
+
+### Performance benchmarking (JMH)
+
+We include JMH microbenchmarks covering encode/decode on representative shapes (tabular rows, list arrays, nested objects), plus large and irregular cases.
+
+Examples (quick):
+
+```
+sbt "jmh/jmh:run -i 1 -wi 1 -r 500ms -w 500ms -f1 -t1 io.toonformat.toon4s.jmh.EncodeDecodeBench.*"
+```
+
+Indicative throughput (macOS M-series, Java 21, single fork, 1×500ms warmup/measure):
+
+```
+decode_tabular    ~ 1051 ops/ms
+decode_list       ~  920 ops/ms
+encode_object     ~  200 ops/ms
+```
+
+Use larger windows (e.g., `-i 5 -wi 5`) on a stable machine for trustworthy numbers.
 
 ---
 

@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="820" height="320" viewBox="0 0 820 320" font-family="-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="14">
+  <defs>
+    <style>
+      .box { fill:#f7f7f9; stroke:#2d7a2d; rx:8; ry:8; }
+      .title { font-weight:bold; }
+      .note { fill:#555; font-size:12px; }
+      .edge { stroke:#888; marker-end: url(#arrow); }
+    </style>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#888" />
+    </marker>
+  </defs>
+
+  <!-- Pipeline -->
+  <rect x="20" y="30" width="150" height="60" class="box" />
+  <text x="30" y="55" class="title">Scala data</text>
+  <text x="30" y="75" class="note">Map / Case class / Iterable</text>
+
+  <rect x="200" y="30" width="160" height="60" class="box" />
+  <text x="210" y="55" class="title">Normalize</text>
+  <text x="210" y="75" class="note">JsonValue (ADT)</text>
+
+  <rect x="390" y="30" width="150" height="60" class="box" />
+  <text x="400" y="55" class="title">Encoder</text>
+  <text x="400" y="75" class="note">Headers / rows</text>
+
+  <rect x="570" y="30" width="190" height="60" class="box" />
+  <text x="580" y="55" class="title">TOON text</text>
+  <text x="580" y="75" class="note">length markers, tabs/pipes</text>
+
+  <line x1="170" y1="60" x2="200" y2="60" class="edge" />
+  <line x1="360" y1="60" x2="390" y2="60" class="edge" />
+  <line x1="540" y1="60" x2="570" y2="60" class="edge" />
+
+  <!-- USPs -->
+  <rect x="20" y="130" width="350" height="160" class="box" />
+  <text x="30" y="155" class="title">Scala-first USPs</text>
+  <text x="30" y="175">• Typed APIs (Scala 3 derives, Scala 2 typeclasses)</text>
+  <text x="30" y="195">• Zero-dep core (no Jackson)</text>
+  <text x="30" y="215">• Streaming visitors (tabular / nested)</text>
+  <text x="30" y="235">• Deterministic ordering (VectorMap)</text>
+  <text x="30" y="255">• CI token budgets via CLI --stats</text>
+
+  <rect x="400" y="130" width="360" height="160" class="box" />
+  <text x="410" y="155" class="title">Token savings & performance</text>
+  <text x="410" y="175">• Savings are format-driven: ~30–60% typical</text>
+  <text x="410" y="195">• Example: tags → tags[3]: jazz,chill,lofi</text>
+  <text x="410" y="215">• JMH (indicative): decode_tabular ~1k ops/ms</text>
+  <text x="410" y="235">• decode_list ~0.9k, decode_nested ~0.56k</text>
+  <text x="410" y="255">• encode_object ~0.2k ops/ms</text>
+</svg>
+
