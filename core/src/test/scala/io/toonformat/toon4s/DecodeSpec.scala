@@ -93,4 +93,62 @@ class DecodeSpec extends FunSuite {
     assert(result.isLeft)
     assert(result.left.exists(_.isInstanceOf[DecodeError.Syntax]))
   }
+
+  test("unicode escapes are rejected (TOON v1.4 spec compliance)") {
+    val input = """name: "test\u0041value""""
+
+    val result = Toon.decode(input)
+    assert(result.isLeft, "Unicode escape \\u0041 should be rejected")
+    result.left.foreach {
+      err =>
+        assert(err.isInstanceOf[DecodeError.Syntax])
+        assert(err.message.contains("Invalid escape sequence: \\u"))
+    }
+  }
+
+  test("all valid TOON escapes are accepted") {
+    // Triple-quoted: backslashes are literal. TOON sees: "quote:\" slash:\\\\ newline:\n tab:\t"
+    val input = """text: "quote:\" slash:\\\\ newline:\n tab:\t""""
+
+    val result = Toon.decode(input)
+    assert(result.isRight)
+    result.foreach {
+      json =>
+        json match {
+          case JObj(fields) =>
+            fields.get("text") match {
+              case Some(JString(s)) =>
+                // After TOON unescape: \" -> ", \\\\ -> \\, \n -> newline, \t -> tab
+                assert(s.contains("quote:\""))
+                assert(s.contains("slash:\\\\"))
+                assert(s.contains("\n"))
+                assert(s.contains("\t"))
+              case other            => fail(s"Expected JString, got $other")
+            }
+          case other        => fail(s"Expected JObj, got $other")
+        }
+    }
+  }
+
+  test("invalid escape sequences are rejected") {
+    val invalidEscapes = List(
+      ("\\x", "message: \"test\\xvalue\""),
+      ("\\a", "message: \"test\\avalue\""),
+      ("\\b", "message: \"test\\bvalue\""),
+      ("\\f", "message: \"test\\fvalue\""),
+      ("\\v", "message: \"test\\vvalue\""),
+      ("\\0", "message: \"test\\0value\"")
+    )
+
+    invalidEscapes.foreach {
+      case (escape, input) =>
+        val result = Toon.decode(input)
+        assert(result.isLeft, s"Escape $escape should be rejected")
+        result.left.foreach {
+          err =>
+            assert(err.isInstanceOf[DecodeError.Syntax])
+            assert(err.message.contains("Invalid escape sequence"))
+        }
+    }
+  }
 }

@@ -19,8 +19,9 @@ object Streaming {
   )(
       onRow: (Option[String], List[String], Vector[String]) => Unit
   ): Either[error.DecodeError, Unit] = {
-    val scan  = Scanner.toParsedLines(in, options.indent, options.strict)
-    val lines = scan.lines
+    val isStrict = options.strictness == Strictness.Strict
+    val scan     = Scanner.toParsedLines(in, options.indent, isStrict)
+    val lines    = scan.lines
 
     @tailrec
     def streamRows(
@@ -73,8 +74,9 @@ object Streaming {
       onHeader: (Vector[String], ArrayHeaderInfo) => Unit,
       onRow: (Vector[String], ArrayHeaderInfo, Vector[String]) => Unit
   ): Either[error.DecodeError, Unit] = {
-    val scan  = Scanner.toParsedLines(in, options.indent, options.strict)
-    val lines = scan.lines
+    val isStrict = options.strictness == Strictness.Strict
+    val scan     = Scanner.toParsedLines(in, options.indent, isStrict)
+    val lines    = scan.lines
 
     @tailrec
     def streamRows(

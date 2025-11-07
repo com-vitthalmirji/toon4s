@@ -18,8 +18,7 @@ object Main {
       input: Path = Paths.get(""),
       output: Option[Path] = None,
       indent: Int = 2,
-      strict: Boolean = true,
-      strictness: String = "strict",
+      strictness: String = "strict", // CLI string, converted to Strictness
       delimiter: Delimiter = Delimiter.Comma,
       lengthMarker: Boolean = false,
       stats: Boolean = false,
@@ -99,7 +98,6 @@ object Main {
   private def runDecode(config: Config): Either[String, Unit] = {
     val options = DecodeOptions(
       indent = config.indent,
-      strict = config.strict,
       strictness = asStrictness(config.strictness)
     )
     for {
@@ -164,24 +162,21 @@ object Main {
           (indent, c) => c.copy(indent = indent)
         )
         .text("Indentation used for encoding (default: 2)."),
-      opt[Boolean]("strict")
-        .action(
-          (flag, c) => c.copy(strict = flag)
-        )
-        .text(
-          "[DEPRECATED] Strict decoding boolean (default: true). Prefer --strictness strict|lenient|audit."
-        ),
       opt[String]("strictness")
-        .valueName("strict|lenient|audit")
+        .valueName("strict|lenient")
         .validate(
           v =>
-            if (Set("strict", "lenient", "audit").contains(v)) success
-            else failure("strictness must be strict|lenient|audit")
+            if (Set("strict", "lenient").contains(v.toLowerCase)) success
+            else failure("strictness must be 'strict' or 'lenient'")
         )
         .action(
-          (v, c) => c.copy(strictness = v)
+          (v, c) => c.copy(strictness = v.toLowerCase)
         )
-        .text("Strictness profile (default: strict)."),
+        .text(
+          "Strictness mode (default: strict). " +
+            "'strict' enforces TOON v1.4 §14: count mismatches, indentation errors, etc. " +
+            "'lenient' accepts malformed input when possible."
+        ),
       opt[String]("delimiter")
         .valueName("comma|tab|pipe")
         .validate(
@@ -242,8 +237,7 @@ object Main {
   private def asStrictness(s: String): Strictness = s.toLowerCase match {
     case "strict"  => Strictness.Strict
     case "lenient" => Strictness.Lenient
-    case "audit"   => Strictness.Audit
-    case _         => Strictness.Strict
+    case _         => Strictness.Strict // Default to strict for safety
   }
 
   private def optimize(

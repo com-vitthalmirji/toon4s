@@ -49,21 +49,11 @@ object Toon {
       options: DecodeOptions = DecodeOptions()
   ): DecodeResult[JsonValue] =
     Try {
-      val scan =
-        io.toonformat.toon4s.decode.Scanner.toParsedLines(in, options.indent, options.strict)
+      val isStrict = options.strictness == Strictness.Strict
+      val scan     = io.toonformat.toon4s.decode.Scanner.toParsedLines(in, options.indent, isStrict)
       Decoders.decodeScan(scan, options)
     }.toEither.left.map {
       case err: DecodeError => err
       case other            => DecodeError.Unexpected(other.getMessage)
     }
-
-  def decodeAudit(
-      in: java.io.Reader,
-      options: DecodeOptions = DecodeOptions()
-  ): Either[(Vector[String], DecodeError), (Vector[String], JsonValue)] = {
-    Try(Decoders.decodeAudit(in, options)).toEither.left.map {
-      case e: DecodeError => (Vector.empty[String], e)
-      case t              => (Vector.empty[String], DecodeError.Unexpected(t.getMessage))
-    }
-  }
 }

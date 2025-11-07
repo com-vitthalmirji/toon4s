@@ -6,25 +6,27 @@ sealed trait DPresent
 
 final class DecodeOptionsBuilder[HasIndent] private (
     private val indentOpt: Option[Int],
-    private val strictFlag: Boolean,
     private val strictness: Strictness
 ) {
   def indent(n: Int): DecodeOptionsBuilder[DPresent] =
-    new DecodeOptionsBuilder(Some(n), strictFlag, strictness)
+    new DecodeOptionsBuilder(Some(n), strictness)
 
-  def strict(flag: Boolean): DecodeOptionsBuilder[HasIndent] =
-    new DecodeOptionsBuilder(indentOpt, flag, strictness)
+  def strictness(s: Strictness): DecodeOptionsBuilder[HasIndent] =
+    new DecodeOptionsBuilder(indentOpt, s)
 
-  def withStrictness(s: Strictness): DecodeOptionsBuilder[HasIndent] =
-    new DecodeOptionsBuilder(indentOpt, strictFlag, s)
+  def strict(): DecodeOptionsBuilder[HasIndent] =
+    new DecodeOptionsBuilder(indentOpt, Strictness.Strict)
+
+  def lenient(): DecodeOptionsBuilder[HasIndent] =
+    new DecodeOptionsBuilder(indentOpt, Strictness.Lenient)
 
   def build(implicit ev: HasIndent =:= DPresent): DecodeOptions =
-    DecodeOptions(indent = indentOpt.get, strict = strictFlag, strictness = strictness)
+    DecodeOptions(indent = indentOpt.get, strictness = strictness)
 }
 
 object DecodeOptionsBuilder {
   type IndentSet = DPresent
 
   def empty: DecodeOptionsBuilder[DMissing] =
-    new DecodeOptionsBuilder(None, strictFlag = true, strictness = Strictness.Strict)
+    new DecodeOptionsBuilder(None, strictness = Strictness.Strict)
 }

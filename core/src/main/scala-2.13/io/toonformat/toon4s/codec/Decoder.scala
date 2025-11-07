@@ -52,7 +52,7 @@ object Decoder {
   implicit def listDecoder[A](implicit d: Decoder[A]): Decoder[List[A]] = {
     case JArray(xs) =>
       xs.foldLeft[Either[DecodeError, List[A]]](Right(Nil)) {
-        case (Right(acc), j) => d(j).map(_ :: acc)
+        case (Right(acc), j)  => d(j).map(_ :: acc)
         case (l @ Left(_), _) => l
       }.map(_.reverse)
     case other      => Left(DecodeError.Mapping(s"Expected array, found $other"))
@@ -61,7 +61,7 @@ object Decoder {
   implicit def vectorDecoder[A](implicit d: Decoder[A]): Decoder[Vector[A]] = {
     case JArray(xs) =>
       xs.foldLeft[Either[DecodeError, Vector[A]]](Right(Vector.empty)) {
-        case (Right(acc), j) => d(j).map(acc :+ _)
+        case (Right(acc), j)  => d(j).map(acc :+ _)
         case (l @ Left(_), _) => l
       }
     case other      => Left(DecodeError.Mapping(s"Expected array, found $other"))
@@ -70,24 +70,32 @@ object Decoder {
   implicit def mapDecoder[A](implicit d: Decoder[A]): Decoder[Map[String, A]] = {
     case JObj(fields) =>
       fields.foldLeft[Either[DecodeError, Map[String, A]]](Right(Map.empty)) {
-        case (Right(acc), (k, j)) => d(j).map(a => acc + (k -> a))
+        case (Right(acc), (k, j)) =>
+          d(j).map(
+            a => acc + (k -> a)
+          )
         case (l @ Left(_), _)     => l
       }
-    case other         => Left(DecodeError.Mapping(s"Expected object, found $other"))
+    case other        => Left(DecodeError.Mapping(s"Expected object, found $other"))
   }
 
   // java.time instances (strict ISO-8601 parsing)
   implicit val instantDecoder: Decoder[Instant] = {
     case JString(s) =>
       try Right(Instant.parse(s))
-      catch { case _: Throwable => Left(DecodeError.Mapping(s"Instant expected (ISO-8601), found: $s")) }
+      catch {
+        case _: Throwable => Left(DecodeError.Mapping(s"Instant expected (ISO-8601), found: $s"))
+      }
     case other      => Left(DecodeError.Mapping(s"Expected string for Instant, found $other"))
   }
 
   implicit val localDateDecoder: Decoder[LocalDate] = {
     case JString(s) =>
       try Right(LocalDate.parse(s))
-      catch { case _: Throwable => Left(DecodeError.Mapping(s"LocalDate expected (YYYY-MM-DD), found: $s")) }
+      catch {
+        case _: Throwable =>
+          Left(DecodeError.Mapping(s"LocalDate expected (YYYY-MM-DD), found: $s"))
+      }
     case other      => Left(DecodeError.Mapping(s"Expected string for LocalDate, found $other"))
   }
 
@@ -101,7 +109,9 @@ object Decoder {
   implicit val offsetDateTimeDecoder: Decoder[OffsetDateTime] = {
     case JString(s) =>
       try Right(OffsetDateTime.parse(s))
-      catch { case _: Throwable => Left(DecodeError.Mapping(s"OffsetDateTime expected, found: $s")) }
+      catch {
+        case _: Throwable => Left(DecodeError.Mapping(s"OffsetDateTime expected, found: $s"))
+      }
     case other      => Left(DecodeError.Mapping(s"Expected string for OffsetDateTime, found $other"))
   }
 
@@ -115,7 +125,10 @@ object Decoder {
   implicit val localTimeDecoder: Decoder[LocalTime] = {
     case JString(s) =>
       try Right(LocalTime.parse(s))
-      catch { case _: Throwable => Left(DecodeError.Mapping(s"LocalTime expected (hh:mm[:ss[.SSS]]), found: $s")) }
+      catch {
+        case _: Throwable =>
+          Left(DecodeError.Mapping(s"LocalTime expected (hh:mm[:ss[.SSS]]), found: $s"))
+      }
     case other      => Left(DecodeError.Mapping(s"Expected string for LocalTime, found $other"))
   }
 }

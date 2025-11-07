@@ -114,10 +114,11 @@ class ConformanceSuite extends FunSuite {
   }
 
   private def parseDecodeOptions(value: JsonValue): DecodeOptions = {
-    val obj    = asObject(value, "decode options")
-    val indent = obj.get("indent").map(asInt(_, "indent"))
-    val strict = obj.get("strict").map(asBoolean(_, "strict"))
-    DecodeOptions(indent = indent.getOrElse(2), strict = strict.getOrElse(true))
+    val obj        = asObject(value, "decode options")
+    val indent     = obj.get("indent").map(asInt(_, "indent"))
+    val strict     = obj.get("strict").map(asBoolean(_, "strict"))
+    val strictness = if (strict.getOrElse(true)) Strictness.Strict else Strictness.Lenient
+    DecodeOptions(indent = indent.getOrElse(2), strictness = strictness)
   }
 
   private def parseEncodeOptions(value: JsonValue): EncodeOptions = {

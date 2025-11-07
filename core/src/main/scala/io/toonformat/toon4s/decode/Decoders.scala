@@ -15,7 +15,8 @@ import scala.collection.mutable.ArrayBuffer
 object Decoders {
 
   def decode(input: String, options: DecodeOptions): JsonValue = {
-    val scan = Scanner.toParsedLines(input, options.indent, options.strict)
+    val isStrict = options.strictness == Strictness.Strict
+    val scan     = Scanner.toParsedLines(input, options.indent, isStrict)
     decodeScan(scan, options)
   }
 
@@ -23,14 +24,7 @@ object Decoders {
     if (scan.lines.isEmpty) JObj(VectorMap.empty)
     else {
       val cursor                          = new LineCursor(scan.lines, scan.blanks)
-      implicit val ws: WarningSink        = WarningSink.Noop
-      // Bridge legacy `strict=false` to Lenient validations when no explicit strictness provided
-      // so that conformance tests using only the legacy flag behave correctly.
-      val effectiveStrictness: Strictness =
-        if (!options.strict && options.strictness == Strictness.Strict) Strictness.Lenient
-        else options.strictness
-      implicit val mode: Strictness       = effectiveStrictness
-      val effOptions                      = options.copy(strictness = effectiveStrictness)
+      implicit val strictness: Strictness = options.strictness
 
       val rootArray = cursor.peek.flatMap {
         first =>
@@ -38,7 +32,7 @@ object Decoders {
             parseArrayHeaderLine(first.content, Delimiter.Comma).map {
               case (header, inline) =>
                 cursor.advance()
-                decodeArrayFromHeader(header, inline, cursor, 0, effOptions)
+                decodeArrayFromHeader(header, inline, cursor, 0, options)
             }
           } else None
       }
@@ -50,17 +44,9 @@ object Decoders {
           )
         )
           parsePrimitiveToken(cursor.peek.get.content.trim)
-        else decodeObject(cursor, 0, effOptions)
+        else decodeObject(cursor, 0, options)
       }
     }
-  }
-
-  def decodeAudit(reader: java.io.Reader, options: DecodeOptions): (Vector[String], JsonValue) = {
-    val strictness = options.strictness
-    val outcome    = Scanner.toParsedLinesWithStrictness(reader, options.indent, strictness)
-    val effStrict  = strictness == Strictness.Strict || options.strict
-    val json       = decodeScan(outcome.result, options.copy(strict = effStrict))
-    (outcome.warnings.messages, json)
   }
 
   private def isKeyValueLine(line: ParsedLine): Boolean = {
@@ -149,17 +135,13 @@ object Decoders {
       options: DecodeOptions
   ): JsonValue = {
     if (inlineValues.trim.isEmpty) {
-      assertExpectedCount(0, header.length, "inline array items")(
-        options.strictness,
-        WarningSink.Noop
-      )
+      assertExpectedCount(0, header.length, "inline array items")(options.strictness)
       JArray(Vector.empty)
     } else {
       val values     = parseDelimitedValues(inlineValues, header.delimiter)
       val primitives = mapRowValuesToPrimitives(values)
       assertExpectedCount(primitives.length, header.length, "inline array items")(
-        options.strictness,
-        WarningSink.Noop
+        options.strictness
       )
       JArray(primitives)
     }
@@ -199,21 +181,14 @@ object Decoders {
 
     val items: Vector[JsonValue] = buffer.toVector
     def runValidations(): Unit   = {
-      assertExpectedCount(items.length, header.length, "list array items")(
-        options.strictness,
-        WarningSink.Noop
-      )
+      assertExpectedCount(items.length, header.length, "list array items")(options.strictness)
       for {
         start <- startLine
         end   <- endLine
       } validateNoBlankLinesInRange(start, end, cursor.getBlankLines, "list array")(
-        options.strictness,
-        WarningSink.Noop
+        options.strictness
       )
-      validateNoExtraListItems(cursor, itemDepth, header.length)(
-        options.strictness,
-        WarningSink.Noop
-      )
+      validateNoExtraListItems(cursor, itemDepth, header.length)(options.strictness)
     }
     runValidations()
     items
@@ -238,8 +213,7 @@ object Decoders {
           cursor.advance()
           val values: Vector[String]        = parseDelimitedValues(line.content, header.delimiter)
           assertExpectedCount(values.length, header.fields.length, "tabular row values")(
-            options.strictness,
-            WarningSink.Noop
+            options.strictness
           )
           val primitives: Vector[JsonValue] = mapRowValuesToPrimitives(values)
           val obj                           = VectorMap.from(header.fields.zip(primitives))
@@ -258,18 +232,14 @@ object Decoders {
 
     val table: Vector[JsonValue] = rows.toVector
     def runValidations(): Unit   = {
-      assertExpectedCount(table.length, header.length, "tabular rows")(
-        options.strictness,
-        WarningSink.Noop
-      )
+      assertExpectedCount(table.length, header.length, "tabular rows")(options.strictness)
       for {
         start <- startLine
         end   <- endLine
       } validateNoBlankLinesInRange(start, end, cursor.getBlankLines, "tabular array")(
-        options.strictness,
-        WarningSink.Noop
+        options.strictness
       )
-      validateNoExtraTabularRows(cursor, rowDepth, header)(options.strictness, WarningSink.Noop)
+      validateNoExtraTabularRows(cursor, rowDepth, header)(options.strictness)
     }
     runValidations()
     table

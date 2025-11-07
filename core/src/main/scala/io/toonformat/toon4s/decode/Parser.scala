@@ -4,7 +4,6 @@ package decode
 import io.toonformat.toon4s.error.DecodeError
 import io.toonformat.toon4s.{Constants => C}
 import io.toonformat.toon4s.{Delimiter, JsonValue}
-import scala.util.Try
 
 final case class ArrayHeaderInfo(
     key: Option[String],
@@ -232,21 +231,12 @@ object Parser {
       s.charAt(i) match {
         case '\\' if i + 1 < s.length =>
           s.charAt(i + 1) match {
-            case '"'                     => builder.append('"')
-            case '\\'                    => builder.append('\\')
-            case 'n'                     => builder.append('\n')
-            case 'r'                     => builder.append('\r')
-            case 't'                     => builder.append('\t')
-            case 'u' if i + 5 < s.length =>
-              val hex   = s.substring(i + 2, i + 6)
-              val value = Try(Integer.parseInt(hex, 16)).getOrElse {
-                throw DecodeError.Syntax(s"Invalid unicode escape: \\u$hex")
-              }
-              builder.append(value.toChar)
-              i += 4
-            case 'u'                     =>
-              throw DecodeError.Syntax("Invalid unicode escape sequence")
-            case other                   =>
+            case '"'   => builder.append('"')
+            case '\\'  => builder.append('\\')
+            case 'n'   => builder.append('\n')
+            case 'r'   => builder.append('\r')
+            case 't'   => builder.append('\t')
+            case other =>
               throw DecodeError.Syntax(s"Invalid escape sequence: \\$other")
           }
           i += 2
