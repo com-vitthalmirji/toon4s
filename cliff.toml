@@ -1,0 +1,27 @@
+# git-cliff configuration for toon4s
+[git]
+conventional_commits = true
+commit_preprocessors = []
+
+[changelog]
+header = "# Changelog\n"
+body = "{#each versions}{#if not @first}\n\n{/if}## [{version}] - {timestamp}\n\n{body}\n{/each}"
+trim = true
+date_order = "desc"
+link_parsing = true
+
+template = "{#each groups}\n### {title}\n\n{#each commits}- {message}\n{#/each}\n{#/each}"
+
+[group]
+"Features" = ["feat", "feature"]
+"Fixes" = ["fix", "hotfix"]
+"Documentation" = ["docs"]
+"Breaking Changes" = ["break", "breaking", "breaking change"]
+"Refactoring" = ["refactor"]
+"Performance" = ["perf"]
+"Testing" = ["test", "tests"]
+"Build" = ["build", "ci"]
+"Chores" = ["chore", "style"]
+
+[unreleased]
+body = "{#if commits}\n### Unreleased\n\n{#each commits}- {message}\n{#/each}\n{/if}"
