@@ -1,6 +1,5 @@
 import sbt._
 import sbt.Keys._
-import sbt.{Credentials => SBCredentials}
 
 lazy val Scala3Latest   = "3.3.3"
 lazy val Scala213Latest = "2.13.14"
@@ -8,7 +7,6 @@ lazy val Scala213Latest = "2.13.14"
 ThisBuild / organization := "io.toonformat"
 ThisBuild / scalaVersion := Scala3Latest
 ThisBuild / crossScalaVersions := Seq(Scala3Latest, Scala213Latest)
-ThisBuild / version := "0.1.0"
 ThisBuild / description := "Scala implementation of the Token-Oriented Object Notation (TOON) format."
 ThisBuild / homepage := Some(url("https://github.com/vim89/toon4s"))
 ThisBuild / licenses := List("MIT" -> url("https://opensource.org/licenses/MIT"))
@@ -33,6 +31,10 @@ ThisBuild / scalafmtOnCompile := true
 ThisBuild / Compile / doc / sources := Seq.empty // avoid doc warnings early
 ThisBuild / versionScheme := Some("early-semver")
 
+// sbt-dynver configuration for automatic versioning from git tags
+ThisBuild / dynverSeparator := "-" // Use '-' instead of '+' for better compatibility (docker, URLs, etc.)
+ThisBuild / dynverVTagPrefix := true // Expect tags like v1.0.0 (default behavior)
+
 val commonScalacOptions = Seq(
   "-deprecation",
   "-feature",
@@ -40,18 +42,8 @@ val commonScalacOptions = Seq(
   "-Xfatal-warnings"
 )
 
-lazy val sonatypeHost: String = sys.env.getOrElse("SONATYPE_HOST", "s01.oss.sonatype.org")
-
-def sonatypeCredentials: Seq[SBCredentials] =
-  (for {
-    user <- sys.env.get("SONATYPE_USERNAME")
-    pass <- sys.env.get("SONATYPE_PASSWORD")
-  } yield SBCredentials("Sonatype Nexus Repository Manager", sonatypeHost, user, pass)).toSeq
-
-ThisBuild / credentials ++= sonatypeCredentials
-ThisBuild / sonatypeCredentialHost := sonatypeHost
-ThisBuild / sonatypeRepository := s"https://$sonatypeHost"
-ThisBuild / publishTo := sonatypePublishToBundle.value
+// sbt-ci-release handles sonatype configuration automatically via environment variables:
+// SONATYPE_USERNAME, SONATYPE_PASSWORD, SONATYPE_HOST (optional, defaults to s01.oss.sonatype.org)
 
 lazy val root = (project in file("."))
   .aggregate(core, cli)

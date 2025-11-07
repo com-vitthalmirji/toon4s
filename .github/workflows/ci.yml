@@ -17,7 +17,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: sbt/setup-sbt@v1
 
@@ -65,7 +65,7 @@ jobs:
             scala: 3.3.3
             java: 21
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: sbt/setup-sbt@v1
 
@@ -89,7 +89,7 @@ jobs:
             ${{ runner.os }}-
 
       - name: Run tests
-        run: sbt -Dsbt.log.noformat=true ++${{ matrix.scala }} test
+        run: sbt "-Dsbt.log.noformat=true" ++${{ matrix.scala }} test
 
       - name: Upload test reports
         if: failure()
@@ -106,7 +106,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: test
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: sbt/setup-sbt@v1
 

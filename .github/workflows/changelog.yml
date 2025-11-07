@@ -2,7 +2,7 @@ name: Changelog
 
 on:
   push:
-    branches: [main]
+    branches: [main, master]
     paths:
       - 'core/**'
       - 'cli/**'
@@ -11,6 +11,10 @@ on:
       - 'project/**'
       - 'cliff.toml'
   workflow_dispatch:
+
+concurrency:
+  group: changelog-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: write

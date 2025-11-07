@@ -5,18 +5,33 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
+    inputs:
+      skip_tests:
+        description: 'Skip test suite (use with caution)'
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: write
+  packages: write
 
 jobs:
   release:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
-          fetch-depth: 0
+          fetch-depth: 0 # Required for sbt-dynver to calculate version from git tags
+
+      - name: Fetch all tags
+        run: |
+          git fetch --tags --force
+          echo "Latest tag: $(git describe --tags --abbrev=0 2>/dev/null || echo 'No tags found')"
+
+      - uses: sbt/setup-sbt@v1
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
@@ -25,10 +40,18 @@ jobs:
           java-version: 21
           cache: sbt
 
+      - name: Verify version
+        run: |
+          VERSION=$(sbt "-Dsbt.log.noformat=true" "print version" | tail -n 1 | tr -d '\r')
+          echo "Building version: $VERSION"
+          echo "RELEASE_VERSION=$VERSION" >> "$GITHUB_ENV"
+
       - name: Run test suite
-        run: sbt -Dsbt.log.noformat=true test
+        if: github.event.inputs.skip_tests != 'true'
+        run: sbt "-Dsbt.log.noformat=true" test
 
       - name: Run smoke tests
+        if: github.event.inputs.skip_tests != 'true'
         run: ./smoke-tests/run-smoke.sh
 
       - name: Import GPG key
@@ -47,33 +70,38 @@ jobs:
           PGP_SECRET: ${{ secrets.PGP_SECRET }}
         run: |
           export GPG_TTY=$(tty)
-          sbt -Dsbt.log.noformat=true ci-release
+          sbt "-Dsbt.log.noformat=true" ci-release
 
       - name: Package CLI (ZIP/TGZ)
-        run: sbt -Dsbt.log.noformat=true cli/Universal/packageBin
-
-      - name: Capture version
-        id: version
-        run: |
-          VERSION=$(sbt -Dsbt.log.noformat=true "print version" | tail -n 1 | tr -d '\r')
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+        run: sbt "-Dsbt.log.noformat=true" cli/Universal/packageBin
 
       - name: Locate artifacts
         id: artifacts
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
+          VERSION="${{ env.RELEASE_VERSION }}"
           ZIP_PATH=$(find cli/target/universal -maxdepth 1 -type f -name "*-${VERSION}.zip" | head -n 1)
+
+          # If exact version not found, try with wildcard
+          if [ -z "$ZIP_PATH" ]; then
+            ZIP_PATH=$(find cli/target/universal -maxdepth 1 -type f -name "*.zip" | head -n 1)
+          fi
+
           if [ -z "$ZIP_PATH" ]; then
             echo "Unable to find CLI zip artifact"
+            echo "Searching in: cli/target/universal/"
+            ls -la cli/target/universal/ || echo "Directory not found"
             exit 1
           fi
+
+          echo "Found artifact: $ZIP_PATH"
           echo "zip=$ZIP_PATH" >> "$GITHUB_OUTPUT"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: toon4s-cli-${{ steps.version.outputs.version }}
+          name: toon4s-cli-${{ env.RELEASE_VERSION }}
           path: ${{ steps.artifacts.outputs.zip }}
+          retention-days: 90
 
       - name: Install git-cliff
         run: |
@@ -93,6 +121,26 @@ jobs:
         uses: ncipollo/release-action@v1
         with:
           tag: ${{ github.ref_name }}
-          name: toon4s ${{ steps.version.outputs.version }}
+          name: toon4s ${{ env.RELEASE_VERSION }}
           bodyFile: ${{ steps.notes.outputs.notes_path }}
           artifacts: ${{ steps.artifacts.outputs.zip }}
+          draft: false
+          prerelease: false
+          makeLatest: true
+
+      - name: Release Summary
+        run: |
+          echo "## 🚀 Release Completed Successfully!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Version: \`${{ env.RELEASE_VERSION }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Published to:" >> $GITHUB_STEP_SUMMARY
+          echo "- Maven Central (via Sonatype)" >> $GITHUB_STEP_SUMMARY
+          echo "- GitHub Releases" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Artifacts:" >> $GITHUB_STEP_SUMMARY
+          echo "- 📦 CLI Package: \`toon4s-cli-${{ env.RELEASE_VERSION }}.zip\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Links:" >> $GITHUB_STEP_SUMMARY
+          echo "- [View on GitHub](${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ github.ref_name }})" >> $GITHUB_STEP_SUMMARY
+          echo "- [View on Maven Central](https://central.sonatype.com/artifact/io.toonformat/toon4s-core_3/${{ env.RELEASE_VERSION }})" >> $GITHUB_STEP_SUMMARY
