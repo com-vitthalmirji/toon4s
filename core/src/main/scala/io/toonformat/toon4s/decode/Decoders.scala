@@ -61,7 +61,10 @@ object Decoders {
       options: DecodeOptions
   ): JsonValue = {
     @tailrec
-    def loop(obj: VectorMap[String, JsonValue], computedDepth: Option[Int]): VectorMap[String, JsonValue] =
+    def loop(
+        obj: VectorMap[String, JsonValue],
+        computedDepth: Option[Int]
+    ): VectorMap[String, JsonValue] =
       cursor.peek match {
         case None                                 => obj
         case Some(line) if line.depth < baseDepth => obj
@@ -239,8 +242,8 @@ object Decoders {
       baseDepth: Int,
       options: DecodeOptions
   ): JsonValue = {
-    val line       = cursor.next().getOrElse(throw new NoSuchElementException("Expected list item"))
-    val content    = line.content
+    val line        = cursor.next().getOrElse(throw new NoSuchElementException("Expected list item"))
+    val content     = line.content
     val emptyObject = JObj(VectorMap.empty)
     if (content == C.ListItemMarker) emptyObject
     else {

@@ -1,5 +1,7 @@
 package io.toonformat.toon4s
 
+import scala.collection.immutable.VectorMap
+
 sealed trait JsonValue
 
 object JsonValue {

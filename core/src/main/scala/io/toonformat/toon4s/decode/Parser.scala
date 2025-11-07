@@ -77,7 +77,9 @@ object Parser {
                 val fields        =
                   if (fieldsSegment.nonEmpty)
                     parseDelimitedValues(fieldsSegment, delimiter)
-                      .map(token => parseStringLiteral(token.trim))
+                      .map(
+                        token => parseStringLiteral(token.trim)
+                      )
                       .toList
                   else Nil
                 Some(fields -> skipWhitespace(braceEnd + 1))
@@ -189,7 +191,7 @@ object Parser {
   private def isNumericLiteral(token: String): Boolean = {
     if (token.isEmpty) false
     else {
-      val unsigned =
+      val unsigned       =
         if (token.head == '-' || token.head == '+') token.tail else token
       val hasLeadingZero = unsigned.length > 1 && unsigned.head == '0' && unsigned(1) != '.'
       unsigned.nonEmpty && !hasLeadingZero && Try(BigDecimal(token)).isSuccess
@@ -241,13 +243,13 @@ object Parser {
               }
               builder.append(value.toChar)
               i += 4
-            case 'u'                    =>
+            case 'u'                     =>
               throw DecodeError.Syntax("Invalid unicode escape sequence")
             case other                   =>
               throw DecodeError.Syntax(s"Invalid escape sequence: \\$other")
           }
           i += 2
-        case '\\'                      =>
+        case '\\'                     =>
           throw DecodeError.Syntax("Unterminated escape sequence in string literal")
         case c                        =>
           builder.append(c)

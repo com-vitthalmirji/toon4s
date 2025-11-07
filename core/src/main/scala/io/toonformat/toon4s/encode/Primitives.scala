@@ -31,8 +31,8 @@ private[toon4s] object Primitives {
   def isValidUnquotedKey(key: String): Boolean = ValidKeyRegex.matches(key)
 
   def isSafeUnquoted(value: String, delim: Delimiter): Boolean = {
-    val structuralChars = Set('"', '\\', '[', ']', '{', '}', '\n', '\r', '\t')
-    val trimmed         = value.trim
+    val structuralChars   = Set('"', '\\', '[', ']', '{', '}', '\n', '\r', '\t')
+    val trimmed           = value.trim
     val passesBasicChecks =
       value.nonEmpty &&
         trimmed == value &&

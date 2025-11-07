@@ -182,8 +182,7 @@ class ConformanceSuite extends FunSuite {
 
   private def listJsonFiles(dir: Path): Vector[Path] =
     Using.resource(Files.list(dir)) {
-      _.iterator()
-        .asScala
+      _.iterator().asScala
         .filter(_.getFileName.toString.endsWith(".json"))
         .toVector
         .sortBy(_.getFileName.toString)

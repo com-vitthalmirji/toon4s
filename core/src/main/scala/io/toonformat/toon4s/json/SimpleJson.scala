@@ -141,7 +141,7 @@ object SimpleJson {
     private def parseObject(): JsonValue = {
       expect('{')
       skipWhitespace()
-      var fields   = VectorMap.empty[String, JsonValue]
+      var fields = VectorMap.empty[String, JsonValue]
       if (peek('}')) {
         index += 1
       } else {
@@ -170,7 +170,7 @@ object SimpleJson {
     private def parseArray(): JsonValue = {
       expect('[')
       skipWhitespace()
-      val values   = ArrayBuffer.empty[JsonValue]
+      val values = ArrayBuffer.empty[JsonValue]
       if (peek(']')) {
         index += 1
       } else {
