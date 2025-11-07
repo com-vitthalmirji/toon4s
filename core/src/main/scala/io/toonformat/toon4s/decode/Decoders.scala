@@ -6,7 +6,7 @@ import io.toonformat.toon4s.{JsonValue, Constants => C}
 import io.toonformat.toon4s.JsonValue._
 import Parser._
 import Validation._
-import io.toonformat.toon4s.error.DecodeError
+import io.toonformat.toon4s.error.{DecodeError, ErrorLocation}
 
 import scala.annotation.tailrec
 import scala.collection.immutable.VectorMap
@@ -18,6 +18,17 @@ object Decoders {
     val isStrict = options.strictness == Strictness.Strict
     val scan     = Scanner.toParsedLines(input, options.indent, isStrict)
     decodeScan(scan, options)
+  }
+
+  /** Parse primitive token with string length validation. */
+  private def parsePrimitiveWithValidation(token: String, options: DecodeOptions): JsonValue = {
+    validateStringLength(token.length, options)
+    val result = parsePrimitiveToken(token)
+    result match {
+      case JString(s) => validateStringLength(s.length, options)
+      case _          => ()
+    }
+    result
   }
 
   def decodeScan(scan: ScanResult, options: DecodeOptions): JsonValue = {
@@ -43,7 +54,7 @@ object Decoders {
             line => !isKeyValueLine(line)
           )
         )
-          parsePrimitiveToken(cursor.peek.get.content.trim)
+          parsePrimitiveWithValidation(cursor.peek.get.content.trim, options)
         else decodeObject(cursor, 0, options)
       }
     }
@@ -66,6 +77,7 @@ object Decoders {
       baseDepth: Int,
       options: DecodeOptions
   ): JsonValue = {
+    validateDepth(baseDepth, options)
     val builder     = Vector.newBuilder[(String, JsonValue)]
     var targetDepth = Option.empty[Int]
     var continue    = true
@@ -109,7 +121,7 @@ object Decoders {
               KeyValueParse(key, JObj(VectorMap.empty), baseDepth + 1)
           }
         } else {
-          KeyValueParse(key, parsePrimitiveToken(rest), baseDepth + 1)
+          KeyValueParse(key, parsePrimitiveWithValidation(rest, options), baseDepth + 1)
         }
     }
   }
@@ -134,6 +146,7 @@ object Decoders {
       inlineValues: String,
       options: DecodeOptions
   ): JsonValue = {
+    validateArrayLength(header.length, options)
     if (inlineValues.trim.isEmpty) {
       assertExpectedCount(0, header.length, "inline array items")(options.strictness)
       JArray(Vector.empty)
@@ -153,6 +166,7 @@ object Decoders {
       baseDepth: Int,
       options: DecodeOptions
   ): Vector[JsonValue] = {
+    validateArrayLength(header.length, options)
     val buffer                 = ArrayBuffer.empty[JsonValue]
     val itemDepth              = baseDepth + 1
     var startLine: Option[Int] = None
@@ -200,6 +214,7 @@ object Decoders {
       baseDepth: Int,
       options: DecodeOptions
   ): Vector[JsonValue] = {
+    validateArrayLength(header.length, options)
     val rows                   = ArrayBuffer.empty[JsonValue]
     val rowDepth               = baseDepth + 1
     var startLine: Option[Int] = None
@@ -250,6 +265,7 @@ object Decoders {
       baseDepth: Int,
       options: DecodeOptions
   ): JsonValue = {
+    validateDepth(baseDepth, options)
     val line        = cursor.next().getOrElse(throw new NoSuchElementException("Expected list item"))
     val content     = line.content
     val emptyObject = JObj(VectorMap.empty)
@@ -258,7 +274,10 @@ object Decoders {
       val afterHyphen =
         if (content.startsWith(C.ListItemPrefix)) content.drop(C.ListItemPrefix.length)
         else
-          throw DecodeError.Syntax(s"""Expected list item to start with "${C.ListItemPrefix}"""")
+          throw DecodeError.Syntax(
+            s"""Expected list item to start with "${C.ListItemPrefix}"""",
+            Some(ErrorLocation(line.lineNumber, 1, line.raw))
+          )
 
       if (afterHyphen.trim.isEmpty) emptyObject
       else {
@@ -276,7 +295,7 @@ object Decoders {
               decodeObjectFromListItem(line, cursor, baseDepth, options)
             }
           }
-          .getOrElse(parsePrimitiveToken(afterHyphen))
+          .getOrElse(parsePrimitiveWithValidation(afterHyphen, options))
       }
     }
   }

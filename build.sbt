@@ -28,7 +28,6 @@ ThisBuild / scmInfo := Some(
 ThisBuild / publishMavenStyle := true
 ThisBuild / pomIncludeRepository := { _ => false }
 ThisBuild / scalafmtOnCompile := true
-ThisBuild / Compile / doc / sources := Seq.empty // avoid doc warnings early
 ThisBuild / versionScheme := Some("early-semver")
 
 // sbt-dynver configuration for automatic versioning from git tags
@@ -53,12 +52,40 @@ lazy val root = (project in file("."))
   )
 
 lazy val core = (project in file("core"))
+  .enablePlugins(MimaPlugin)
   .settings(
     name := "toon4s-core",
     libraryDependencies ++= Seq(
-      "org.scalameta" %% "munit" % "1.2.1" % Test
+      "org.scalameta" %% "munit"            % "1.2.1"  % Test,
+      "org.scalacheck" %% "scalacheck"       % "1.17.0" % Test,
+      "org.scalameta" %% "munit-scalacheck" % "1.0.0"  % Test
     ),
-    scalacOptions ++= commonScalacOptions
+    scalacOptions ++= commonScalacOptions,
+    // ScalaDoc configuration
+    Compile / doc / scalacOptions ++= {
+      if (scalaVersion.value.startsWith("3."))
+        Seq(
+          "-project", "toon4s-core",
+          "-project-version", version.value,
+          "-social-links:github::https://github.com/vim89/toon4s"
+        )
+      else
+        Seq(
+          "-groups",
+          "-doc-title", "toon4s-core",
+          "-doc-version", version.value
+        )
+    },
+    // MiMa configuration for binary compatibility checking
+    // Check against previous published versions to ensure no breaking changes
+    mimaPreviousArtifacts := Set(
+      // Uncomment when first version is published:
+      // organization.value %% moduleName.value % "0.1.0"
+    ),
+    // Exclude known binary incompatible changes (add as needed)
+    mimaBinaryIssueFilters := Seq(
+      // Example: ProblemFilters.exclude[Problem]("io.toonformat.toon4s.InternalClass")
+    )
   )
 
 lazy val cli = (project in file("cli"))

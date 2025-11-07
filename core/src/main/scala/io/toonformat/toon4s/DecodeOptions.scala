@@ -24,14 +24,56 @@ object Strictness {
   case object Lenient extends Strictness
 }
 
-/** Options for decoding TOON documents.
+/** Configuration options for decoding TOON documents.
+  *
+  * ==Usage==
+  * {{{
+  * import io.toonformat.toon4s._
+  *
+  * // Strict mode with default limits (security-conscious)
+  * val strict = DecodeOptions()
+  *
+  * // Lenient mode for tolerant parsing
+  * val lenient = DecodeOptions(strictness = Strictness.Lenient)
+  *
+  * // Custom limits for large data
+  * val custom = DecodeOptions(
+  *   maxDepth = Some(5000),
+  *   maxArrayLength = Some(1000000)
+  * )
+  *
+  * Toon.decode(input, lenient)
+  * }}}
+  *
+  * ==Security Considerations==
+  * The default limits prevent DoS attacks from maliciously crafted inputs:
+  *   - Deep nesting can cause stack overflow
+  *   - Large arrays/strings can exhaust memory Set to `None` only when processing trusted inputs.
   *
   * @param indent
-  *   Number of spaces per indentation level (default: 2)
+  *   Number of spaces per indentation level (default: 2). Must match the indent used during
+  *   encoding.
   * @param strictness
-  *   Validation strictness level (default: Strict)
+  *   Validation strictness level (default: Strict). See [[Strictness]] for details.
+  * @param maxDepth
+  *   Maximum nesting depth (default: Some(1000), None = no limit). Prevents stack overflow from
+  *   deeply nested structures.
+  * @param maxArrayLength
+  *   Maximum array length (default: Some(100000), None = no limit). Prevents memory exhaustion from
+  *   extremely large arrays.
+  * @param maxStringLength
+  *   Maximum string length (default: Some(1000000), None = no limit). Prevents memory exhaustion
+  *   from extremely large strings.
+  *
+  * @see
+  *   [[Strictness]] for strictness modes
+  * @see
+  *   [[Toon.decode]] for decoding with options
   */
 final case class DecodeOptions(
     indent: Int = 2,
-    strictness: Strictness = Strictness.Strict
+    strictness: Strictness = Strictness.Strict,
+    maxDepth: Option[Int] = Some(1000),
+    maxArrayLength: Option[Int] = Some(100000),
+    maxStringLength: Option[Int] = Some(1000000)
 )

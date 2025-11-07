@@ -1,7 +1,7 @@
 package io.toonformat.toon4s
 package decode
 
-import io.toonformat.toon4s.error.DecodeError
+import io.toonformat.toon4s.error.{DecodeError, ErrorLocation}
 import io.toonformat.toon4s.{Constants => C}
 
 final case class ParsedLine(raw: String, depth: Int, indent: Int, content: String, lineNumber: Int)
@@ -68,12 +68,14 @@ object Scanner {
             )
             if (ws.contains(C.Tab)) {
               throw DecodeError.Syntax(
-                s"Line $lineNo: Tabs are not allowed in indentation in strict mode"
+                "Tabs are not allowed in indentation in strict mode",
+                Some(ErrorLocation(lineNo, indent + 1, raw))
               )
             }
             if (indent > 0 && indent % indentSize != 0) {
               throw DecodeError.Syntax(
-                s"Line $lineNo: Indentation must be exact multiple of $indentSize, but found $indent spaces"
+                s"Indentation must be exact multiple of $indentSize, but found $indent spaces",
+                Some(ErrorLocation(lineNo, indent + 1, raw))
               )
             }
           }
@@ -111,11 +113,13 @@ object Scanner {
             )
             if (ws.contains(C.Tab))
               throw DecodeError.Syntax(
-                s"Line $lineNo: Tabs are not allowed in indentation in strict mode"
+                "Tabs are not allowed in indentation in strict mode",
+                Some(ErrorLocation(lineNo, indent + 1, raw))
               )
             if (indent > 0 && indent % indentSize != 0)
               throw DecodeError.Syntax(
-                s"Line $lineNo: Indentation must be exact multiple of $indentSize, but found $indent spaces"
+                s"Indentation must be exact multiple of $indentSize, but found $indent spaces",
+                Some(ErrorLocation(lineNo, indent + 1, raw))
               )
           }
           out += ParsedLine(raw, depth, indent, content, lineNo)

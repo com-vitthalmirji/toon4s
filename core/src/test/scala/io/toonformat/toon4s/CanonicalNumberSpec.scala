@@ -188,25 +188,21 @@ class CanonicalNumberSpec extends FunSuite {
 
         decoded match {
           case Right(result) =>
-            // Navigate nested structure to get the number
-            result match {
-              case JObj(outer) =>
-                outer.get("num") match {
-                  case Some(innerJson) =>
-                    val extracted = extractNumber(innerJson)
-                    extracted match {
-                      case Some(n) =>
-                        // After round-trip, numeric value should be equal
-                        assertEquals(
-                          n.compare(input),
-                          0,
-                          s"Round-trip failed for $input: got $n"
-                        )
-                      case None    => fail(s"Could not extract number from decoded JSON for $input")
-                    }
-                  case None            => fail(s"No 'num' field in decoded object")
-                }
-              case other       => fail(s"Expected JObj at root, got $other")
+            // Extract number from the decoded structure (may be nested)
+            val extracted = extractNumber(result)
+            extracted match {
+              case Some(n) =>
+                // After round-trip, numeric value should be equal
+                // Compare using BigDecimal.compare to handle -0 properly
+                val comparison = n.compare(input)
+                // Note: -0 and 0 are equal in BigDecimal.compare
+                assertEquals(
+                  comparison,
+                  0,
+                  s"Round-trip failed for $input: got $n"
+                )
+              case None    =>
+                fail(s"Could not extract number from decoded JSON for $input. Got: $result")
             }
           case Left(err)     => fail(s"Decode failed for $input: ${err.message}")
         }

@@ -379,7 +379,10 @@ See also: [Delimiters & markers](./SCALA-TOON-SPECIFICATION.md#delimiters--lengt
 
 - **Irregular arrays**: when rows differ in shape, TOON falls back to YAML-like list syntax; token savings shrink.
 - **Binary blobs**: not supported; encode as Base64 strings manually.
-- **Streaming**: current implementation expects whole strings; for GB-scale payloads, chunk upstream.
+- **Streaming decode limitation**: `Toon.decode()` and `Toon.decodeFrom()` read the entire input into memory before parsing. For very large files (>100MB), consider memory constraints. While `Streaming.foreachTabular` and `Streaming.foreachArrays` provide streaming validation of tabular sections, full streaming decode support (incremental parsing of entire documents) is deferred to version 0.2.0. Current workarounds for large files:
+  - Split input into multiple smaller TOON documents upstream
+  - Use the streaming visitors (`Streaming.foreachTabular`, `Streaming.foreachArrays`) for row-by-row validation without full AST allocation
+  - Increase JVM heap size (`-Xmx`) when processing large trusted inputs
 - **Locale-specific numbers**: encoder always uses `.` decimal separators; ensure inputs are normalized beforehand.
 - **CLI tokenizer**: `TokenEstimator` currently defaults to `CL100K_BASE` (GPT‑4/3.5). Model-specific differences apply.
 
