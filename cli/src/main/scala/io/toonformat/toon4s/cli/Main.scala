@@ -19,7 +19,8 @@ object Main {
       indent: Int = 2,
       strict: Boolean = true,
       delimiter: Delimiter = Delimiter.Comma,
-      lengthMarker: Boolean = false
+      lengthMarker: Boolean = false,
+      stats: Boolean = false
   )
 
   def main(args: Array[String]): Unit = {
@@ -51,7 +52,13 @@ object Main {
       lengthMarker = config.lengthMarker
     )
     Toon.encode(scalaValue, options).left.map(_.message).flatMap {
-      encoded => writeOutput(encoded, config.output)
+      encoded =>
+        if (config.stats) {
+          val in  = token.TokenEstimator.estimateTokens(jsonInput)
+          val out = token.TokenEstimator.estimateTokens(encoded)
+          System.err.println(s"[stats] input tokens: $in, output tokens: $out, delta: ${out - in}")
+        }
+        writeOutput(encoded, config.output)
     }
   }
 
@@ -65,6 +72,13 @@ object Main {
       .flatMap {
         json =>
           val rendered = SimpleJson.stringify(json)
+          if (config.stats) {
+            val in  = token.TokenEstimator.estimateTokens(toonInput)
+            val out = token.TokenEstimator.estimateTokens(rendered)
+            System.err.println(
+              s"[stats] input tokens: $in, output tokens: $out, delta: ${out - in}"
+            )
+          }
           writeOutput(rendered, config.output)
       }
   }
@@ -147,6 +161,11 @@ object Main {
           (_, c) => c.copy(lengthMarker = true)
         )
         .text("Emit #length markers for encoded arrays."),
+      opt[Unit]("stats")
+        .action(
+          (_, c) => c.copy(stats = true)
+        )
+        .text("Print GPT token counts for input/output to stderr."),
       arg[String]("<input>")
         .required()
         .action(
