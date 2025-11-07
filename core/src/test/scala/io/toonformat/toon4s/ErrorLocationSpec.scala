@@ -17,11 +17,12 @@ key: value
 
     val result = Toon.decode(toon)
     assert(result.isLeft, "Should fail on tab in indentation")
-    result.left.foreach { err =>
-      val msg = err.getMessage
-      assert(msg.contains("2:"), s"Error should include line number: $msg")
-      assert(msg.contains("Tabs are not allowed"), s"Error message: $msg")
-      assert(msg.contains("nested"), s"Error should include snippet: $msg")
+    result.left.foreach {
+      err =>
+        val msg = err.getMessage
+        assert(msg.contains("2:"), s"Error should include line number: $msg")
+        assert(msg.contains("Tabs are not allowed"), s"Error message: $msg")
+        assert(msg.contains("nested"), s"Error should include snippet: $msg")
     }
   }
 
@@ -33,10 +34,11 @@ key: value
 
     val result = Toon.decode(toon, DecodeOptions(indent = 2))
     assert(result.isLeft, "Should fail on invalid indentation")
-    result.left.foreach { err =>
-      val msg = err.getMessage
-      assert(msg.contains("2:"), s"Error should include line number: $msg")
-      assert(msg.contains("Indentation must be exact multiple"), s"Error message: $msg")
+    result.left.foreach {
+      err =>
+        val msg = err.getMessage
+        assert(msg.contains("2:"), s"Error should include line number: $msg")
+        assert(msg.contains("Indentation must be exact multiple"), s"Error message: $msg")
     }
   }
 
@@ -47,9 +49,10 @@ key: value
 
     val result1 = Toon.decode(toon1)
     assert(result1.isLeft, "Should fail on tab")
-    result1.left.foreach { err =>
-      val msg = err.getMessage
-      assert(msg.contains("1:"), s"Error should include line number: $msg")
+    result1.left.foreach {
+      err =>
+        val msg = err.getMessage
+        assert(msg.contains("1:"), s"Error should include line number: $msg")
     }
   }
 
@@ -58,10 +61,11 @@ key: value
 
     val result = Toon.decode(toon)
     assert(result.isLeft, "Should fail on array length mismatch")
-    result.left.foreach { err =>
-      assert(err.isInstanceOf[DecodeError.Range], s"Should be Range error: $err")
-      // This error may not have location info since it's a validation error
-      assert(err.getMessage.contains("Expected"), s"Error message: ${err.getMessage}")
+    result.left.foreach {
+      err =>
+        assert(err.isInstanceOf[DecodeError.Range], s"Should be Range error: $err")
+        // This error may not have location info since it's a validation error
+        assert(err.getMessage.contains("Expected"), s"Error message: ${err.getMessage}")
     }
   }
 

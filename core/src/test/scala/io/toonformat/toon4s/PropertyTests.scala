@@ -18,7 +18,11 @@ class PropertyTests extends ScalaCheckSuite {
   /** Generate valid primitive JsonValue instances. */
   val genPrimitive: Gen[JsonValue] = Gen.oneOf(
     Gen.oneOf(true, false).map(JBool.apply),
-    Gen.choose(-1000000.0, 1000000.0).map(d => JNumber(BigDecimal(d))),
+    Gen
+      .choose(-1000000.0, 1000000.0)
+      .map(
+        d => JNumber(BigDecimal(d))
+      ),
     Gen.alphaNumStr.map(JString.apply)
   )
 
@@ -46,7 +50,9 @@ class PropertyTests extends ScalaCheckSuite {
       .listOfN(
         Gen.choose(1, maxSize).sample.getOrElse(3), // At least 1 field
         for {
-          key   <- Gen.alphaNumStr.suchThat(s => s.nonEmpty && s.length > 0)
+          key   <- Gen.alphaNumStr.suchThat(
+                     s => s.nonEmpty && s.length > 0
+                   )
           value <- genJsonValue(depth - 1)
         } yield (key, value)
       )
@@ -64,9 +70,9 @@ class PropertyTests extends ScalaCheckSuite {
     Gen.const("with,comma"),
     Gen.const("with:colon"),
     Gen.const("with\"quote"),
-    Gen.const("123"), // looks like number
+    Gen.const("123"),  // looks like number
     Gen.const("true"), // looks like boolean
-    Gen.const("null") // looks like null
+    Gen.const("null")  // looks like null
   )
 
   // ===== Properties =====
@@ -129,9 +135,9 @@ class PropertyTests extends ScalaCheckSuite {
   }
 
   private def extractNumber(json: JsonValue): Option[BigDecimal] = json match {
-    case JNumber(n)                  => Some(n)
+    case JNumber(n)                       => Some(n)
     case JObj(fields) if fields.size == 1 => fields.values.headOption.flatMap(extractNumber)
-    case _                           => None
+    case _                                => None
   }
 
   property("booleans roundtrip correctly") {
@@ -166,7 +172,13 @@ class PropertyTests extends ScalaCheckSuite {
   property("arrays with uniform primitives encode successfully") {
     forAll(Gen.nonEmptyListOf(Gen.choose(1, 100)).suchThat(_.size <= 50)) {
       nums =>
-        val json    = JArray(nums.map(n => JNumber(BigDecimal(n))).toVector)
+        val json    = JArray(
+          nums
+            .map(
+              n => JNumber(BigDecimal(n))
+            )
+            .toVector
+        )
         val encoded = Toon.encode(json)
         encoded match {
           case Right(toon) =>
@@ -180,8 +192,18 @@ class PropertyTests extends ScalaCheckSuite {
   property("objects with simple fields encode successfully") {
     forAll(Gen.choose(1, 5)) {
       numKeys =>
-        val keys = (1 to numKeys).map(i => s"key$i").toList
-        val json = JObj(VectorMap.from(keys.map(k => k -> JString(k))))
+        val keys    = (1 to numKeys)
+          .map(
+            i => s"key$i"
+          )
+          .toList
+        val json    = JObj(
+          VectorMap.from(
+            keys.map(
+              k => k -> JString(k)
+            )
+          )
+        )
         val encoded = Toon.encode(json)
         encoded match {
           case Right(toon) =>
