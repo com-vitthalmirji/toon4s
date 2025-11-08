@@ -14,7 +14,7 @@ ThisBuild / organizationName := "vim89"
 ThisBuild / developers := List(
   Developer(
     id = "vim89",
-    name = "vim89",
+    name = "Vitthal Mirji",
     email = "vitthalmirji@gmail.com",
     url = url("https://github.com/vim89")
   )
