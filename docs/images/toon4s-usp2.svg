@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="820" height="360" viewBox="0 0 820 360" font-family="-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="14">
+  <defs>
+    <style>
+      .box { fill:#f7f7f9; stroke:#2d7a2d; rx:8; ry:8; }
+      .box-fp { fill:#e8f5e9; stroke:#1b5e20; rx:8; ry:8; }
+      .title { font-weight:bold; fill:#1b5e20; }
+      .title-fp { font-weight:bold; fill:#1b5e20; font-size:15px; }
+      .note { fill:#555; font-size:12px; }
+      .edge { stroke:#888; marker-end: url(#arrow); }
+      .highlight { fill:#2d7a2d; font-weight:600; }
+    </style>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#888" />
+    </marker>
+  </defs>
+
+  <!-- Header: FP Showcase -->
+  <rect x="20" y="10" width="780" height="50" class="box-fp" />
+  <text x="30" y="35" class="title-fp">toon4s: Token-Oriented Object Notation for Scala</text>
+  <text x="30" y="52" class="note">Zero compromises on type safety and functional purity</text>
+
+  <!-- Pipeline -->
+  <rect x="20" y="80" width="150" height="60" class="box" />
+  <text x="30" y="105" class="title">Scala data</text>
+  <text x="30" y="125" class="note">Map / Case class / Iterable</text>
+
+  <rect x="200" y="80" width="160" height="60" class="box" />
+  <text x="210" y="105" class="title">Normalize</text>
+  <text x="210" y="125" class="note">JsonValue (ADT)</text>
+
+  <rect x="390" y="80" width="150" height="60" class="box" />
+  <text x="400" y="105" class="title">Encoder</text>
+  <text x="400" y="125" class="note">Pure functions</text>
+
+  <rect x="570" y="80" width="190" height="60" class="box" />
+  <text x="580" y="105" class="title">TOON text</text>
+  <text x="580" y="125" class="note">30-60% token savings</text>
+
+  <line x1="170" y1="110" x2="200" y2="110" class="edge" />
+  <line x1="360" y1="110" x2="390" y2="110" class="edge" />
+  <line x1="540" y1="110" x2="570" y2="110" class="edge" />
+
+  <!-- FP Architecture -->
+  <rect x="20" y="160" width="370" height="180" class="box-fp" />
+  <text x="30" y="185" class="title-fp">Functional Architecture</text>
+  <text x="30" y="205" class="note">• <tspan class="highlight">Pure functions</tspan>: Zero mutations</text>
+  <text x="30" y="225" class="note">• <tspan class="highlight">Type safety</tspan>: sealed ADTs, exhaustive matching</text>
+  <text x="30" y="245" class="note">• <tspan class="highlight">Stack-safe</tspan>: @tailrec verified functions</text>
+  <text x="30" y="265" class="note">• <tspan class="highlight">Either-based errors</tspan>: Railway-oriented programming</text>
+  <text x="30" y="285" class="note">• <tspan class="highlight">Virtual thread ready</tspan>: No ThreadLocal (Project Loom)</text>
+  <text x="30" y="305" class="note">• <tspan class="highlight">Zero dependencies</tspan>: 491KB JAR, pure Scala stdlib</text>
+  <text x="30" y="325" class="note">• <tspan class="highlight">380+ passing tests</tspan>: Property-based testing</text>
+
+  <!-- Performance & USPs -->
+  <rect x="410" y="160" width="390" height="180" class="box" />
+  <text x="420" y="185" class="title">Performance and Features</text>
+  <text x="420" y="205" class="note">• Token savings: ~30–60% vs formatted JSON</text>
+  <text x="420" y="225" class="note">• Example: tags → <tspan class="highlight">tags[3]: jazz,chill,lofi</tspan></text>
+  <text x="420" y="245" class="note">• JMH (Java 21): decode_tabular <tspan class="highlight">866 ops/ms</tspan></text>
+  <text x="420" y="265" class="note">• decode_list 863, decode_nested 625 ops/ms</text>
+  <text x="420" y="285" class="note">• encode_object 214 ops/ms</text>
+  <text x="420" y="305" class="note">• Scala 3 derives + Scala 2.13 typeclasses</text>
+  <text x="420" y="325" class="note">• Streaming visitors for constant-memory validation</text>
+</svg>

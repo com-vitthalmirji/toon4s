@@ -1,0 +1,155 @@
+name: Auto Tag
+
+on:
+  push:
+    branches: [main, master]
+    paths-ignore:
+      - 'CHANGELOG.md'
+      - 'README.md'
+      - 'docs/**'
+      - '**.md'
+      - '.github/**'
+
+concurrency:
+  group: auto-tag-${{ github.ref }}
+  cancel-in-progress: false # Don't cancel to avoid partial tag creation
+
+permissions:
+  contents: write
+
+jobs:
+  auto-tag:
+    name: Create Version Tag
+    runs-on: ubuntu-latest
+    # Skip if commit message contains [skip ci] or [skip release]
+    if: "!contains(github.event.head_commit.message, '[skip ci]') && !contains(github.event.head_commit.message, '[skip release]')"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Get previous tag
+        id: previous_tag
+        run: |
+          # Fetch all tags
+          git fetch --tags
+
+          # Get the latest tag, or default to v0.0.0 if no tags exist
+          LATEST_TAG=$(git tag -l "v*" --sort=-v:refname | head -n 1)
+          if [ -z "$LATEST_TAG" ]; then
+            LATEST_TAG="v0.0.0"
+          fi
+          echo "tag=$LATEST_TAG" >> "$GITHUB_OUTPUT"
+          echo "Latest tag: $LATEST_TAG"
+
+      - name: Determine version bump
+        id: semver
+        run: |
+          PREVIOUS_TAG="${{ steps.previous_tag.outputs.tag }}"
+
+          # Get commits since last tag
+          if [ "$PREVIOUS_TAG" = "v0.0.0" ]; then
+            COMMITS=$(git log --pretty=format:"%s" HEAD)
+          else
+            COMMITS=$(git log --pretty=format:"%s" ${PREVIOUS_TAG}..HEAD)
+          fi
+
+          echo "Commits since ${PREVIOUS_TAG}:"
+          echo "$COMMITS"
+
+          # Determine bump type based on conventional commits
+          BUMP="patch"
+
+          # Check for breaking changes (major bump)
+          if echo "$COMMITS" | grep -qiE "^(break|breaking|BREAKING CHANGE:|feat!:|fix!:)"; then
+            BUMP="major"
+          # Check for new features (minor bump)
+          elif echo "$COMMITS" | grep -qiE "^feat(\(.*\))?:"; then
+            BUMP="minor"
+          # Check for fixes, docs, chores, etc (patch bump)
+          elif echo "$COMMITS" | grep -qiE "^(fix|docs|chore|refactor|perf|test|build|ci|style)(\(.*\))?:"; then
+            BUMP="patch"
+          fi
+
+          echo "Version bump type: $BUMP"
+          echo "bump=$BUMP" >> "$GITHUB_OUTPUT"
+
+      - name: Calculate next version
+        id: next_version
+        run: |
+          PREVIOUS_TAG="${{ steps.previous_tag.outputs.tag }}"
+          BUMP="${{ steps.semver.outputs.bump }}"
+
+          # Remove 'v' prefix for calculation
+          VERSION="${PREVIOUS_TAG#v}"
+
+          # Split version into components
+          IFS='.' read -ra VERSION_PARTS <<< "$VERSION"
+          MAJOR="${VERSION_PARTS[0]:-0}"
+          MINOR="${VERSION_PARTS[1]:-0}"
+          PATCH="${VERSION_PARTS[2]:-0}"
+
+          # Bump version based on type
+          case "$BUMP" in
+            major)
+              MAJOR=$((MAJOR + 1))
+              MINOR=0
+              PATCH=0
+              ;;
+            minor)
+              MINOR=$((MINOR + 1))
+              PATCH=0
+              ;;
+            patch)
+              PATCH=$((PATCH + 1))
+              ;;
+          esac
+
+          NEW_VERSION="v${MAJOR}.${MINOR}.${PATCH}"
+          echo "version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
+          echo "Next version: $NEW_VERSION"
+
+      - name: Check if tag exists
+        id: tag_exists
+        run: |
+          NEW_VERSION="${{ steps.next_version.outputs.version }}"
+          if git rev-parse "$NEW_VERSION" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "Tag $NEW_VERSION already exists"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "Tag $NEW_VERSION does not exist"
+          fi
+
+      - name: Create and push tag
+        if: steps.tag_exists.outputs.exists == 'false'
+        run: |
+          NEW_VERSION="${{ steps.next_version.outputs.version }}"
+          COMMIT_MSG="${{ github.event.head_commit.message }}"
+
+          # Create annotated tag
+          git tag -a "$NEW_VERSION" -m "Release $NEW_VERSION" -m "" -m "Triggered by: $COMMIT_MSG"
+
+          # Push tag
+          git push origin "$NEW_VERSION"
+
+          echo "Created and pushed tag: $NEW_VERSION"
+
+      - name: Summary
+        run: |
+          NEW_VERSION="${{ steps.next_version.outputs.version }}"
+          TAG_EXISTS="${{ steps.tag_exists.outputs.exists }}"
+
+          if [ "$TAG_EXISTS" = "true" ]; then
+            echo "⏭️  Skipped: Tag $NEW_VERSION already exists"
+          else
+            echo "Created tag: $NEW_VERSION"
+            echo "🚀 Release workflow will be triggered automatically"
+          fi

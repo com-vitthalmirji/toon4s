@@ -1,0 +1,56 @@
+name: Changelog
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'core/**'
+      - 'cli/**'
+      - 'docs/**'
+      - 'build.sbt'
+      - 'project/**'
+      - 'cliff.toml'
+  workflow_dispatch:
+
+concurrency:
+  group: changelog-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  changelog:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Install git-cliff
+        run: |
+          curl -fsSL https://github.com/orhun/git-cliff/releases/download/v2.4.0/git-cliff-2.4.0-x86_64-unknown-linux-gnu.tar.gz -o git-cliff.tar.gz
+          tar -xzf git-cliff.tar.gz
+          sudo mv git-cliff-*/git-cliff /usr/local/bin/
+          git-cliff --version
+
+      - name: Generate changelog
+        run: |
+          git-cliff --config cliff.toml --verbose --unreleased --tag unreleased -o CHANGELOG.md
+
+      - name: Commit changelog
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          if git diff --quiet CHANGELOG.md; then
+            echo "No changes to changelog"
+            exit 0
+          fi
+
+          git add CHANGELOG.md
+          git commit -m "docs: update CHANGELOG.md [skip ci]"
+          git push

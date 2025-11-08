@@ -1,0 +1,245 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.head_ref || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  quick-checks:
+    name: Quick Checks
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: sbt/setup-sbt@v1
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: sbt
+
+      - name: Cache Coursier
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/coursier
+            ~/.ivy2/cache
+            ~/.sbt
+          key: ${{ runner.os }}-quick-${{ hashFiles('**/build.sbt', '**/project/**') }}
+
+      - name: scalafmt check
+        run: sbt scalafmtCheckAll
+
+      - name: cross compile
+        run: sbt +compile
+
+      - name: binary compatibility check
+        run: sbt core/mimaReportBinaryIssues
+
+  test:
+    name: Test
+    needs: quick-checks
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            scala: 3.3.3
+            java: 21
+          - os: ubuntu-latest
+            scala: 2.13.14
+            java: 21
+          - os: macos-latest
+            scala: 3.3.3
+            java: 21
+          - os: windows-latest
+            scala: 3.3.3
+            java: 21
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: sbt/setup-sbt@v1
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ matrix.java }}
+          cache: sbt
+
+      - name: Cache Coursier
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/coursier
+            ~/.ivy2/cache
+            ~/.sbt
+          key: ${{ runner.os }}-${{ matrix.scala }}-${{ matrix.java }}-${{ hashFiles('**/build.sbt', '**/project/**') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.scala }}-${{ matrix.java }}-
+            ${{ runner.os }}-${{ matrix.scala }}-
+            ${{ runner.os }}-
+
+      - name: Run tests
+        run: sbt "-Dsbt.log.noformat=true" ++${{ matrix.scala }} test
+
+      - name: Upload test reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports-${{ matrix.os }}-${{ matrix.scala }}
+          path: |
+            **/target/test-reports/
+            **/target/scala-${{ matrix.scala }}/test-reports/
+          retention-days: 5
+
+  smoke:
+    name: Smoke Tests
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: sbt/setup-sbt@v1
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: sbt
+
+      - name: Cache Coursier
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/coursier
+            ~/.ivy2/cache
+            ~/.sbt
+          key: smoke-${{ hashFiles('**/build.sbt', '**/project/**') }}
+
+      - name: CLI smoke test
+        run: ./smoke-tests/run-smoke.sh
+
+  budget:
+    name: Budget Gate
+    runs-on: ubuntu-latest
+    needs: [test]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: sbt/setup-sbt@v1
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: sbt
+      - name: Build CLI
+        run: sbt -Dsbt.log.noformat=true cli/stage
+      - name: Measure token savings
+        run: |
+          set -euo pipefail
+          BIN=cli/target/universal/stage/bin/toon4s-cli
+          # Create tabular test data that compresses well with TOON format
+          # (uniform objects with primitive values enable tabular encoding)
+          cat > /tmp/budget.json <<'JSON'
+          {
+            "users": [
+              {"id":1, "name":"Ada", "email":"ada@example.com", "age":30},
+              {"id":2, "name":"Bob", "email":"bob@example.com", "age":25},
+              {"id":3, "name":"Charlie", "email":"charlie@example.com", "age":35}
+            ]
+          }
+          JSON
+          $BIN --encode /tmp/budget.json --stats --tokenizer o200k -o /tmp/out.toon 2> /tmp/stats.txt
+          cat /tmp/stats.txt
+          PCT=$(awk -F'savings=' '/savings/ {split($2,a,"%"); print a[1]}' /tmp/stats.txt | tail -1)
+          echo "savings=$PCT%"
+          THRESHOLD=${{ env.BUDGET_MIN_SAVINGS || '20' }}
+          if [ "${PCT:-0}" -lt "$THRESHOLD" ]; then
+            echo "Savings below threshold $THRESHOLD%" >&2
+            exit 1
+          fi
+
+
+  jmh:
+    name: JMH Performance
+    runs-on: ubuntu-latest
+    needs: test
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: sbt/setup-sbt@v1
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: sbt
+      - name: Precompile JMH
+        run: sbt -Dsbt.log.noformat=true jmh/jmh:compile
+      - name: Heavy JMH run (soft timeout)
+        run: |
+          set -euo pipefail
+          chmod +x scripts/jmh-heavy.sh
+          ./scripts/jmh-heavy.sh | tee /tmp/jmh.txt
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+      - name: Generate JMH summary markdown
+        run: |
+          set -euo pipefail
+          if [ -f /tmp/jmh.json ]; then
+            echo "| Benchmark | Mode | Score | Units |" > /tmp/jmh.md
+            echo "| --- | --- | ---: | --- |" >> /tmp/jmh.md
+            jq -r '.[] | "| " + (.benchmark | split(".") | last) + " | " + .mode + " | " + (.primaryMetric.score|tostring) + " | " + .primaryMetric.scoreUnit + " |"' /tmp/jmh.json >> /tmp/jmh.md
+            cat /tmp/jmh.md
+          else
+            echo "No /tmp/jmh.json produced; skipping summary." > /tmp/jmh.md
+            cat /tmp/jmh.md
+          fi
+      - name: Upload JMH results
+        uses: actions/upload-artifact@v4
+        with:
+          name: jmh-results
+          path: |
+            /tmp/jmh.txt
+            /tmp/jmh.json
+            /tmp/jmh.md
+      - name: Post JMH summary to PR
+        if: ${{ github.event_name == 'pull_request' }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const body = fs.readFileSync('/tmp/jmh.md', 'utf8');
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body
+            });
+
+
+  all-checks-pass:
+    name: All checks pass
+    if: always()
+    runs-on: ubuntu-latest
+    needs: [quick-checks, test, smoke, budget, jmh]
+    steps:
+      - name: Verify upstream jobs
+        run: |
+          if [[ "${{ needs.test.result }}" != "success" || "${{ needs.smoke.result }}" != "success" || "${{ needs.jmh.result }}" != "success" ]]; then
+            echo "One or more jobs failed."
+            exit 1
+          fi
+          echo "All checks passed."

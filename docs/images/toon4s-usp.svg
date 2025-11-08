@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="360" viewBox="0 0 920 360">
+  <style>
+    .box { rx:10; ry:10; stroke-width:2; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+    .label { font-size:14px; fill:#000; }
+    .title { font-size:16px; font-weight:600; fill:#000; }
+    .caption { font-size:12px; fill:#333; }
+    .arrow { stroke:#555; stroke-width:2; marker-end:url(#arrow); fill:none; }
+  </style>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#555" />
+    </marker>
+  </defs>
+
+  <!-- Title -->
+  <text x="20" y="30" class="title">toon4s: Token-Oriented Object Notation for Scala</text>
+
+  <!-- Pipeline boxes -->
+  <rect x="20"  y="60"  width="160" height="80" class="box" fill="#e1f5ff" stroke="#0066cc"/>
+  <text x="40" y="90" class="label">Scala Data</text>
+  <text x="40" y="110" class="caption">Case classes, Maps, Options</text>
+
+  <rect x="220" y="60"  width="180" height="80" class="box" fill="#fff4e1" stroke="#cc8800"/>
+  <text x="240" y="90" class="label">Normalize.toJson</text>
+  <text x="240" y="110" class="caption">Pure, total functions</text>
+
+  <rect x="440" y="60"  width="160" height="80" class="box" fill="#f0e1ff" stroke="#8800cc"/>
+  <text x="460" y="90" class="label">Encoders</text>
+  <text x="460" y="110" class="caption">@tailrec verified</text>
+
+  <rect x="640" y="60"  width="120" height="80" class="box" fill="#e1ffe1" stroke="#2d7a2d"/>
+  <text x="660" y="90" class="label">TOON</text>
+  <text x="660" y="110" class="caption">30-60% savings</text>
+
+  <rect x="800" y="60"  width="90"  height="80" class="box" fill="#ffe1e1" stroke="#cc0000"/>
+  <text x="815" y="90" class="label">LLM</text>
+  <text x="810" y="110" class="caption">Prompt</text>
+
+  <!-- Arrows -->
+  <line x1="180" y1="100" x2="220" y2="100" class="arrow"/>
+  <line x1="400" y1="100" x2="440" y2="100" class="arrow"/>
+  <line x1="600" y1="100" x2="640" y2="100" class="arrow"/>
+  <line x1="760" y1="100" x2="800" y2="100" class="arrow"/>
+
+  <!-- USPs -->
+  <rect x="20"  y="170" width="870" height="160" class="box" fill="#e8f5e9" stroke="#1b5e20"/>
+  <text x="35" y="195" class="title">Zero Compromises on Functional Purity and Type Safety</text>
+
+  <circle cx="50"  cy="230" r="6" fill="#2d7a2d"/><text x="65" y="234" class="label">Pure functions: Zero mutations</text>
+  <circle cx="50"  cy="255" r="6" fill="#2d7a2d"/><text x="65" y="259" class="label">Type safety: sealed ADTs, exhaustive matching, zero unsafe casts</text>
+  <circle cx="50"  cy="280" r="6" fill="#2d7a2d"/><text x="65" y="284" class="label">Stack-safe: @tailrec functions, Railway-oriented Either errors</text>
+  <circle cx="470" cy="230" r="6" fill="#2d7a2d"/><text x="485" y="234" class="label">Virtual thread ready: No ThreadLocal (Project Loom compatible)</text>
+  <circle cx="470" cy="255" r="6" fill="#2d7a2d"/><text x="485" y="259" class="label">Zero dependencies: 491KB JAR, pure Scala stdlib, 380+ passing tests</text>
+
+
+  <text x="35" y="320" class="caption">Use it for TOON encoding. Performance: ~866 ops/ms tabular decode (JMH, Java 21).</text>
+</svg>
