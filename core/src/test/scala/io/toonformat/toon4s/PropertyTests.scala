@@ -1,10 +1,9 @@
 package io.toonformat.toon4s
 
 import scala.collection.immutable.VectorMap
-
 import io.toonformat.toon4s.JsonValue._
 import munit.ScalaCheckSuite
-import org.scalacheck.{Arbitrary, Gen}
+import org.scalacheck.{Arbitrary, Gen, Test}
 import org.scalacheck.Prop._
 
 /**
@@ -250,7 +249,7 @@ class PropertyTests extends ScalaCheckSuite {
   // ===== Configuration =====
 
   // Increase test count for thorough testing
-  override def scalaCheckTestParameters =
+  override def scalaCheckTestParameters: Test.Parameters =
     super.scalaCheckTestParameters
       .withMinSuccessfulTests(100) // 100 successful tests per property
       .withMaxDiscardRatio(20) // Allow more discards for filtered generators

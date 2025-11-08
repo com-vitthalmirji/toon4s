@@ -24,7 +24,7 @@ class CodecTypedScala2Spec extends FunSuite {
 
     val u = User(1, "Ada")
     val toon = ToonTyped.encode(u).fold(throw _, identity)
-    assert(toon.contains("users") == false) // simple smoke
+    assert(!toon.contains("users")) // simple smoke
     val json = Toon.decode(toon).fold(throw _, identity)
     val u2 = ToonTyped.decodeAs[User](toon).fold(throw _, identity)
     assertEquals(u2, u)

@@ -117,10 +117,8 @@ class DecodeSpec extends FunSuite {
     val result = Toon.decode(input)
     assert(result.isRight)
     result.foreach {
-      json =>
-        json match {
-        case JObj(fields) =>
-          fields.get("text") match {
+      case JObj(fields) =>
+        fields.get("text") match {
           case Some(JString(s)) =>
             // After TOON unescape: \" -> ", \\\\ -> \\, \n -> newline, \t -> tab
             assert(s.contains("quote:\""))
@@ -128,9 +126,8 @@ class DecodeSpec extends FunSuite {
             assert(s.contains("\n"))
             assert(s.contains("\t"))
           case other => fail(s"Expected JString, got $other")
-          }
-        case other => fail(s"Expected JObj, got $other")
         }
+      case other => fail(s"Expected JObj, got $other")
     }
   }
 

@@ -33,7 +33,7 @@ key: value
    nested: wrong
 """.trim
 
-    val result = Toon.decode(toon, DecodeOptions(indent = 2))
+    val result = Toon.decode(toon, DecodeOptions())
     assert(result.isLeft, "Should fail on invalid indentation")
     result.left.foreach {
       err =>

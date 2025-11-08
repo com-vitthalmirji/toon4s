@@ -97,7 +97,7 @@ class ConformanceSuite extends FunSuite {
           testValue =>
             val obj = asObject(testValue, s"test entry in ${path.getFileName}")
             val name = asString(obj.get("name"), "name")
-            val inputAst = obj.get("input").getOrElse(fail(s"Missing input in $name"))
+            val inputAst = obj.getOrElse("input", fail(s"Missing input in $name"))
             val expected = asString(obj.get("expected"), "expected")
             val options = obj.get("options").map(parseEncodeOptions).getOrElse(EncodeOptions())
             EncodeCase(name, inputAst, expected, options)

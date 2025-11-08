@@ -21,7 +21,7 @@ class StreamEncodeSpec extends FunSuite {
         )
       )
     )
-    val opts = EncodeOptions(indent = 2)
+    val opts = EncodeOptions()
     val s1 = Encoders.encode(value, opts)
     val sw = new StringWriter()
     Encoders.encodeTo(value, sw, opts)
