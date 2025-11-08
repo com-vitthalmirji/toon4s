@@ -9,12 +9,6 @@
 
 - update CHANGELOG.md [skip ci]
 
-
-
-### Chroe
-
-- [skip ci] [skip release]
-
-- [skip ci] [skip release]
+- update CHANGELOG.md [skip ci]
 
 
