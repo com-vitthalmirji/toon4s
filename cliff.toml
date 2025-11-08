@@ -1,47 +1,38 @@
-# git-cliff configuration for toon4s
-[git]
-conventional_commits = true
-commit_preprocessors = []
+# git-cliff ~ configuration file
+# https://git-cliff.org/docs/configuration
 
 [changelog]
-header = "# Changelog\n"
+header = "# Changelog\n\n"
 body = """
-{% for release in releases %}
-## [{{ release.version | default(value="Unreleased") }}]{% if release.date %} - {{ release.date }}{% endif %}
+{% if version %}## [{{ version | trim_start_matches(pat="v") }}] - {{ timestamp | date(format="%Y-%m-%d") }}{% else %}## [Unreleased]{% endif %}
 
-{% for group in release.groups %}
-### {{ group.title }}
-
-{% for commit in group.commits %}
+{% for group, commits in commits | group_by(attribute="group") %}
+### {{ group | striptags | trim | upper_first }}
+{% for commit in commits %}
 - {{ commit.message | trim }}
-{% endfor %}
-
 {% endfor %}
 
 {% endfor %}
 """
 trim = true
-date_order = "desc"
-link_parsing = true
 
-[group]
-"Features" = ["feat", "feature"]
-"Fixes" = ["fix", "hotfix"]
-"Documentation" = ["docs"]
-"Breaking Changes" = ["break", "breaking", "breaking change"]
-"Refactoring" = ["refactor"]
-"Performance" = ["perf"]
-"Testing" = ["test", "tests"]
-"Build" = ["build", "ci"]
-"Chores" = ["chore", "style"]
-
-[unreleased]
-body = """
-{% if commits | length > 0 %}
-## Unreleased
-
-{% for commit in commits %}
-- {{ commit.message | trim }}
-{% endfor %}
-{% endif %}
-"""
+[git]
+conventional_commits = true
+filter_unconventional = false
+split_commits = false
+commit_preprocessors = []
+commit_parsers = [
+    { message = "^feat",   group = "Features" },
+    { message = "^fix",    group = "Bug Fixes" },
+    { message = "^docs",   group = "Documentation" },
+    { message = "^refactor", group = "Refactoring" },
+    { message = "^perf",   group = "Performance" },
+    { message = "^test",   group = "Tests" },
+    { message = "^build",  group = "Build System" },
+    { message = "^ci",     group = "Continuous Integration" },
+    { message = "^chore",  group = "Chores" },
+    { message = "^revert", group = "Reverts" },
+]
+filter_commits = false
+topo_order = false
+sort_commits = "oldest"
