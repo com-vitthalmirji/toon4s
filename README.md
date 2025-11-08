@@ -118,7 +118,7 @@ Key type safety features:
 
 ### Design patterns in action
 
-**State Threading Pattern** (core/src/main/scala/io/toonformat/toon4s/decode/Decoders.scala:87-105)
+**State Threading Pattern**
 ```scala
 @tailrec
 def collectFields(
@@ -139,7 +139,7 @@ def collectFields(
 }
 ```
 
-**Railway-Oriented Programming** (core/src/main/scala-3/io/toonformat/toon4s/codec/Decoder.scala:53-60)
+**Railway-Oriented Programming**
 ```scala
 // Either accumulation instead of var err: Error | Null = null
 xs.foldLeft[Either[DecodeError, List[A]]](Right(Nil)) {
@@ -545,13 +545,13 @@ See also: [Delimiters & markers](./SCALA-TOON-SPECIFICATION.md#delimiters--lengt
 
 ## Limitations & gotchas
 
-**What we didn't compromise on**: toon4s prioritizes **correctness, type safety, and functional purity** over convenience. All limitations below are honest tradeoffs we made consciously—not shortcuts.
+**What we didn't compromise on**: toon4s prioritizes **correctness, type safety, and functional purity** over convenience. All limitations below are honest tradeoffs we made consciously-not shortcuts.
 
 ### TOON format limitations (Not toon4s Implementation)
 
 These are inherent to the TOON specification, not toon4s:
 
-- **Irregular arrays**: When rows differ in shape, TOON falls back to YAML-like list syntax; token savings shrink. This is by design—tabular encoding requires uniform structure.
+- **Irregular arrays**: When rows differ in shape, TOON falls back to YAML-like list syntax; token savings shrink. This is by design-tabular encoding requires uniform structure.
 - **Binary blobs**: TOON doesn't support binary data (spec limitation). Encode as Base64 strings manually before passing to toon4s.
 
 ### toon4s implementation tradeoffs
