@@ -7,12 +7,12 @@ import io.toonformat.toon4s.decode.parsers._
 /**
  * Facade for all parsing operations.
  *
- * ==Design Pattern: Facade Pattern==
+ * ==Design: Facade pattern==
  *
  * This object provides a unified interface to all specialized parsers, maintaining backward
  * compatibility while delegating to focused parser objects.
  *
- * ==Decomposition Strategy==
+ * ==Decomposition plan==
  * Parser responsibilities have been split into:
  *   - [[parsers.StringLiteralParser]] - String escaping/unescaping
  *   - [[parsers.KeyParser]] - Key parsing (quoted/unquoted)
@@ -20,8 +20,8 @@ import io.toonformat.toon4s.decode.parsers._
  *   - [[parsers.DelimitedValuesParser]] - CSV-style parsing
  *   - [[parsers.ArrayHeaderParser]] - Array header syntax
  *
- * This follows the Single Responsibility Principle (#27) while maintaining the existing API surface
- * for backward compatibility.
+ * This follows the Single Responsibility Principle while maintaining the existing API surface for
+ * backward compatibility.
  *
  * @example
  *   {{{
@@ -40,7 +40,7 @@ object Parser {
   val ArrayHeaderInfo = parsers.ArrayHeaderInfo
 
   // ========================================================================
-  // Array Header Parsing
+  // Array header parsing
   // ========================================================================
 
   /**
@@ -91,7 +91,7 @@ object Parser {
     ArrayHeaderParser.isObjectFirstFieldAfterHyphen(content)
 
   // ========================================================================
-  // Delimited Values Parsing
+  // Delimited values parsing
   // ========================================================================
 
   /**
@@ -117,7 +117,7 @@ object Parser {
     DelimitedValuesParser.mapRowValuesToPrimitives(values)
 
   // ========================================================================
-  // Primitive Value Parsing
+  // Primitive value parsing
   // ========================================================================
 
   /**
@@ -132,7 +132,7 @@ object Parser {
     PrimitiveParser.parsePrimitiveToken(token)
 
   // ========================================================================
-  // String Literal Parsing
+  // String literal parsing
   // ========================================================================
 
   /**
@@ -180,7 +180,7 @@ object Parser {
     StringLiteralParser.findUnquotedChar(content, target)
 
   // ========================================================================
-  // Key Parsing
+  // Key parsing
   // ========================================================================
 
   /**

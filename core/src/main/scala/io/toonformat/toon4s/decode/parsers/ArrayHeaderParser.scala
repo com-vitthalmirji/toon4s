@@ -8,7 +8,7 @@ import io.toonformat.toon4s.error.DecodeError
 /**
  * Parser for TOON array headers.
  *
- * ==Design Pattern: Single Responsibility Principle + Parser Combinators==
+ * ==Design: Single responsibility principle + Parser combinators==
  *
  * This object handles only array header parsing:
  *   - Extracting key names
@@ -41,7 +41,7 @@ object ArrayHeaderParser {
   /**
    * Parse an array header line with all its components.
    *
-   * ==Functional Parsing with Option Chaining==
+   * ==Functional parsing with Option chaining==
    * Uses Option monad for parser combinators without external libraries.
    *
    * @param content
@@ -169,7 +169,7 @@ object ArrayHeaderParser {
   /**
    * Parse the bracket segment to extract length, delimiter, and marker flag.
    *
-   * ==Pattern Matching for Configuration Parsing==
+   * ==Pattern matching for configuration parsing==
    *
    * Bracket segment syntax:
    *   - `5` → length 5, default delimiter
@@ -233,7 +233,7 @@ object ArrayHeaderParser {
   /**
    * Check if content after a list hyphen is an array header.
    *
-   * ==Predicate Function for Type Detection==
+   * ==Predicate function for type detection==
    *
    * Used to distinguish between:
    *   - `- [3]: 1,2,3` (array item)
@@ -257,7 +257,7 @@ object ArrayHeaderParser {
   /**
    * Check if content after a list hyphen is an object field.
    *
-   * ==Predicate Function for Type Detection==
+   * ==Predicate function for type detection==
    *
    * @param content
    *   Content after the `- ` prefix

@@ -7,7 +7,7 @@ import io.toonformat.toon4s.error.DecodeError
 /**
  * Validation policy for TOON decoding.
  *
- * ==Design Pattern: Strategy Pattern + Policy Pattern==
+ * ==Design: Strategy + Policy pattern==
  *
  * This trait encapsulates validation rules, allowing different strictness levels to be implemented
  * as separate policies. Each policy decides whether to:
@@ -110,7 +110,7 @@ sealed trait ValidationPolicy {
 /**
  * Strict validation policy - enforces all rules.
  *
- * ==Design Pattern: Singleton Object==
+ * ==Design: Singleton Object==
  *
  * This policy throws errors on any validation failure, ensuring strict conformance to the TOON
  * specification.
@@ -169,7 +169,7 @@ case object StrictValidationPolicy extends ValidationPolicy {
 /**
  * Lenient validation policy - accepts most inputs.
  *
- * ==Design Pattern: Singleton Object==
+ * ==Design: Singleton object==
  *
  * This policy silently accepts validation failures for non-critical rules, while still enforcing
  * security limits (depth, size).
@@ -226,7 +226,7 @@ case object LenientValidationPolicy extends ValidationPolicy {
 /**
  * Factory for creating validation policies.
  *
- * ==Design Pattern: Factory Pattern==
+ * ==Design: Factory pattern==
  */
 object ValidationPolicy {
 

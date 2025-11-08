@@ -10,12 +10,12 @@ import io.toonformat.toon4s.error.ErrorLocation
 /**
  * Validation utilities for TOON decoding.
  *
- * ==Design Pattern: Adapter + Policy Pattern==
+ * ==Design: Adapter + Policy pattern==
  *
  * This object adapts the old validation API to the new [[validation.ValidationPolicy]] pattern,
  * maintaining backward compatibility while enabling testable policies.
  *
- * ==Migration Strategy==
+ * ==Migration plan==
  * Existing code uses implicit `Strictness` parameters. This object converts those to explicit
  * `ValidationPolicy` instances internally.
  */
@@ -39,7 +39,7 @@ private[decode] object Validation {
   /**
    * Validate depth limit with error location context.
    *
-   * ==Enhanced Error Tracking==
+   * ==Enhanced error tracking==
    * This version enriches errors with ParseContext location information.
    *
    * @param currentDepth

@@ -8,14 +8,14 @@ import io.toonformat.toon4s.JsonValue
 /**
  * Parser for primitive values (strings, numbers, booleans, null).
  *
- * ==Design Pattern: Single Responsibility Principle + Pattern Matching==
+ * ==Design: Single responsibility principle + Pattern matching==
  *
  * This object handles only primitive value parsing:
  *   - Detecting value types (numeric, boolean, null, string)
  *   - Converting strings to appropriate JsonValue types
  *   - Handling quoted vs unquoted strings
  *
- * ==Type Detection Strategy==
+ * ==Type detection plan==
  *   1. Empty/whitespace → empty string 2. Starts with `"` → quoted string 3. Matches boolean/null
  *      literals → JBool/JNull 4. Matches numeric pattern → JNumber 5. Everything else → unquoted
  *      string
@@ -33,7 +33,7 @@ object PrimitiveParser {
   /**
    * Parse a primitive token into a JsonValue.
    *
-   * ==Pattern Matching for Type Detection==
+   * ==Pattern matching for type detection==
    * Uses guards and predicates to determine the appropriate type.
    *
    * @param token
@@ -85,7 +85,7 @@ object PrimitiveParser {
   /**
    * Check if a value is a boolean or null literal.
    *
-   * ==Pure Predicate Function==
+   * ==Pure predicate function==
    * Simple equality check, no side effects.
    *
    * @param value
@@ -120,7 +120,7 @@ object PrimitiveParser {
   /**
    * Check if a token represents a valid numeric literal.
    *
-   * ==Validation Strategy==
+   * ==Validation plan==
    *   1. Reject empty strings 2. Reject leading zeros (except "0" and "0.xxx") 3. Match against
    *      regex pattern
    *

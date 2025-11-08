@@ -12,7 +12,7 @@ import io.toonformat.toon4s.error.DecodeError
 /**
  * Immutable decoders using ImmutableLineCursor.
  *
- * ==Design Pattern: Pure Functional Programming + State Monad==
+ * ==Design: Pure functional programming + State Monad==
  *
  * This object provides purely functional decoders that use [[cursor.ImmutableLineCursor]] instead
  * of mutable [[LineCursor]]. All operations return new cursor states, making the code referentially
@@ -106,7 +106,7 @@ object ImmutableDecoders {
   /**
    * Parse primitive with validation.
    *
-   * ==Pure Function==
+   * ==Pure function==
    *
    * @param token
    *   Token to parse
@@ -128,7 +128,7 @@ object ImmutableDecoders {
   /**
    * Check if line is key-value format.
    *
-   * ==Pure Predicate Function==
+   * ==Pure predicate function==
    *
    * @param line
    *   Parsed line
@@ -203,7 +203,7 @@ object ImmutableDecoders {
   /**
    * Parse key-value pair.
    *
-   * ==Immutable State Handling==
+   * ==Immutable state handling==
    * Parses key, value, and returns updated cursor.
    *
    * @param cursor
@@ -246,7 +246,7 @@ object ImmutableDecoders {
   /**
    * Decode value from cursor.
    *
-   * ==Pattern Matching + State Threading==
+   * ==Pattern matching + State threading==
    *
    * @param cursor
    *   Current cursor
@@ -302,7 +302,7 @@ object ImmutableDecoders {
   /**
    * Decode array from header.
    *
-   * ==Array Decoding with State Threading==
+   * ==Array decoding with state threading==
    *
    * @param header
    *   Array header info
@@ -483,7 +483,7 @@ object ImmutableDecoders {
   /**
    * Key-value parse result.
    *
-   * ==Internal Data Structure==
+   * ==Internal data structure==
    *
    * @param key
    *   Parsed key

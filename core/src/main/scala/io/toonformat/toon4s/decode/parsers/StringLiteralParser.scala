@@ -8,7 +8,7 @@ import io.toonformat.toon4s.error.DecodeError
 /**
  * Parser for quoted string literals with escape sequence handling.
  *
- * ==Design Pattern: Single Responsibility Principle==
+ * ==Design: Single responsibility principle==
  *
  * This object handles only string parsing concerns:
  *   - Finding closing quotes
@@ -100,7 +100,7 @@ object StringLiteralParser {
   /**
    * Unescape a string by converting escape sequences to their actual characters.
    *
-   * ==Pure Function==
+   * ==Pure function==
    * This function has no side effects and always produces the same output for the same input.
    *
    * @param s

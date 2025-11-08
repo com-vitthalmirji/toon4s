@@ -50,7 +50,7 @@ object Strictness {
  * Toon.decode(input, lenient)
  * }}}
  *
- * ==Security Considerations==
+ * ==Security considerations==
  * The default limits prevent DoS attacks from maliciously crafted inputs:
  *   - Deep nesting can cause stack overflow
  *   - Large arrays/strings can exhaust memory Set to `None` only when processing trusted inputs.

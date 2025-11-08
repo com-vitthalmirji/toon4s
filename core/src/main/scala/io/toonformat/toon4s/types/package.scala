@@ -6,7 +6,7 @@ package io.toonformat.toon4s
  * This package provides newtype wrappers around primitives to prevent mixing up different integer
  * types (indent vs depth vs line numbers).
  *
- * ==Cross-Version Strategy==
+ * ==Cross-version plan==
  *   - Scala 3: Uses opaque types for zero-cost abstractions
  *   - Scala 2.13: Uses AnyVal wrappers for minimal overhead
  *

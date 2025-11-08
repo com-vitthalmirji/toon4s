@@ -8,18 +8,18 @@ import io.toonformat.toon4s.decode.parsers._
 /**
  * Context-aware parsers that automatically track location information.
  *
- * ==Design Pattern: Decorator Pattern + Error Context Tracking==
+ * ==Design: Decorator + Error context tracking==
  *
  * This object wraps the existing parsers with context-aware versions that automatically enrich
  * errors with location information. This provides backward compatibility while enabling better
  * error reporting.
  *
- * ==Strategy==
+ * ==Plan==
  * Instead of modifying all existing parsers, we provide wrapper methods that:
  *   1. Accept a ParseContext parameter 2. Delegate to the existing parser 3. Catch and enrich any
  *      DecodeErrors with location
  *
- * ==Usage Pattern==
+ * ==Usage pattern==
  * New code should use these context-aware parsers for better error messages. Existing code can
  * continue using the direct parsers without location context.
  *
@@ -39,13 +39,13 @@ import io.toonformat.toon4s.decode.parsers._
 object ContextAwareParsers {
 
   // ========================================================================
-  // Key Parsing with Context
+  // Key parsing with context
   // ========================================================================
 
   /**
    * Parse a key token with automatic error location tracking.
    *
-   * ==Decorator Pattern==
+   * ==Decorator==
    * Wraps KeyParser.parseKeyToken with context enrichment.
    *
    * @param content
@@ -113,7 +113,7 @@ object ContextAwareParsers {
   }
 
   // ========================================================================
-  // String Literal Parsing with Context
+  // String literal parsing with context
   // ========================================================================
 
   /**
@@ -159,7 +159,7 @@ object ContextAwareParsers {
   }
 
   // ========================================================================
-  // Primitive Parsing with Context
+  // Primitive parsing with context
   // ========================================================================
 
   /**
@@ -186,7 +186,7 @@ object ContextAwareParsers {
   }
 
   // ========================================================================
-  // Array Header Parsing with Context
+  // Array header parsing with context
   // ========================================================================
 
   /**
@@ -240,7 +240,7 @@ object ContextAwareParsers {
   }
 
   // ========================================================================
-  // Delimited Values Parsing with Context
+  // Delimited values parsing with context
   // ========================================================================
 
   /**
@@ -290,7 +290,7 @@ object ContextAwareParsers {
   }
 
   // ========================================================================
-  // Either-based API for Functional Error Handling
+  // Either-based API for functional error handling
   // ========================================================================
 
   /**

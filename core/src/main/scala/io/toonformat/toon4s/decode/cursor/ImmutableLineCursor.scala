@@ -5,7 +5,7 @@ package cursor
 /**
  * Immutable line cursor for functional parsing.
  *
- * ==Design Pattern: Immutable State + Pure Functions==
+ * ==Design: Immutable state + Pure functions==
  *
  * This cursor provides a purely functional interface for sequential line parsing. Unlike the
  * mutable [[decode.LineCursor]], all operations return new cursor instances, enabling:
@@ -14,7 +14,7 @@ package cursor
  *   - Safe concurrent access
  *   - Backtracking capabilities
  *
- * ==State Monad Pattern (without external libraries)==
+ * ==State Monad==
  * This implements a simplified State monad pattern using case classes and method chaining.
  *
  * @param lines
@@ -56,7 +56,7 @@ final case class ImmutableLineCursor private (
   /**
    * Peek at the current line without advancing.
    *
-   * ==Pure Function==
+   * ==Pure function==
    * Does not modify cursor state.
    *
    * @return
@@ -75,7 +75,7 @@ final case class ImmutableLineCursor private (
   /**
    * Get current line and advance to next position.
    *
-   * ==Pure Function==
+   * ==Pure function==
    * Returns tuple of (current line, new cursor).
    *
    * @return
@@ -98,7 +98,7 @@ final case class ImmutableLineCursor private (
   /**
    * Get the previously consumed line.
    *
-   * ==Pure Function==
+   * ==Pure function==
    * Returns the line that was current before the last advance.
    *
    * @return
@@ -116,7 +116,7 @@ final case class ImmutableLineCursor private (
   /**
    * Check if cursor is at the end of input.
    *
-   * ==Pure Predicate Function==
+   * ==Pure predicate function==
    *
    * @return
    *   true if no more lines to consume
@@ -133,7 +133,7 @@ final case class ImmutableLineCursor private (
   /**
    * Total number of lines.
    *
-   * ==Pure Function==
+   * ==Pure function==
    *
    * @return
    *   Total line count
@@ -143,7 +143,7 @@ final case class ImmutableLineCursor private (
   /**
    * Peek at current line if it has the target depth.
    *
-   * ==Pure Function with Guard==
+   * ==Pure function with guard==
    * Combines peek with depth filtering.
    *
    * @param target
@@ -165,7 +165,7 @@ final case class ImmutableLineCursor private (
   /**
    * Check if there are more lines at the target depth.
    *
-   * ==Pure Predicate Function==
+   * ==Pure predicate function==
    *
    * @param target
    *   The depth level to check
@@ -185,7 +185,7 @@ final case class ImmutableLineCursor private (
   /**
    * Get all blank line information.
    *
-   * ==Pure Function==
+   * ==Pure function==
    * Returns immutable vector, no side effects.
    *
    * @return
@@ -196,7 +196,7 @@ final case class ImmutableLineCursor private (
   /**
    * Advance cursor to next position.
    *
-   * ==Pure Function==
+   * ==Pure function==
    * Returns new cursor with incremented index.
    *
    * @return
@@ -233,7 +233,7 @@ final case class ImmutableLineCursor private (
   /**
    * Reset cursor to beginning.
    *
-   * ==Pure Function==
+   * ==Pure function==
    * Returns new cursor at position 0.
    *
    * @return
@@ -250,7 +250,7 @@ final case class ImmutableLineCursor private (
   /**
    * Jump cursor to specific position.
    *
-   * ==Pure Function==
+   * ==Pure function==
    * Returns new cursor at the specified index.
    *
    * @param position
@@ -269,7 +269,7 @@ final case class ImmutableLineCursor private (
   /**
    * Map over remaining lines.
    *
-   * ==Higher-Order Function==
+   * ==Higher-order function==
    * Applies function to all remaining lines.
    *
    * @param f
@@ -289,7 +289,7 @@ final case class ImmutableLineCursor private (
   /**
    * Filter remaining lines.
    *
-   * ==Higher-Order Function==
+   * ==Higher-order function==
    * Selects lines matching predicate.
    *
    * @param p
@@ -309,7 +309,7 @@ final case class ImmutableLineCursor private (
   /**
    * Fold over remaining lines with initial value.
    *
-   * ==Higher-Order Function==
+   * ==Higher-order function==
    * Reduces lines to a single value.
    *
    * @param z
@@ -335,7 +335,7 @@ object ImmutableLineCursor {
   /**
    * Create a new cursor from scan result.
    *
-   * ==Factory Method Pattern==
+   * ==Factory method==
    *
    * @param result
    *   Scan result containing lines and blanks
@@ -354,7 +354,7 @@ object ImmutableLineCursor {
   /**
    * Create a new cursor from lines and blanks.
    *
-   * ==Factory Method Pattern==
+   * ==Factory method==
    *
    * @param lines
    *   Vector of parsed lines

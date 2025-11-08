@@ -13,7 +13,7 @@ final class DecodeOptionsBuilder[HasIndent] private (
   /**
    * Set indent size with runtime validation.
    *
-   * ==Runtime Validation Pattern==
+   * ==Runtime validation pattern==
    * Validates indent value at runtime to ensure it's within acceptable range.
    *
    * @param n

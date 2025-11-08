@@ -84,7 +84,7 @@ object Toon {
    * Useful for streaming large outputs directly to files or network sockets without building the
    * entire string in memory.
    *
-   * ==Resource Management Pattern==
+   * ==Resource management==
    * Caller is responsible for managing the Writer lifecycle. For automatic resource management, use
    * [[scala.util.Using]] (Scala 2.13+).
    *

@@ -8,7 +8,7 @@ import io.toonformat.toon4s.error.DecodeError
 /**
  * Parser for object keys (quoted and unquoted).
  *
- * ==Design Pattern: Single Responsibility Principle==
+ * ==Design: Single responsibility principle==
  *
  * This object handles only key parsing concerns:
  *   - Parsing quoted keys with escape sequences
@@ -34,7 +34,7 @@ object KeyParser {
   /**
    * Parse a key token and return the key with the position after the colon.
    *
-   * ==Higher-Order Function Pattern==
+   * ==Higher-order function==
    * Delegates to specialized parsers based on first character.
    *
    * @param content
@@ -59,7 +59,7 @@ object KeyParser {
   /**
    * Parse an unquoted key (stops at colon).
    *
-   * ==Pure Function==
+   * ==Pure function==
    * No side effects, deterministic output.
    *
    * @param content
@@ -89,7 +89,7 @@ object KeyParser {
   /**
    * Parse a quoted key with escape sequences.
    *
-   * ==Composition Pattern==
+   * ==Composition pattern==
    * Uses StringLiteralParser for the actual unescaping.
    *
    * @param content

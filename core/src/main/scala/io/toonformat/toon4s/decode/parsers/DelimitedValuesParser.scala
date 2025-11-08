@@ -8,14 +8,14 @@ import io.toonformat.toon4s.error.DecodeError
 /**
  * Parser for delimiter-separated values with quote awareness.
  *
- * ==Design Pattern: Single Responsibility Principle + State Machine==
+ * ==Design: Single responsibility principle + State machine==
  *
  * This object handles only delimited value parsing:
  *   - Splitting strings on delimiters (respecting quotes)
  *   - Preserving escaped characters within quotes
  *   - Converting values to primitives for tabular data
  *
- * ==State Machine==
+ * ==State machine==
  * Tracks whether we're inside quotes to know when delimiters are significant:
  *   - Outside quotes: delimiter splits values
  *   - Inside quotes: delimiter is part of the value
@@ -34,7 +34,7 @@ object DelimitedValuesParser {
   /**
    * Parse a delimited string into a vector of value strings.
    *
-   * ==Stateful Parsing with Immutable Result==
+   * ==Stateful parsing with immutable result==
    * Uses mutable state during parsing but returns immutable Vector.
    *
    * @param input
@@ -101,7 +101,7 @@ object DelimitedValuesParser {
   /**
    * Map string values to primitive JsonValues for tabular data.
    *
-   * ==Validation Strategy==
+   * ==Validation plan==
    * Only allows primitive types in tabular rows:
    *   - Strings (quoted or unquoted)
    *   - Numbers

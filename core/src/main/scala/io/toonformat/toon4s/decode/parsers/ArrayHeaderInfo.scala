@@ -7,7 +7,7 @@ import io.toonformat.toon4s.Delimiter
 /**
  * Information parsed from an array header.
  *
- * ==Design Pattern: Product Type (Case Class)==
+ * ==Design: Product type (case class)==
  *
  * Immutable data structure representing all information from a TOON array header.
  *

@@ -7,7 +7,7 @@ package io.toonformat.toon4s.types
  * opaque type is equivalent to its underlying type. Outside, they are distinct types that cannot be
  * mixed.
  *
- * ==Design Pattern: Newtype Pattern with Opaque Types==
+ * ==Design: Newtype pattern with Opaque types==
  *
  * Benefits:
  *   - Prevents mixing up Int values (indent vs depth vs line number)

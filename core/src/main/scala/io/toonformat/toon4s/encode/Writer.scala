@@ -6,7 +6,7 @@ import java.io.Writer
 /**
  * Base trait for TOON line writing operations.
  *
- * ==Design Pattern: Interface Segregation Principle (ISP)==
+ * ==Design: Interface segregation principle (ISP)==
  *
  * This trait hierarchy separates concerns:
  *   - [[EncodeLineWriter]] - Basic line writing operations
@@ -14,7 +14,7 @@ import java.io.Writer
  *
  * Clients depend only on methods they need, following SOLID principle I.
  *
- * ==Strategy Pattern==
+ * ==Strategy design==
  * Implementations provide different output strategies:
  *   - [[LineWriter]] - In-memory StringBuilder accumulation
  *   - [[StreamLineWriter]] - Direct streaming to Writer
@@ -46,7 +46,7 @@ sealed trait EncodeLineWriter {
 /**
  * Extended interface for streaming-specific optimizations.
  *
- * ==Design Pattern: Interface Segregation Principle==
+ * ==Design: Interface segregation principle==
  *
  * This trait adds streaming-specific methods that:
  *   - Avoid building large intermediate strings
@@ -152,7 +152,7 @@ sealed trait StreamingEncodeLineWriter extends EncodeLineWriter {
 /**
  * In-memory line writer using StringBuilder.
  *
- * ==Design Pattern: Builder Pattern + Strategy Pattern==
+ * ==Design: Builder + Strategy pattern==
  *
  * Accumulates output in memory, suitable for:
  *   - Small to medium outputs
@@ -179,7 +179,7 @@ final class LineWriter(indentSize: Int) extends EncodeLineWriter {
   /**
    * Add indentation padding.
    *
-   * ==Pure Side Effect==
+   * ==Pure side effect==
    * Mutates builder but encapsulated within class.
    */
   private def pad(depth: Int): Unit = {
@@ -216,7 +216,7 @@ final class LineWriter(indentSize: Int) extends EncodeLineWriter {
 /**
  * Streaming line writer for direct output to Writer.
  *
- * ==Design Pattern: Strategy Pattern + Decorator Pattern==
+ * ==Design: Strategy + Decorator pattern==
  *
  * Writes directly to output stream/file, suitable for:
  *   - Large outputs
@@ -246,7 +246,7 @@ final class StreamLineWriter(indentSize: Int, out: Writer) extends StreamingEnco
   /**
    * Add indentation padding directly to output.
    *
-   * ==Pure Side Effect==
+   * ==Pure side effect==
    * Writes to external Writer.
    */
   private def pad(depth: Int): Unit = {

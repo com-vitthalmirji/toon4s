@@ -6,7 +6,7 @@ package io.toonformat.toon4s.types
  * AnyVal wrappers provide compile-time type safety with minimal runtime overhead. The Scala
  * compiler can often eliminate the wrapper allocation through escape analysis.
  *
- * ==Design Pattern: Newtype Pattern with Value Classes==
+ * ==Design: Newtype Pattern with Value Classes==
  *
  * Benefits:
  *   - Prevents mixing up Int values (indent vs depth vs line number)
