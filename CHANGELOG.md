@@ -11,7 +11,7 @@
 - use env vars in github-script to avoid syntax errors ([`06f9e32`](https://github.com/vim89/toon4s/commit/06f9e32c51fd1a62c391bfb7e46228c8dcbbc12c)) by @vim89
 - add pull-requests write permission for ci workflow ([`a8a5549`](https://github.com/vim89/toon4s/commit/a8a5549c56a946d04a9db681b63997a680192f98)) by @vim89
 - changelog triggers on repository_dispatch ([`78a3af2`](https://github.com/vim89/toon4s/commit/78a3af20c29df1e9db3fd4b8b2fe6e7cf0534826)) [#17](https://github.com/vim89/toon4s/pull/17) by @vim89
-- checkout exact tag ref for sbt-ci-release to detect release version ([`572b1da`](https://github.com/vim89/toon4s/commit/572b1da28a92dc3a1d026dc2f7fd7cc475c664d8)) by @vim89
+- checkout exact tag  ref for sbt-ci-release to detect release version ([`572b1da`](https://github.com/vim89/toon4s/commit/572b1da28a92dc3a1d026dc2f7fd7cc475c664d8)) by @vim89
 
 
 
