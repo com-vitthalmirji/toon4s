@@ -1,6 +1,6 @@
 ![TOON logo with step‑by‑step guide](./docs/images/og.png)
 
-# toon4s: Token-Oriented Object Notation for Scala
+# toon4s: Token-Oriented Object Notation for JVM
 
 [![CI](https://github.com/vim89/toon4s/actions/workflows/ci.yml/badge.svg)](https://github.com/vim89/toon4s/actions/workflows/ci.yml)
 [![Scala](https://img.shields.io/badge/Scala-2.13%20%7C%203.3-red)](https://www.scala-lang.org/)
@@ -257,7 +257,7 @@ Note: numbers vary by JVM/OS/data shape. Run your own payloads with JMH for appl
 - Accuracy: prompt‑ and data‑dependent. Community reports: JSON ≈ 70%, TOON ≈ 65% on some tasks. Measure on your prompts before switching.
 - Throughput: toon4s encode throughput is on par with JToon on small/mid shapes (JMH quick: ~200 ops/ms). Decoding is implemented and fast in toon4s (tabular ~1k ops/ms). If/when JToon adds decoding, compare like‑for‑like.
 - Scala ergonomics: typed derivation (3.x), typeclasses (2.13), sealed ADTs, VectorMap ordering, streaming visitors, zero‑dep core.
-- Guidance: use toon (TS) for Node stacks, JToon for Java codebases, toon4s for Scala. Token savings are equivalent; choose by ecosystem fit.
+- Guidance: use toon (TS) for Node stacks, JToon for Java codebases, toon4s for JVM. Token savings are equivalent; choose by ecosystem fit.
 
 <img src="docs/images/toon4s-compare.svg" alt="Comparison: toon vs JToon vs toon4s" width="820" />
 
@@ -481,7 +481,7 @@ Fallbacks:
 - Decoding always yields the `JsonValue` ADT; pattern-match it if you prefer.
 - `SimpleJson.toScala` yields `Any` for quick-and-dirty interop.
 
-Why another TOON for Scala?
+Why another TOON for Scala/JVM?
 
 - Ergonomics: native Scala APIs and derivation reduce boilerplate versus Java/TS bindings in Scala codebases.
 - Footprint: zero-dep core minimizes transitive risk compared to libraries built atop general JSON stacks.
