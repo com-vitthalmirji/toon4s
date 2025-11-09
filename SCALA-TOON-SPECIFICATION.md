@@ -1,10 +1,10 @@
 # toon4s - Scala Implementation Specification
 
-**Token-Oriented Object Notation (TOON)** is a compact, LLM-friendly serialization format that trades JSON's repeated keys and punctuation for indentation, column headers, and explicit row counts. This document describes the Scala implementation (`toon4s`), its guarantees, and how the format behaves on the JVM.
+**Token-Oriented Object Notation (TOON)** is a compact, LLM-friendly serialization format that trades JSON's repeated keys and punctuation for indentation, column headers, and explicit row counts. This document describes the Scala (for JVM as well) implementation (`toon4s`), its guarantees, and how the format behaves on the JVM.
 
 > If you want the canonical language-agnostic definition, read [toon-format/spec](https://github.com/toon-format/spec). This spec focuses on the Scala API, data model, and rules enforced by `toon4s`.
 
-## Why TOON for Scala teams?
+## Why TOON for JVM teams?
 
 - **Token savings** mean cheaper LLM calls. TOON payloads routinely cut 30-60% of tokens versus pretty JSON.
 - **Scala-first APIs** let you pass case classes, immutable maps, Options, and `java.time` values directly-no JSON intermediary required.
@@ -402,4 +402,4 @@ Use larger windows (e.g., `-i 5 -wi 5`) on a stable machine for trustworthy numb
 - [Main README](./README.md) - installation, usage, CLI examples.
 - [toon-format/spec](https://github.com/toon-format/spec) - canonical format specification & fixtures.
 - [JToon](https://github.com/felipestanzani/jtoon) - JVM reference in Kotlin/Java.
-- [Original TypeScript implementation](https://github.com/toon-format/toon).
+- [TypeScript implementation](https://github.com/toon-format/toon).

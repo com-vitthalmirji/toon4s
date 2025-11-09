@@ -83,7 +83,7 @@ Every function in toon4s is **pure** and **total**:
   - No global mutable state
   - Deterministic output (VectorMap preserves insertion order)
 
-- **Stack-safe recursion**: 25 functions with `@tailrec`
+- **Stack-safe recursion**: functions with `@tailrec`
   - Compiler-verified tail call optimization
   - Can parse arbitrarily deep structures
   - Constant stack usage regardless of input size
