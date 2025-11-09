@@ -2,7 +2,6 @@ package io.toonformat.toon4s
 package decode
 package parsers
 
-import io.toonformat.toon4s.{Constants => C}
 import io.toonformat.toon4s.error.DecodeError
 
 /**
