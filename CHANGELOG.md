@@ -12,18 +12,22 @@
 - add pull-requests write permission for ci workflow ([`a8a5549`](https://github.com/vim89/toon4s/commit/a8a5549c56a946d04a9db681b63997a680192f98)) by @vim89
 - changelog triggers on repository_dispatch ([`78a3af2`](https://github.com/vim89/toon4s/commit/78a3af20c29df1e9db3fd4b8b2fe6e7cf0534826)) [#17](https://github.com/vim89/toon4s/pull/17) by @vim89
 - checkout exact tag ref for sbt-ci-release to detect release version ([`572b1da`](https://github.com/vim89/toon4s/commit/572b1da28a92dc3a1d026dc2f7fd7cc475c664d8)) by @vim89
+- add required permissions for workflow triggers and PR sync ([`d9a56b6`](https://github.com/vim89/toon4s/commit/d9a56b69d72712d72aa2846a217c3a84e6eb8ba7)) by @vim89
 
 
 
 ### Documentation
 - update CHANGELOG.md for main [skip ci] ([`3366b9a`](https://github.com/vim89/toon4s/commit/3366b9a3250c685871d1be04b75db6b89fb4db7d)) by @github-actions[bot]
 - update CHANGELOG.md for main [skip ci] ([`d72a656`](https://github.com/vim89/toon4s/commit/d72a656130d998bde7eb18af5dcaccd85c2d4c30)) by @github-actions[bot]
+- update CHANGELOG.md for main [skip ci] ([`1f8d148`](https://github.com/vim89/toon4s/commit/1f8d148c091c90ae4a180e86b17e1ae855330ac6)) by @github-actions[bot]
 
 
 
 ### Features
 - add commit hashes and PR links to changelog ([`ca99ed2`](https://github.com/vim89/toon4s/commit/ca99ed2b0d4a74ee554aa7ffc61adfce512714ac)) by @vim89
 - enhance changelog to support forked PRs and show contributors ([`ca79b56`](https://github.com/vim89/toon4s/commit/ca79b5660b49e7ab96c4bb5141f42bf30eac45ad)) by @vim89
+- changelog updates after release with auto PR branch sync ([`4f2d83b`](https://github.com/vim89/toon4s/commit/4f2d83baac2ae7290529f5ad91cf6de9462e8d0d)) by @vim89
+- changelog updates after release with auto PR branch sync ([`d1c4ff2`](https://github.com/vim89/toon4s/commit/d1c4ff2243aa7145b21fb06cd21550ea79d20a3e)) [#21](https://github.com/vim89/toon4s/pull/21) by @vim89
 
 
 
