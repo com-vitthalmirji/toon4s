@@ -1,11 +1,12 @@
 # Release workflow - Automated publishing to Maven Central
+# Based on official sbt-ci-release: https://github.com/sbt/sbt-ci-release
 #
 # Triggers:
 #   - Push git tags starting with 'v' → publishes release to Maven Central
 #   - Push to main branch → publishes snapshot to Sonatype snapshots
 #   - Manual trigger via workflow_dispatch
 #
-# Required GitHub secrets:
+# Required GitHub Secrets:
 #   PGP_PASSPHRASE, PGP_SECRET, SONATYPE_USERNAME, SONATYPE_PASSWORD
 #   See: https://github.com/sbt/sbt-ci-release for setup instructions
 
@@ -57,14 +58,13 @@ jobs:
       - name: Run tests
         run: sbt --batch --no-colors +test
 
-      - name: Publish signed artifacts and release to Maven Central
-        run: sbt publishSigned sonaRelease
+      - name: Publish to Maven Central
+        run: sbt --batch --no-colors ci-release
         env:
-          # sbt-pgp uses PGP_PASSPHRASE automatically from the environment
           PGP_PASSPHRASE: ${{ secrets.PGP_PASSPHRASE }}
-          # sbt 1.11+ automatically picks up Sonatype credentials from these environment variables
-          SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
+          PGP_SECRET: ${{ secrets.PGP_SECRET }}
           SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
+          SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
 
       - name: Package CLI (if release tag)
         if: startsWith(github.ref, 'refs/tags/v') || github.event.inputs.tag != ''
@@ -78,15 +78,14 @@ jobs:
           name: toon4s ${{ steps.version.outputs.version }}
           body: |
             ## toon4s ${{ steps.version.outputs.version }}
-            ---
-            
-            toon4s: Token-Oriented Object Notation for JVM implementing [TOON](https://github.com/toon-format/spec).
+
+            toon4s: Token-Oriented Object Notation for JVM [TOON](https://github.com/toon-format/spec).
 
             ### Installation
 
             **sbt**:
             ```scala
-            libraryDependencies += "io.toonformat" %% "toon4s-core" % "${{steps.version.outputs.version}}"
+            libraryDependencies += "io.toonformat" %% "toon4s-core" % "${{ steps.version.outputs.version }}"
             ```
 
             **Maven**:
@@ -94,15 +93,15 @@ jobs:
             <dependency>
               <groupId>io.toonformat</groupId>
               <artifactId>toon4s-core_3</artifactId>
-              <version>${{steps.version.outputs.version}}</version>
+              <version>${{ steps.version.outputs.version }}</version>
             </dependency>
             ```
 
             ### Links
 
-            - [Maven Central](https://central.sonatype.com/artifact/io.toonformat/toon4s-core_3/${{steps.version.outputs.version}})
-            - [Documentation](https://github.com/${{github.repository}})
-            - [Changelog](https://github.com/${{github.repository}}/blob/main/CHANGELOG.md)
+            - [Maven Central](https://central.sonatype.com/artifact/io.toonformat/toon4s-core_3/${{ steps.version.outputs.version }})
+            - [Documentation](https://github.com/${{ github.repository }})
+            - [Changelog](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md)
           artifacts: "cli/target/universal/*.zip,cli/target/universal/*.tgz"
           draft: false
           prerelease: false
