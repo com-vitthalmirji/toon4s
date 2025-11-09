@@ -74,18 +74,19 @@ jobs:
 
       - name: Trigger Release and Changelog Workflows
         if: steps.tag_version.outputs.new_tag != ''
+        env:
+          NEW_TAG: ${{ steps.tag_version.outputs.new_tag }}
+          PREV_TAG: ${{ steps.tag_version.outputs.previous_tag }}
         uses: actions/github-script@v7
         with:
           script: |
-            // Trigger repository dispatch event
             await github.rest.repos.createDispatchEvent({
               owner: context.repo.owner,
               repo: context.repo.repo,
               event_type: 'release-tag-created',
               client_payload: {
-                tag: '${{ steps.tag_version.outputs.new_tag }}',
-                previous_tag: '${{ steps.tag_version.outputs.previous_tag }}',
-                changelog: '${{ steps.tag_version.outputs.changelog }}'
+                tag: process.env.NEW_TAG,
+                previous_tag: process.env.PREV_TAG
               }
             });
 
