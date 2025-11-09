@@ -20,9 +20,8 @@
 name: Changelog
 
 on:
-  push:
-    tags:
-      - 'v*'
+  repository_dispatch:
+    types: [release-tag-created]
   workflow_dispatch:
 
 concurrency:
