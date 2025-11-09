@@ -98,6 +98,11 @@ jobs:
             ## toon4s ${{ steps.version.outputs.version }}
 
             Token-Oriented Object Notation for JVM - [TOON Format](https://github.com/toon-format/spec)
+            
+            ### What's changed
+            - [Changelog](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md)
+            
+            ---
 
             ### Installation
 
@@ -114,13 +119,14 @@ jobs:
               <version>${{ steps.version.outputs.version }}</version>
             </dependency>
             ```
-
+            
+            ---
+            
             ### Links
 
             - [Maven Central](https://central.sonatype.com/artifact/io.toonformat/toon4s-core_3/${{ steps.version.outputs.version }})
             - [Documentation](https://github.com/${{ github.repository }})
-            - [Changelog](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md)
-
+            
             ---
 
             See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for detailed changes.
