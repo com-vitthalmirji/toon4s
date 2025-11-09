@@ -223,10 +223,21 @@ jobs:
             /tmp/jmh.txt
             /tmp/jmh.json
             /tmp/jmh.md
+      - name: Log JMH summary for forked PR
+        if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork }}
+        run: |
+          echo "::group::JMH summary (forked PR - not commented due to GitHub permissions)"
+          if [ -f /tmp/jmh.md ]; then
+            cat /tmp/jmh.md
+          else
+            echo "No /tmp/jmh.md found. JMH run may have been skipped or failed."
+          fi
+          echo "::endgroup::"
       - name: Post JMH summary to PR
-        if: ${{ github.event_name == 'pull_request' }}
+        if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == false }}
         uses: actions/github-script@v7
         with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const fs = require('fs');
             const body = fs.readFileSync('/tmp/jmh.md', 'utf8');
