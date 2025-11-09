@@ -2,26 +2,28 @@
 # Uses git-cliff for conventional commits -> changelog conversion
 #
 # Triggers:
-#   - Tag creation (v*) - generates changelog for that specific version
+#   - After successful release completion (via repository_dispatch)
 #   - Manual trigger via workflow_dispatch
 #
 # How it works:
-#   1. Runs AFTER a tag is created (by auto-tag.yml)
+#   1. Runs AFTER release completes successfully
 #   2. Generates changelog entry for the new version
 #   3. Commits and pushes CHANGELOG.md back to main
-#   4. Uses [skip ci] to prevent infinite loops
+#   4. Auto-syncs all open PR branches with main
+#   5. Uses [skip ci] to prevent infinite loops
 #
 # Edge cases handled:
 #   - First release: generates full changelog
 #   - No changes: skips commit if changelog unchanged
 #   - Concurrent runs: uses concurrency group
 #   - Skip ci commits: ignored by cliff.toml config
+#   - No open PRs: skips sync step gracefully
 
 name: Changelog
 
 on:
   repository_dispatch:
-    types: [release-tag-created]
+    types: [release-completed]
   workflow_dispatch:
 
 concurrency:
@@ -73,10 +75,58 @@ jobs:
           git commit -m "docs: update CHANGELOG.md for ${{ github.ref_name }} [skip ci]"
           git push origin main
 
+      - name: Auto-sync open PR branches with main
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Get all open PRs
+            const { data: pulls } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100
+            });
+
+            if (pulls.length === 0) {
+              console.log('No open PRs to sync');
+              return;
+            }
+
+            console.log(`Found ${pulls.length} open PR(s) to sync with main`);
+
+            for (const pr of pulls) {
+              // Skip PRs from forks (can't update them directly)
+              if (pr.head.repo.full_name !== pr.base.repo.full_name) {
+                console.log(`⏭ Skipping PR #${pr.number} (from fork: ${pr.head.repo.full_name})`);
+                continue;
+              }
+
+              try {
+                // Update branch by merging main into it
+                await github.rest.repos.merge({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  base: pr.head.ref,
+                  head: 'main',
+                  commit_message: `chore: sync with main [skip ci]`
+                });
+                console.log(`✓ Synced PR #${pr.number}: ${pr.title}`);
+              } catch (error) {
+                if (error.status === 409) {
+                  console.log(`ℹ PR #${pr.number} already up to date or has conflicts`);
+                } else if (error.status === 204) {
+                  console.log(`ℹ PR #${pr.number} already up to date`);
+                } else {
+                  console.log(`⚠ Could not sync PR #${pr.number}: ${error.message}`);
+                }
+              }
+            }
+
       - name: Summary
         run: |
           echo "## Changelog Updated" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Version**: \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Changelog has been updated and committed to main branch" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Changelog has been updated and committed to main branch" >> $GITHUB_STEP_SUMMARY
+          echo "🔄 All open PR branches have been synced with main" >> $GITHUB_STEP_SUMMARY

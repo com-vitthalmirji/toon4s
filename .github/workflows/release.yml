@@ -150,6 +150,22 @@ jobs:
           allowUpdates: true
           updateOnlyUnreleased: false
 
+      - name: Trigger Changelog Update
+        uses: actions/github-script@v7
+        env:
+          RELEASE_TAG: ${{ steps.tag.outputs.tag }}
+        with:
+          script: |
+            // Trigger changelog workflow after successful release
+            await github.rest.repos.createDispatchEvent({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              event_type: 'release-completed',
+              client_payload: {
+                tag: process.env.RELEASE_TAG
+              }
+            });
+
       - name: Release summary
         run: |
           echo "## Release Complete" >> $GITHUB_STEP_SUMMARY
@@ -161,3 +177,5 @@ jobs:
           echo "**Links**:" >> $GITHUB_STEP_SUMMARY
           echo "- [GitHub Release](https://github.com/${{ github.repository }}/releases/tag/${{ steps.tag.outputs.tag }})" >> $GITHUB_STEP_SUMMARY
           echo "- [Maven Central](https://central.sonatype.com/artifact/io.toonformat/toon4s-core_3/${{ steps.version.outputs.version }})" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "🔄 Changelog update and PR sync will run next..." >> $GITHUB_STEP_SUMMARY

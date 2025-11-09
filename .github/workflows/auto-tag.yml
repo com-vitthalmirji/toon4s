@@ -72,7 +72,7 @@ jobs:
             ci:patch:CI/CD,
             revert:patch:Reverts
 
-      - name: Trigger Release and Changelog Workflows
+      - name: Trigger Release Workflow
         if: steps.tag_version.outputs.new_tag != ''
         env:
           NEW_TAG: ${{ steps.tag_version.outputs.new_tag }}
@@ -80,6 +80,8 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
+            // Only trigger release workflow
+            // Changelog will run after release completes successfully
             await github.rest.repos.createDispatchEvent({
               owner: context.repo.owner,
               repo: context.repo.repo,
