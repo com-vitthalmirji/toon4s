@@ -71,6 +71,33 @@ jobs:
             ci:patch:CI/CD,
             revert:patch:Reverts
 
+      - name: Trigger Release Workflow
+        if: steps.tag_version.outputs.new_tag != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'release.yml',
+              ref: '${{ steps.tag_version.outputs.new_tag }}',
+              inputs: {
+                tag: '${{ steps.tag_version.outputs.new_tag }}'
+              }
+            });
+
+      - name: Trigger Changelog Workflow
+        if: steps.tag_version.outputs.new_tag != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'changelog.yml',
+              ref: 'main'
+            });
+
       - name: Summary
         if: steps.tag_version.outputs.new_tag != ''
         run: |
@@ -85,7 +112,7 @@ jobs:
           echo "${{ steps.tag_version.outputs.changelog }}" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "🚀 Release workflow will be triggered automatically" >> $GITHUB_STEP_SUMMARY
+          echo "🚀 Release and Changelog workflows triggered" >> $GITHUB_STEP_SUMMARY
 
       - name: No tag created
         if: steps.tag_version.outputs.new_tag == ''
