@@ -43,7 +43,7 @@ object KeyParser {
    *   Starting position in the content
    * @return
    *   Tuple of (key, position after colon)
-   * @throws DecodeError.Syntax
+   * @throws DecodeError#Syntax
    *   if key is malformed or colon is missing
    *
    * @example
@@ -68,7 +68,7 @@ object KeyParser {
    *   Starting position
    * @return
    *   Tuple of (key, position after colon)
-   * @throws DecodeError.Syntax
+   * @throws DecodeError#Syntax
    *   if colon is not found
    *
    * @example
@@ -98,7 +98,7 @@ object KeyParser {
    *   Starting position (should be at opening quote)
    * @return
    *   Tuple of (key, position after colon)
-   * @throws DecodeError.Syntax
+   * @throws DecodeError#Syntax
    *   if quote is unterminated or colon is missing
    *
    * @example

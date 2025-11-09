@@ -38,7 +38,7 @@ sealed trait ValidationPolicy {
    *   Expected number of items
    * @param itemType
    *   Description of what is being counted (e.g., "array items", "table rows")
-   * @throws DecodeError.Range
+   * @throws DecodeError#Range
    *   if validation fails and policy is strict
    */
   def validateArrayCount(actual: Int, expected: Int, itemType: String): Unit
@@ -52,7 +52,7 @@ sealed trait ValidationPolicy {
    *   Expected count
    * @param itemType
    *   Description of items
-   * @throws DecodeError.Range
+   * @throws DecodeError#Range
    *   if validation fails and policy is strict
    */
   def validateNoExtraItems(hasExtra: Boolean, expected: Int, itemType: String): Unit
@@ -64,7 +64,7 @@ sealed trait ValidationPolicy {
    *   Whether blank lines were detected
    * @param context
    *   Description of the context (e.g., "list array", "tabular array")
-   * @throws DecodeError.Syntax
+   * @throws DecodeError#Syntax
    *   if validation fails and policy is strict
    */
   def validateNoBlankLines(hasBlankLines: Boolean, context: String): Unit
@@ -76,7 +76,7 @@ sealed trait ValidationPolicy {
    *   Current nesting level
    * @param maxDepth
    *   Maximum allowed depth
-   * @throws DecodeError.Range
+   * @throws DecodeError#Range
    *   if validation fails
    */
   def validateDepth(currentDepth: Int, maxDepth: Option[Int]): Unit
@@ -88,7 +88,7 @@ sealed trait ValidationPolicy {
    *   Array length
    * @param maxLength
    *   Maximum allowed length
-   * @throws DecodeError.Range
+   * @throws DecodeError#Range
    *   if validation fails
    */
   def validateArrayLength(length: Int, maxLength: Option[Int]): Unit
@@ -100,7 +100,7 @@ sealed trait ValidationPolicy {
    *   String length
    * @param maxLength
    *   Maximum allowed length
-   * @throws DecodeError.Syntax
+   * @throws DecodeError#Syntax
    *   if validation fails
    */
   def validateStringLength(length: Int, maxLength: Option[Int]): Unit

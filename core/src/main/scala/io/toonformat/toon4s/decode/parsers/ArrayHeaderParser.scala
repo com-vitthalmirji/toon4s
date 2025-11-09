@@ -184,7 +184,7 @@ object ArrayHeaderParser {
    *   Default delimiter to use
    * @return
    *   Tuple of (length, delimiter, has marker flag)
-   * @throws DecodeError.InvalidHeader
+   * @throws DecodeError#InvalidHeader
    *   if length is not a valid integer
    *
    * @example

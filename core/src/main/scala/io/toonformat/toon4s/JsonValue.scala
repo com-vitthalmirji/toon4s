@@ -27,17 +27,17 @@ import scala.collection.immutable.VectorMap
  * }}}
  *
  * @see
- *   [[JString]] for string values
+ *   [[io.toonformat.toon4s.JsonValue.JString]] for string values
  * @see
- *   [[JNumber]] for numeric values
+ *   [[io.toonformat.toon4s.JsonValue.JNumber]] for numeric values
  * @see
- *   [[JBool]] for boolean values
+ *   [[io.toonformat.toon4s.JsonValue.JBool]] for boolean values
  * @see
- *   [[JNull]] for null
+ *   [[io.toonformat.toon4s.JsonValue.JNull]] for null
  * @see
- *   [[JArray]] for arrays
+ *   [[io.toonformat.toon4s.JsonValue.JArray]] for arrays
  * @see
- *   [[JObj]] for objects
+ *   [[io.toonformat.toon4s.JsonValue.JObj]] for objects
  */
 sealed trait JsonValue
 

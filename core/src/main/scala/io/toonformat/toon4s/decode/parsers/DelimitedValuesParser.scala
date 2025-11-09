@@ -114,7 +114,7 @@ object DelimitedValuesParser {
    *   Vector of string values to convert
    * @return
    *   Vector of JsonValue primitives
-   * @throws DecodeError.Syntax
+   * @throws DecodeError#Syntax
    *   if a value is not a primitive (array/object)
    *
    * @example
