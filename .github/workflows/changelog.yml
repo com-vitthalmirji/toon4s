@@ -52,8 +52,11 @@ jobs:
           git-cliff --version
 
       - name: Generate full changelog
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Generate changelog for all versions (from all tags)
+          # GITHUB_TOKEN enables fetching PR numbers and metadata
           git-cliff --config cliff.toml --verbose -o CHANGELOG.md
 
       - name: Commit and push changelog

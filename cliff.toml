@@ -9,7 +9,7 @@ body = """
 {% for group, commits in commits | group_by(attribute="group") %}
 ### {{ group | striptags | trim | upper_first }}
 {% for commit in commits %}
-- {{ commit.message | trim }}
+- {{ commit.message | trim | split(pat="\n") | first }} ([`{{ commit.id | truncate(length=7, end="") }}`](https://github.com/vim89/toon4s/commit/{{ commit.id }})){% if commit.github.pr_number %} [#{{ commit.github.pr_number }}](https://github.com/vim89/toon4s/pull/{{ commit.github.pr_number }}){% endif %}
 {% endfor %}
 
 {% endfor %}
@@ -38,3 +38,8 @@ commit_parsers = [
 filter_commits = false
 topo_order = false
 sort_commits = "oldest"
+
+# GitHub integration
+[remote.github]
+owner = "vim89"
+repo = "toon4s"
