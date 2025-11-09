@@ -2,38 +2,33 @@
 # Uses mathieudutour/github-tag-action for proven, reliable tagging
 #
 # Triggers:
-#   - Push to main branch (excluding documentation and workflow changes)
+#   - Push to main branch (NO paths-ignore to ensure ALL changes trigger releases)
 #   - Can be skipped with [skip ci] or [skip release] in commit message
 #
 # How it works:
 #   1. Analyzes commits since last tag using conventional commits
 #   2. Determines version bump (major/minor/patch) automatically
 #   3. Creates and pushes new tag if version changed
-#   4. Triggers release.yml workflow via tag push
+#   4. Triggers release.yml and changelog.yml workflows via tag push
 #
 # Conventional Commits:
 #   - feat: triggers MINOR version bump (0.1.0 -> 0.2.0)
 #   - fix: triggers PATCH version bump (0.1.0 -> 0.1.1)
 #   - feat!/fix! or BREAKING CHANGE: triggers MAJOR bump (0.1.0 -> 1.0.0)
-#   - chore/docs/test/refactor: triggers PATCH bump
+#   - chore/docs/test/refactor/ci/build: triggers PATCH bump
 #
 # Edge cases handled:
 #   - First tag starts at v0.1.0
 #   - No version bump if no relevant commits
 #   - Tag already exists: skips gracefully
 #   - Multiple commits: uses highest bump type
+#   - Workflow changes: WILL trigger release (no paths-ignore)
 
 name: Auto Tag
 
 on:
   push:
     branches: [main]
-    paths-ignore:
-      - 'README.md'
-      - 'docs/**'
-      - 'CHANGELOG.md'
-      - 'LICENSE'
-      - '.gitignore'
 
 concurrency:
   group: auto-tag-${{ github.ref }}

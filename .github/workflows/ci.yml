@@ -1,10 +1,9 @@
 name: CI
 
 on:
-  push:
-    branches: [ main, master ]
   pull_request:
   workflow_dispatch:
+  workflow_call:  # Allow being called by other workflows (e.g., release.yml)
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.head_ref || github.ref }}
