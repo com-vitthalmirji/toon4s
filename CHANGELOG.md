@@ -15,9 +15,17 @@
 
 - changelog triggers on repository_dispatch
 
+- use env vars in github-script to avoid syntax errors
+
+- add pull-requests write permission for ci workflow
+
 - changelog triggers on repository_dispatch
 
-- use env vars in github-script to avoid syntax errors
+
+
+### Documentation
+
+- update CHANGELOG.md for main [skip ci]
 
 
 
