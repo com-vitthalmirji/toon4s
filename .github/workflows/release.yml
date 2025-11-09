@@ -39,6 +39,7 @@ on:
 permissions:
   contents: write
   packages: write
+  actions: write  # For triggering changelog workflow
 
 jobs:
   # Run full CI suite first
