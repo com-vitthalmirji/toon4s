@@ -56,7 +56,7 @@ object ContextAwareParsers {
    *   Parse context for location tracking
    * @return
    *   Tuple of (key, position after colon)
-   * @throws DecodeError#Syntax
+   * @throws io.toonformat.toon4s.error.DecodeError.Syntax
    *   with location information if parsing fails
    *
    * @example
@@ -125,7 +125,7 @@ object ContextAwareParsers {
    *   Parse context for location tracking
    * @return
    *   The unescaped string value
-   * @throws DecodeError#Syntax
+   * @throws io.toonformat.toon4s.error.DecodeError.Syntax
    *   with location if parsing fails
    *
    * @example

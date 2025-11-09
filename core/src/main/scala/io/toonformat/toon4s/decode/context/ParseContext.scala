@@ -52,7 +52,7 @@ final case class ParseContext(
    *   The parsing operation to execute
    * @return
    *   Result of the block
-   * @throws DecodeError
+   * @throws io.toonformat.toon4s.error.DecodeError
    *   with location information if block throws DecodeError
    *
    * @example

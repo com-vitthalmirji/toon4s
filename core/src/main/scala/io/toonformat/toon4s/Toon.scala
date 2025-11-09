@@ -169,7 +169,7 @@ object Toon {
    *   Encoding options
    * @return
    *   The TOON string
-   * @throws EncodeError
+   * @throws io.toonformat.toon4s.error.EncodeError
    *   if encoding fails
    *
    * @example
@@ -192,7 +192,7 @@ object Toon {
    *   Decoding options
    * @return
    *   The decoded JsonValue
-   * @throws DecodeError
+   * @throws io.toonformat.toon4s.error.DecodeError
    *   if decoding fails
    *
    * @example

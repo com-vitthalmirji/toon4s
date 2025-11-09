@@ -42,7 +42,7 @@ object StringLiteralParser {
    *   The token to parse
    * @return
    *   The unescaped string value
-   * @throws DecodeError#Syntax
+   * @throws io.toonformat.toon4s.error.DecodeError.Syntax
    *   if quoted string is unterminated or has trailing content
    *
    * @example
@@ -106,7 +106,7 @@ object StringLiteralParser {
    *   The string with escape sequences (without surrounding quotes)
    * @return
    *   The unescaped string
-   * @throws DecodeError#Syntax
+   * @throws io.toonformat.toon4s.error.DecodeError.Syntax
    *   if an invalid escape sequence is encountered
    *
    * @example

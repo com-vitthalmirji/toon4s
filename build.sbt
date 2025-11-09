@@ -35,10 +35,6 @@ ThisBuild / scmInfo := Some(
   )
 )
 
-ThisBuild / publishMavenStyle := true
-
-ThisBuild / pomIncludeRepository := { _ => false }
-
 ThisBuild / scalafmtOnCompile := true
 
 ThisBuild / versionScheme := Some("early-semver")
@@ -47,6 +43,8 @@ ThisBuild / versionScheme := Some("early-semver")
 ThisBuild / dynverSeparator := "-" // Use '-' instead of '+' for better compatibility (docker, URLs, etc.)
 
 ThisBuild / dynverVTagPrefix := true // Expect tags like v1.0.0 (default behavior)
+
+ThisBuild / autoAPIMappings := true
 
 val commonScalacOptions = Seq(
   "-deprecation",
