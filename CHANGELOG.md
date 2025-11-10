@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.2.1] - 2025-11-10
+
+
+### Bug fixes
+- set GITHUB_REF env var for sbt-ci-release tag detection ([`e762bc4`](https://github.com/vim89/toon4s/commit/e762bc40e17b90d4b5a4fa8b105078e0f423b5c0)) by @vim89
+
+
+
+### Documentation
+- update CHANGELOG.md for main [skip ci] ([`574ae62`](https://github.com/vim89/toon4s/commit/574ae623fc4363d33eb9a1dd08ae7329483b633c)) by @github-actions[bot]
+
+
 ## [0.2.0] - 2025-11-09
 
 
@@ -20,6 +32,7 @@
 - update CHANGELOG.md for main [skip ci] ([`3366b9a`](https://github.com/vim89/toon4s/commit/3366b9a3250c685871d1be04b75db6b89fb4db7d)) by @github-actions[bot]
 - update CHANGELOG.md for main [skip ci] ([`d72a656`](https://github.com/vim89/toon4s/commit/d72a656130d998bde7eb18af5dcaccd85c2d4c30)) by @github-actions[bot]
 - update CHANGELOG.md for main [skip ci] ([`1f8d148`](https://github.com/vim89/toon4s/commit/1f8d148c091c90ae4a180e86b17e1ae855330ac6)) by @github-actions[bot]
+- test ([`a6578eb`](https://github.com/vim89/toon4s/commit/a6578eb171f149a863c004da5f21f4242bc48139)) by @vim89
 
 
 
