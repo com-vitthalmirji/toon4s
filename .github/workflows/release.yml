@@ -2,15 +2,16 @@
 # Uses sbt-ci-release (includes sbt-dynver, sbt-pgp, sbt-sonatype, sbt-git)
 #
 # Triggers:
-#   - Push of version tags (v*) - publishes release to Maven Central
+#   - Push of version tags (v*) - auto-triggered by auto-tag.yml
 #   - Manual trigger via workflow_dispatch
 #
 # How it works:
 #   1. Tag is created by auto-tag.yml based on conventional commits
-#   2. This workflow runs automatically when tag is pushed
+#   2. Tag push automatically triggers this workflow
 #   3. Calls ci.yml workflow to run full test suite (reuses PR tests)
 #   4. sbt-ci-release detects the tag and publishes to Maven Central
 #   5. Creates GitHub Release with CLI artifacts
+#   6. Triggers changelog.yml to update CHANGELOG.md
 #
 # Required GitHub Secrets:
 #   - PGP_PASSPHRASE: Passphrase for PGP signing key
@@ -27,8 +28,9 @@
 name: Release
 
 on:
-  repository_dispatch:
-    types: [release-tag-created]
+  push:
+    tags:
+      - 'v*'
   workflow_dispatch:
     inputs:
       tag:
@@ -61,8 +63,6 @@ jobs:
         run: |
           if [ -n "${{ github.event.inputs.tag }}" ]; then
             TAG="${{ github.event.inputs.tag }}"
-          elif [ -n "${{ github.event.client_payload.tag }}" ]; then
-            TAG="${{ github.event.client_payload.tag }}"
           else
             TAG="${{ github.ref_name }}"
           fi
