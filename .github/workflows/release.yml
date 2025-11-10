@@ -99,6 +99,7 @@ jobs:
           PGP_SECRET: ${{ secrets.PGP_SECRET }}
           SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
           SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
+          GITHUB_REF: refs/tags/${{ steps.tag.outputs.tag }}  # Tell sbt-ci-release this is a tag build
 
       - name: Package CLI artifacts
         run: sbt --batch --no-colors cli/Universal/packageBin cli/Universal/packageZipTarball
