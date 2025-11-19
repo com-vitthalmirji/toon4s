@@ -31,6 +31,8 @@ on:
   push:
     tags:
       - 'v*'
+  repository_dispatch:
+    types: [release-tag-created]
   workflow_dispatch:
     inputs:
       tag:
@@ -63,6 +65,8 @@ jobs:
         run: |
           if [ -n "${{ github.event.inputs.tag }}" ]; then
             TAG="${{ github.event.inputs.tag }}"
+          elif [ -n "${{ github.event.client_payload.tag }}" ]; then
+            TAG="${{ github.event.client_payload.tag }}"
           else
             TAG="${{ github.ref_name }}"
           fi
@@ -98,6 +102,7 @@ jobs:
           fi
 
       - name: Publish to Maven Central
+        id: maven_publish
         if: steps.version.outputs.is_snapshot == 'false'
         run: sbt --batch --no-colors ci-release
         env:
@@ -108,6 +113,7 @@ jobs:
           GITHUB_REF: refs/tags/${{ steps.tag.outputs.tag }}  # Tell sbt-ci-release this is a tag build
 
       - name: Publish SNAPSHOT to Sonatype
+        id: snapshot_publish
         if: steps.version.outputs.is_snapshot == 'true'
         run: sbt --batch --no-colors +publishSigned
         env:
@@ -117,6 +123,7 @@ jobs:
           SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
 
       - name: Package CLI artifacts
+        id: package_cli
         run: sbt --batch --no-colors cli/Universal/packageBin cli/Universal/packageZipTarball
 
       - name: Create GitHub Release
