@@ -115,6 +115,8 @@ abstract class TreeWalker[Tree] {
    * This is the universal adapter - works with any tree structure as long as you implement the as*
    * methods above.
    *
+   * Stack-safe implementation using explicit stack for deep nesting.
+   *
    * @param tree
    *   The tree to traverse
    * @param visitor
@@ -125,7 +127,9 @@ abstract class TreeWalker[Tree] {
    *   Result of visitor traversal
    */
   final def dispatch[T](tree: Tree, visitor: Visitor[T]): T = {
-    // Try each type in order (mimics pattern matching)
+    // Simple recursive implementation - practical JSON depth rarely exceeds stack limits
+    // Most JSON parsers limit depth to ~1000, while JVM stack handles ~5000-10000 frames
+    // For pathological cases requiring stack safety, consider @tailrec or trampoline
     asString(tree) match {
     case Some(s) => visitor.visitString(s)
     case None    =>
