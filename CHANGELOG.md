@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.3.0] - 2025-11-19
+
+
+### Bug fixes
+- Remove manual publishTo override, use sbt-ci-release defaults ([`5cbb704`](https://github.com/vim89/toon4s/commit/5cbb7045e0f2292629b3908bb7d57a5c748e5f54)) by @vim89
+- Ensure tags always have successful releases ([`139e291`](https://github.com/vim89/toon4s/commit/139e29189d83443777b788a5c2e2bbdc232c59f1)) by @vim89
+
+
+
+### Documentation
+- update CHANGELOG.md for main [skip ci] ([`2158688`](https://github.com/vim89/toon4s/commit/21586881707d9d3516723483245002822f8bccfe)) by @github-actions[bot]
+- Add stack safety comment to TreeWalker dispatch ([`7af1d48`](https://github.com/vim89/toon4s/commit/7af1d4884d64a25278079259209d2bdb501289a3)) by @vim89
+
+
+
+### Features
+- Add visitor pattern for zero-overhead tree processing ([`bdf8b2d`](https://github.com/vim89/toon4s/commit/bdf8b2dc13441f1681529162395eabffde294789)) by @vim89
+- Add snapshot release workflow ([`ee74d09`](https://github.com/vim89/toon4s/commit/ee74d099d0f4fa85b77e35c533ee81d06fa9c7b8)) by @vim89
+- Configure clean SNAPSHOT versioning for Maven Central ([`7853553`](https://github.com/vim89/toon4s/commit/7853553163ab5cd1a5b711379f457f4bdb6b05c2)) by @vim89
+- Add snapshot release workflow ([`d48d0a0`](https://github.com/vim89/toon4s/commit/d48d0a08dc8c15bd0318ce9cf088f0dc016ec562)) by @vim89
+
+
 ## [0.2.2] - 2025-11-10
 
 
