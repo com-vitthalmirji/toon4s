@@ -47,23 +47,6 @@ ThisBuild / dynverVTagPrefix := true // Expect tags like v1.0.0 (default behavio
 
 ThisBuild / dynverSonatypeSnapshots := true // Append -SNAPSHOT for Sonatype compatibility on non-tag builds
 
-// Custom version formatting: Use clean X.Y.Z-SNAPSHOT format (best practice: 1 minor ahead of latest release)
-ThisBuild / version := {
-  dynverGitDescribeOutput.value match {
-    case Some(v) if v.isSnapshot() =>
-      // For snapshots, bump minor version and use clean -SNAPSHOT suffix (e.g., 0.3.0-SNAPSHOT)
-      val tagVersion = v.ref.dropPrefix
-      val parts = tagVersion.split('.')
-      if (parts.length >= 2) {
-        val major = parts(0)
-        val minor = parts(1).toInt + 1
-        s"$major.$minor.0-SNAPSHOT"
-      } else v.sonatypeVersion
-    case Some(v) => v.ref.dropPrefix
-    case None => throw new IllegalStateException("No git describe output")
-  }
-}
-
 ThisBuild / autoAPIMappings := true
 
 val commonScalacOptions = Seq(

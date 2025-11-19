@@ -95,11 +95,29 @@ jobs:
           VERSION=$(sbt --batch --no-colors 'print version' | tail -1)
           echo "Version: $VERSION"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-          if [[ "$VERSION" =~ SNAPSHOT ]]; then
-            echo "is_snapshot=true" >> $GITHUB_OUTPUT
-          else
-            echo "is_snapshot=false" >> $GITHUB_OUTPUT
+
+          # Determine expected version from tag
+          TAG="${{ steps.tag.outputs.tag }}"
+          EXPECTED_VERSION="${TAG#v}"
+
+          # Strict sanity check: version must match tag exactly
+          if [ "$VERSION" != "$EXPECTED_VERSION" ]; then
+            echo "ERROR: Version mismatch!"
+            echo "  Tag: $TAG"
+            echo "  Expected version: $EXPECTED_VERSION"
+            echo "  Actual version: $VERSION"
+            exit 1
           fi
+
+          # Check if this is a snapshot (should not be for tags)
+          if [[ "$VERSION" =~ SNAPSHOT ]]; then
+            echo "ERROR: Tag release cannot have SNAPSHOT version!"
+            echo "  Tag: $TAG"
+            echo "  Version: $VERSION"
+            exit 1
+          fi
+
+          echo "is_snapshot=false" >> $GITHUB_OUTPUT
 
       - name: Publish to Maven Central
         id: maven_publish
