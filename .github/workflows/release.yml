@@ -129,6 +129,8 @@ jobs:
           SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
           SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
           CI_RELEASE: publishSigned
+          CI_COMMIT_TAG: ${{ steps.tag.outputs.tag }}
+          BUILD_SOURCEBRANCH: refs/tags/${{ steps.tag.outputs.tag }}
           GITHUB_REF: refs/tags/${{ steps.tag.outputs.tag }}
 
       - name: Publish SNAPSHOT to Sonatype
