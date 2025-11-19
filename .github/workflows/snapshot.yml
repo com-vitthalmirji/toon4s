@@ -1,0 +1,78 @@
+name: Publish Snapshot
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to publish snapshot from'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  publish-snapshot:
+    name: Publish SNAPSHOT to Sonatype
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Determine branch
+        id: branch
+        run: |
+          if [ -n "${{ github.event.inputs.branch }}" ]; then
+            BRANCH="${{ github.event.inputs.branch }}"
+          else
+            BRANCH="${{ github.ref_name }}"
+          fi
+          echo "branch=$BRANCH" >> $GITHUB_OUTPUT
+          echo "Publishing snapshot from branch: $BRANCH"
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.branch.outputs.branch }}
+          fetch-depth: 0
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: sbt
+
+      - name: Setup sbt
+        uses: sbt/setup-sbt@v1
+
+      - name: Get version
+        id: version
+        run: |
+          VERSION=$(sbt --batch --no-colors 'print version' | tail -1)
+          echo "Version: $VERSION"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          if [[ ! "$VERSION" =~ SNAPSHOT ]]; then
+            echo "Error: Not a SNAPSHOT version. Only snapshots can be published from branches."
+            exit 1
+          fi
+
+      - name: Publish snapshot
+        run: sbt --batch --no-colors +publishSigned
+        env:
+          PGP_PASSPHRASE: ${{ secrets.PGP_PASSPHRASE }}
+          PGP_SECRET: ${{ secrets.PGP_SECRET }}
+          SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
+          SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
+
+      - name: Summary
+        run: |
+          echo "## Snapshot Published" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Version**: \`${{ steps.version.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Repository**: Sonatype Snapshots" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Add to your build.sbt:" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`scala" >> $GITHUB_STEP_SUMMARY
+          echo "resolvers += \"Sonatype Snapshots\" at \"https://s01.oss.sonatype.org/content/repositories/snapshots\"" >> $GITHUB_STEP_SUMMARY
+          echo "libraryDependencies += \"io.toonformat\" %% \"toon4s-core\" % \"${{ steps.version.outputs.version }}\"" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
