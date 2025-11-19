@@ -92,7 +92,7 @@ jobs:
       - name: Get version
         id: version
         run: |
-          VERSION=$(sbt --batch --no-colors 'print version' | tail -1)
+          VERSION=$(sbt --batch --no-colors 'print version' | tail -1 | xargs)
           echo "Version: $VERSION"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
