@@ -20,8 +20,8 @@ final class DecodeOptionsBuilder[HasIndent] private (
    *   Number of spaces per indentation level
    * @return
    *   Builder with indent set
-   * @throws [[java.lang.IllegalArgumentException
-   *   IllegalArgumentException]] if indent is not positive or too large
+   * @throws IllegalArgumentException
+   *   if indent is not positive or too large
    *
    * @example
    *   {{{

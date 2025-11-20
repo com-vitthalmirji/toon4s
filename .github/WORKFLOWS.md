@@ -24,6 +24,7 @@ Code Push → CI Tests → Auto Tag → Changelog → Release
 
 **What it does**:
 - Quick checks: formatting, compilation, binary compatibility
+  (starts with `sbt clean` to avoid stale artifacts)
 - Tests: runs on multiple OS (Ubuntu, macOS, Windows) and Scala versions (3.3.3, 2.13.14)
 - Scaladoc: builds API docs early to catch broken links/annotations before merging
 - Smoke tests: CLI functionality

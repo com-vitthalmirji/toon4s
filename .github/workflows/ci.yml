@@ -13,7 +13,7 @@ concurrency:
 
 jobs:
   quick-checks:
-    name: Quick Checks
+    name: Quick checks
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -29,15 +29,17 @@ jobs:
           java-version: 21
           cache: sbt
 
+      - name: Clean workspace
+        run: sbt clean
 
       - name: scalafmt check
-        run: sbt scalafmtCheckAll
+        run: sbt clean scalafmtCheckAll
 
       - name: cross compile
-        run: sbt +compile
+        run: sbt clean +compile
 
       - name: binary compatibility check
-        run: sbt core/mimaReportBinaryIssues
+        run: sbt clean core/mimaReportBinaryIssues
 
   test:
     name: Test
@@ -104,7 +106,7 @@ jobs:
           cache: sbt
 
       - name: Generate core Scaladoc
-        run: sbt -Dsbt.log.noformat=true core/doc
+        run: sbt clean -Dsbt.log.noformat=true core/doc
 
   smoke:
     name: Smoke Tests
