@@ -24,8 +24,8 @@ final case class ErrorLocation(line: Int, column: Int, snippet: String) {
 /**
  * Base trait for all TOON format errors.
  *
- * All errors extend [[RuntimeException]] for Java interoperability and can be caught as standard
- * exceptions.
+ * All errors extend [[java.lang.RuntimeException RuntimeException]] for Java interoperability and
+ * can be caught as standard exceptions.
  *
  * @see
  *   [[EncodeError]] for encoding failures

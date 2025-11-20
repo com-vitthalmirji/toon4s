@@ -308,13 +308,14 @@ object ContextAwareParsers {
    *   Right((key, position)) or Left(error with location)
    *
    * @example
-   *   {{{
-   * val ctx = ParseContext(5, 1, "name: Alice")
-   * parseKeyTokenEither("name: Alice", 0)(ctx) match {
+   *   ```scala
+   *   val ctx = ParseContext(5, 1, "name: Alice")
+   *
+   *   parseKeyTokenEither("name: Alice", 0)(ctx) match {
    *   case Right((key, pos)) => println(s"Key: $key at position $pos")
    *   case Left(error)       => println(s"Error: ${error.getMessage}")
-   * }
-   *   }}}
+   *   }
+   *   ```
    */
   def parseKeyTokenEither(
       content: String,

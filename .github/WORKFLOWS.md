@@ -17,6 +17,7 @@ Code Push → CI Tests → Auto Tag → Changelog → Release
 **Purpose**: Run tests and checks on every push and pull request
 
 **Triggers**:
+- Pushes to `main`
 - Pull requests
 - Manual via `workflow_dispatch`
 - Reusable via `workflow_call` (e.g., invoked by `release.yml`)
@@ -24,6 +25,7 @@ Code Push → CI Tests → Auto Tag → Changelog → Release
 **What it does**:
 - Quick checks: formatting, compilation, binary compatibility
 - Tests: runs on multiple OS (Ubuntu, macOS, Windows) and Scala versions (3.3.3, 2.13.14)
+- Scaladoc: builds API docs early to catch broken links/annotations before merging
 - Smoke tests: CLI functionality
 - Budget gate: token savings verification
 - JMH benchmarks: performance tests

@@ -22,8 +22,8 @@ final class EncodeOptionsBuilder[HasIndent, HasDelimiter] private (
    *   Number of spaces per indentation level
    * @return
    *   Builder with indent set
-   * @throws IllegalArgumentException
-   *   if indent is not positive
+   * @throws [[java.lang.IllegalArgumentException
+   *   IllegalArgumentException]] if indent is not positive
    *
    * @example
    *   {{{
