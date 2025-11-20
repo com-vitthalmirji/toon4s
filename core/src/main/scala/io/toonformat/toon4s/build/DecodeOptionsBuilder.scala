@@ -20,8 +20,8 @@ final class DecodeOptionsBuilder[HasIndent] private (
    *   Number of spaces per indentation level
    * @return
    *   Builder with indent set
-   * @throws IllegalArgumentException
-   *   if indent is not positive or too large
+   *
+   * Throws `java.lang.IllegalArgumentException` if indent is not positive or too large.
    *
    * @example
    *   {{{
@@ -29,7 +29,7 @@ final class DecodeOptionsBuilder[HasIndent] private (
    * // Ok: DecodeOptions(indent = 2, strictness = Strict)
    *
    * DecodeOptionsBuilder.empty.indent(0).build
-   * // Throws: IllegalArgumentException("Indent must be positive, got: 0")
+   * // Throws: java.lang.IllegalArgumentException("Indent must be positive, got: 0")
    *   }}}
    */
   def indent(n: Int): DecodeOptionsBuilder[DPresent] = {
