@@ -22,8 +22,8 @@ final class EncodeOptionsBuilder[HasIndent, HasDelimiter] private (
    *   Number of spaces per indentation level
    * @return
    *   Builder with indent set
-   * @throws IllegalArgumentException
-   *   if indent is not positive
+   *
+   * Throws `java.lang.IllegalArgumentException` if indent is not positive.
    *
    * @example
    *   {{{
@@ -31,7 +31,7 @@ final class EncodeOptionsBuilder[HasIndent, HasDelimiter] private (
    * // Ok
    *
    * EncodeOptionsBuilder.empty.indent(0).delimiter(Delimiter.Comma).build
-   * // Throws: IllegalArgumentException("Indent must be positive, got: 0")
+   * // Throws: java.lang.IllegalArgumentException("Indent must be positive, got: 0")
    *   }}}
    */
   def indent(n: Int): EncodeOptionsBuilder[Present, HasDelimiter] = {
