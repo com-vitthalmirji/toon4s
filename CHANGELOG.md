@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.3.1] - 2025-11-20
+
+
+### Bug fixes
+- Force sbt-ci-release to do full release via CI_RELEASE env ([`480e896`](https://github.com/vim89/toon4s/commit/480e896a06d025e9e436041bce5176a6c76edcb2)) by @vim89
+- ci-release step exports both CI_COMMIT_TAG and BUILD_SOURCEBRANCH (alongside GITHUB_REF) with the actual tag being released. ([`07be7ec`](https://github.com/vim89/toon4s/commit/07be7ec387ae2963bee31e2669d8a4409e32bad6)) by @vim89
+- Maven release namespace and doc prerequisites ([`c366254`](https://github.com/vim89/toon4s/commit/c36625445041ed697fca17d9524c2aba5239a65e)) by @vim89
+
+
+
+### Documentation
+- update CHANGELOG.md for main [skip ci] ([`1fb9e87`](https://github.com/vim89/toon4s/commit/1fb9e876974e58b1033180df4ea62752a3ed6028)) by @github-actions[bot]
+
+
 ## [0.3.0] - 2025-11-19
 
 
