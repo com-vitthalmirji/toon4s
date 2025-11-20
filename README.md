@@ -611,7 +611,7 @@ sbt +test              # Scala 2.13 and 3.3 suites
 ```
 
 Releases are fully automated, but you must complete the prerequisites in
-[`docs/releasing.md`](docs/releasing.md) (namespace approval + PGP key upload)
+[`docs/releasing.md`](docs/internals/releasing.md) (namespace approval + PGP key upload)
 before the GitHub Actions workflows can publish to Maven Central.
 
 GitHub actions runs:

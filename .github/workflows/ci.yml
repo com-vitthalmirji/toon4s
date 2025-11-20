@@ -27,14 +27,6 @@ jobs:
           java-version: 21
           cache: sbt
 
-      - name: Cache Coursier
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/coursier
-            ~/.ivy2/cache
-            ~/.sbt
-          key: ${{ runner.os }}-quick-${{ hashFiles('**/build.sbt', '**/project/**') }}
 
       - name: scalafmt check
         run: sbt scalafmtCheckAll
@@ -79,18 +71,6 @@ jobs:
           java-version: ${{ matrix.java }}
           cache: sbt
 
-      - name: Cache Coursier
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/coursier
-            ~/.ivy2/cache
-            ~/.sbt
-          key: ${{ runner.os }}-${{ matrix.scala }}-${{ matrix.java }}-${{ hashFiles('**/build.sbt', '**/project/**') }}
-          restore-keys: |
-            ${{ runner.os }}-${{ matrix.scala }}-${{ matrix.java }}-
-            ${{ runner.os }}-${{ matrix.scala }}-
-            ${{ runner.os }}-
 
       - name: Run tests
         run: sbt "-Dsbt.log.noformat=true" ++${{ matrix.scala }} test
@@ -121,14 +101,6 @@ jobs:
           java-version: 21
           cache: sbt
 
-      - name: Cache Coursier
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/coursier
-            ~/.ivy2/cache
-            ~/.sbt
-          key: smoke-${{ hashFiles('**/build.sbt', '**/project/**') }}
 
       - name: CLI smoke test
         run: ./smoke-tests/run-smoke.sh
@@ -259,8 +231,26 @@ jobs:
     steps:
       - name: Verify upstream jobs
         run: |
-          if [[ "${{ needs.test.result }}" != "success" || "${{ needs.smoke.result }}" != "success" || "${{ needs.jmh.result }}" != "success" ]]; then
-            echo "One or more jobs failed."
+          declare -A results=(
+            [quick-checks]="${{ needs.quick-checks.result }}"
+            [test]="${{ needs.test.result }}"
+            [smoke]="${{ needs.smoke.result }}"
+            [budget]="${{ needs.budget.result }}"
+            [jmh]="${{ needs.jmh.result }}"
+          )
+
+          FAILED=0
+          for job in "${!results[@]}"; do
+            status="${results[$job]}"
+            echo "::notice title=${job}::status=${status}"
+            if [[ "$status" != "success" ]]; then
+              FAILED=1
+            fi
+          done
+
+          if [[ "$FAILED" -eq 1 ]]; then
+            echo "One or more CI stages failed or were skipped."
             exit 1
           fi
+
           echo "All checks passed."

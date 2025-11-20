@@ -8,7 +8,7 @@
 # How it works:
 #   1. Tag is created by auto-tag.yml based on conventional commits
 #   2. Tag push automatically triggers this workflow
-#   3. Calls ci.yml workflow to run full test suite (reuses PR tests)
+#   3. Checks whether ci.yml already succeeded for that commit; if not, reruns it automatically
 #   4. sbt-ci-release detects the tag and publishes to Maven Central
 #   5. Creates GitHub Release with CLI artifacts
 #   6. Triggers changelog.yml to update CHANGELOG.md
@@ -21,8 +21,8 @@
 #
 # Edge cases handled:
 #   - Only runs on tag pushes (not on main branch pushes)
-#   - Full CI test suite runs via workflow_call
-#   - Fails fast if tests fail or secrets missing
+#   - Reuses PR CI results and automatically reruns ci.yml if it didn't succeed
+#   - Fails fast if tests failed or secrets missing
 #   - Creates GitHub release only for version tags
 
 name: Release
@@ -46,19 +46,12 @@ permissions:
   actions: write  # For triggering changelog workflow
 
 jobs:
-  # Run full CI suite first
-  ci:
-    uses: ./.github/workflows/ci.yml
-    permissions:
-      contents: read
-      pull-requests: write
-
-  publish:
-    name: Publish to Maven Central
-    needs: ci
+  prepare:
+    name: Determine tag and verify CI
     runs-on: ubuntu-latest
-    timeout-minutes: 60
-
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+      require_ci: ${{ steps.verify_ci.outputs.require_ci }}
     steps:
       - name: Determine tag to release
         id: tag
@@ -73,10 +66,76 @@ jobs:
           echo "tag=$TAG" >> $GITHUB_OUTPUT
           echo "Releasing tag: $TAG"
 
+      - name: Ensure CI succeeded for tag commit
+        id: verify_ci
+        uses: actions/github-script@v7
+        env:
+          RELEASE_TAG: ${{ steps.tag.outputs.tag }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const tag = process.env.RELEASE_TAG;
+            if (!tag) {
+              core.setFailed('No release tag determined.');
+              return;
+            }
+
+            const { data: ref } = await github.rest.git.getRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: `tags/${tag}`,
+            });
+
+            const sha = ref.object.sha;
+            core.info(`Tag ${tag} points to commit ${sha}`);
+
+            const { data } = await github.rest.actions.listWorkflowRuns({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'ci.yml',
+              head_sha: sha,
+              per_page: 1,
+            });
+
+            const run = data.workflow_runs[0];
+            let requireCi = false;
+            if (!run) {
+              core.warning(`No CI workflow run found for commit ${sha}. Release workflow will rerun CI.`);
+              requireCi = true;
+            } else if (run.conclusion !== 'success') {
+              core.warning(`CI workflow run ${run.html_url} has conclusion ${run.conclusion}. Release workflow will rerun CI.`);
+              requireCi = true;
+            } else {
+              core.info(`CI workflow run ${run.html_url} succeeded at ${run.updated_at}.`);
+            }
+
+            core.setOutput('require_ci', requireCi ? 'true' : 'false');
+
+  ci:
+    name: Rerun CI if required
+    needs: prepare
+    if: needs.prepare.outputs.require_ci == 'true'
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+      pull-requests: write
+
+  publish:
+    name: Publish to Maven Central
+    needs: [prepare, ci]
+    if: |
+      needs.prepare.outputs.require_ci != 'true' ||
+      (needs.ci.result != 'failure')
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+
+    steps:
       - name: Checkout tag
         uses: actions/checkout@v4
         with:
-          ref: refs/tags/${{ steps.tag.outputs.tag }}
+          ref: refs/tags/${{ env.RELEASE_TAG }}
           fetch-depth: 0
 
       - name: Setup Java
@@ -109,18 +168,11 @@ jobs:
           echo "fingerprint=$KEY_FPR" >> "$GITHUB_OUTPUT"
           echo "Using GPG fingerprint: $KEY_FPR"
 
-          PUBLISHED=false
-          for server in hkps://keyserver.ubuntu.com hkps://pgp.mit.edu; do
-            if gpg --batch --keyserver "$server" --send-keys "$KEY_FPR"; then
-              echo "Uploaded public key to $server"
-              PUBLISHED=true
-            else
-              echo "Warning: Failed to upload key to $server" >&2
-            fi
-          done
-
-          if [ "$PUBLISHED" = false ]; then
-            echo "::warning::Unable to upload the public key to any keyserver. Ensure the fingerprint $KEY_FPR is published manually."
+          KEYSERVER="hkps://keyserver.ubuntu.com"
+          if gpg --batch --keyserver "$KEYSERVER" --send-keys "$KEY_FPR"; then
+            echo "Uploaded public key to $KEYSERVER"
+          else
+            echo "::warning::Failed to upload key to $KEYSERVER. Ensure the fingerprint $KEY_FPR is published manually."
           fi
 
       - name: Get version
@@ -131,7 +183,7 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
           # Determine expected version from tag
-          TAG="${{ steps.tag.outputs.tag }}"
+          TAG="${RELEASE_TAG}"
           EXPECTED_VERSION="${TAG#v}"
 
           # Strict sanity check: version must match tag exactly
@@ -151,41 +203,27 @@ jobs:
             exit 1
           fi
 
-          echo "is_snapshot=false" >> $GITHUB_OUTPUT
-
       - name: Publish to Maven Central
         id: maven_publish
-        if: steps.version.outputs.is_snapshot == 'false'
         run: sbt --batch --no-colors ci-release
         env:
           PGP_PASSPHRASE: ${{ secrets.PGP_PASSPHRASE }}
           PGP_SECRET: ${{ secrets.PGP_SECRET }}
           SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
           SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
-          CI_RELEASE: publishSigned
-          CI_COMMIT_TAG: ${{ steps.tag.outputs.tag }}
-          BUILD_SOURCEBRANCH: refs/tags/${{ steps.tag.outputs.tag }}
-          GITHUB_REF: refs/tags/${{ steps.tag.outputs.tag }}
-
-      - name: Publish SNAPSHOT to Sonatype
-        id: snapshot_publish
-        if: steps.version.outputs.is_snapshot == 'true'
-        run: sbt --batch --no-colors +publishSigned
-        env:
-          PGP_PASSPHRASE: ${{ secrets.PGP_PASSPHRASE }}
-          PGP_SECRET: ${{ secrets.PGP_SECRET }}
-          SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
-          SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
+          CI_RELEASE: +publishSigned
+          CI_COMMIT_TAG: ${{ env.RELEASE_TAG }}
+          BUILD_SOURCEBRANCH: refs/tags/${{ env.RELEASE_TAG }}
+          GITHUB_REF: refs/tags/${{ env.RELEASE_TAG }}
 
       - name: Package CLI artifacts
         id: package_cli
         run: sbt --batch --no-colors cli/Universal/packageBin cli/Universal/packageZipTarball
 
       - name: Create GitHub Release
-        if: steps.version.outputs.is_snapshot == 'false'
         uses: ncipollo/release-action@v1
         with:
-          tag: ${{ steps.tag.outputs.tag }}
+          tag: ${{ env.RELEASE_TAG }}
           name: toon4s ${{ steps.version.outputs.version }}
           body: |
             ## toon4s ${{ steps.version.outputs.version }}
@@ -201,14 +239,23 @@ jobs:
 
             **sbt**:
             ```scala
+            // Resolves to _3 or _2.13 automatically based on scalaVersion in your build
             libraryDependencies += "com.vitthalmirji" %% "toon4s-core" % "${{steps.version.outputs.version}}"
             ```
 
-            **Maven**:
+            **Maven (Scala 3)**:
             ```xml
             <dependency>
               <groupId>com.vitthalmirji</groupId>
               <artifactId>toon4s-core_3</artifactId>
+              <version>${{steps.version.outputs.version}}</version>
+            </dependency>
+            ```
+            **Maven (Scala 2.13)**:
+            ```xml
+            <dependency>
+              <groupId>com.vitthalmirji</groupId>
+              <artifactId>toon4s-core_2.13</artifactId>
               <version>${{steps.version.outputs.version}}</version>
             </dependency>
             ```
@@ -217,7 +264,8 @@ jobs:
             
             ### Links
 
-            - [Maven Central](https://central.sonatype.com/artifact/com.vitthalmirji/toon4s-core_3/${{steps.version.outputs.version}})
+            - [Maven Central (Scala 3)](https://central.sonatype.com/artifact/com.vitthalmirji/toon4s-core_3/${{steps.version.outputs.version}})
+            - [Maven Central (Scala 2.13)](https://central.sonatype.com/artifact/com.vitthalmirji/toon4s-core_2.13/${{steps.version.outputs.version}})
             - [Documentation](https://github.com/${{github.repository}})
             
             ---
@@ -231,10 +279,7 @@ jobs:
           updateOnlyUnreleased: false
 
       - name: Trigger Changelog Update
-        if: steps.version.outputs.is_snapshot == 'false'
         uses: actions/github-script@v7
-        env:
-          RELEASE_TAG: ${{ steps.tag.outputs.tag }}
         with:
           script: |
             // Trigger changelog workflow after successful release
@@ -248,7 +293,6 @@ jobs:
             });
 
       - name: Release summary
-        if: steps.version.outputs.is_snapshot == 'false'
         run: |
           echo "## Release Complete" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -257,22 +301,8 @@ jobs:
           echo "**Published**: com.vitthalmirji:toon4s-core_3, com.vitthalmirji:toon4s-core_2.13 → Maven Central" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Links**:" >> $GITHUB_STEP_SUMMARY
-          echo "- [GitHub Release](https://github.com/${{ github.repository }}/releases/tag/${{ steps.tag.outputs.tag }})" >> $GITHUB_STEP_SUMMARY
-          echo "- [Maven Central](https://central.sonatype.com/artifact/com.vitthalmirji/toon4s-core_3/${{ steps.version.outputs.version }})" >> $GITHUB_STEP_SUMMARY
+          echo "- [GitHub Release](https://github.com/${{ github.repository }}/releases/tag/${{ env.RELEASE_TAG }})" >> $GITHUB_STEP_SUMMARY
+          echo "- [Maven Central (Scala 3)](https://central.sonatype.com/artifact/com.vitthalmirji/toon4s-core_3/${{ steps.version.outputs.version }})" >> $GITHUB_STEP_SUMMARY
+          echo "- [Maven Central (Scala 2.13)](https://central.sonatype.com/artifact/com.vitthalmirji/toon4s-core_2.13/${{ steps.version.outputs.version }})" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "🔄 Changelog update and PR sync will run next..." >> $GITHUB_STEP_SUMMARY
-
-      - name: Snapshot summary
-        if: steps.version.outputs.is_snapshot == 'true'
-        run: |
-          echo "## Snapshot Published" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Version**: \`${{ steps.version.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Repository**: Sonatype Snapshots" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Add to your build.sbt:" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`scala" >> $GITHUB_STEP_SUMMARY
-          echo "resolvers += \"Sonatype Snapshots\" at \"https://s01.oss.sonatype.org/content/repositories/snapshots\"" >> $GITHUB_STEP_SUMMARY
-          echo "libraryDependencies += \"com.vitthalmirji\" %% \"toon4s-core\" % \"${{ steps.version.outputs.version }}\"" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
