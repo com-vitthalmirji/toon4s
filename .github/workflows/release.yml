@@ -89,6 +89,40 @@ jobs:
       - name: Setup sbt
         uses: sbt/setup-sbt@v1
 
+      - name: Import and publish GPG key
+        id: gpg
+        env:
+          PGP_SECRET: ${{ secrets.PGP_SECRET }}
+        run: |
+          set -euo pipefail
+          if [ -z "${PGP_SECRET:-}" ]; then
+            echo "PGP_SECRET is not configured"
+            exit 1
+          fi
+
+          echo "$PGP_SECRET" | base64 --decode | gpg --batch --import
+          KEY_FPR=$(gpg --list-secret-keys --with-colons | awk -F: '/^fpr:/ { print $10; exit }')
+          if [ -z "$KEY_FPR" ]; then
+            echo "Could not determine GPG key fingerprint"
+            exit 1
+          fi
+          echo "fingerprint=$KEY_FPR" >> "$GITHUB_OUTPUT"
+          echo "Using GPG fingerprint: $KEY_FPR"
+
+          PUBLISHED=false
+          for server in hkps://keyserver.ubuntu.com hkps://pgp.mit.edu; do
+            if gpg --batch --keyserver "$server" --send-keys "$KEY_FPR"; then
+              echo "Uploaded public key to $server"
+              PUBLISHED=true
+            else
+              echo "Warning: Failed to upload key to $server" >&2
+            fi
+          done
+
+          if [ "$PUBLISHED" = false ]; then
+            echo "::warning::Unable to upload the public key to any keyserver. Ensure the fingerprint $KEY_FPR is published manually."
+          fi
+
       - name: Get version
         id: version
         run: |
@@ -167,13 +201,13 @@ jobs:
 
             **sbt**:
             ```scala
-            libraryDependencies += "io.toonformat" %% "toon4s-core" % "${{steps.version.outputs.version}}"
+            libraryDependencies += "com.vitthalmirji" %% "toon4s-core" % "${{steps.version.outputs.version}}"
             ```
 
             **Maven**:
             ```xml
             <dependency>
-              <groupId>io.toonformat</groupId>
+              <groupId>com.vitthalmirji</groupId>
               <artifactId>toon4s-core_3</artifactId>
               <version>${{steps.version.outputs.version}}</version>
             </dependency>
@@ -183,7 +217,7 @@ jobs:
             
             ### Links
 
-            - [Maven Central](https://central.sonatype.com/artifact/io.toonformat/toon4s-core_3/${{steps.version.outputs.version}})
+            - [Maven Central](https://central.sonatype.com/artifact/com.vitthalmirji/toon4s-core_3/${{steps.version.outputs.version}})
             - [Documentation](https://github.com/${{github.repository}})
             
             ---
@@ -220,11 +254,11 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Version**: \`${{ steps.version.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Published**: toon4s-core_3, toon4s-core_2.13 → Maven Central" >> $GITHUB_STEP_SUMMARY
+          echo "**Published**: com.vitthalmirji:toon4s-core_3, com.vitthalmirji:toon4s-core_2.13 → Maven Central" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Links**:" >> $GITHUB_STEP_SUMMARY
           echo "- [GitHub Release](https://github.com/${{ github.repository }}/releases/tag/${{ steps.tag.outputs.tag }})" >> $GITHUB_STEP_SUMMARY
-          echo "- [Maven Central](https://central.sonatype.com/artifact/io.toonformat/toon4s-core_3/${{ steps.version.outputs.version }})" >> $GITHUB_STEP_SUMMARY
+          echo "- [Maven Central](https://central.sonatype.com/artifact/com.vitthalmirji/toon4s-core_3/${{ steps.version.outputs.version }})" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "🔄 Changelog update and PR sync will run next..." >> $GITHUB_STEP_SUMMARY
 
@@ -240,5 +274,5 @@ jobs:
           echo "Add to your build.sbt:" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`scala" >> $GITHUB_STEP_SUMMARY
           echo "resolvers += \"Sonatype Snapshots\" at \"https://s01.oss.sonatype.org/content/repositories/snapshots\"" >> $GITHUB_STEP_SUMMARY
-          echo "libraryDependencies += \"io.toonformat\" %% \"toon4s-core\" % \"${{ steps.version.outputs.version }}\"" >> $GITHUB_STEP_SUMMARY
+          echo "libraryDependencies += \"com.vitthalmirji\" %% \"toon4s-core\" % \"${{ steps.version.outputs.version }}\"" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY

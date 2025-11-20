@@ -44,6 +44,40 @@ jobs:
       - name: Setup sbt
         uses: sbt/setup-sbt@v1
 
+      - name: Import and publish GPG key
+        id: gpg
+        env:
+          PGP_SECRET: ${{ secrets.PGP_SECRET }}
+        run: |
+          set -euo pipefail
+          if [ -z "${PGP_SECRET:-}" ]; then
+            echo "PGP_SECRET is not configured"
+            exit 1
+          fi
+
+          echo "$PGP_SECRET" | base64 --decode | gpg --batch --import
+          KEY_FPR=$(gpg --list-secret-keys --with-colons | awk -F: '/^fpr:/ { print $10; exit }')
+          if [ -z "$KEY_FPR" ]; then
+            echo "Could not determine GPG key fingerprint"
+            exit 1
+          fi
+          echo "fingerprint=$KEY_FPR" >> "$GITHUB_OUTPUT"
+          echo "Using GPG fingerprint: $KEY_FPR"
+
+          PUBLISHED=false
+          for server in hkps://keyserver.ubuntu.com hkps://pgp.mit.edu; do
+            if gpg --batch --keyserver "$server" --send-keys "$KEY_FPR"; then
+              echo "Uploaded public key to $server"
+              PUBLISHED=true
+            else
+              echo "Warning: Failed to upload key to $server" >&2
+            fi
+          done
+
+          if [ "$PUBLISHED" = false ]; then
+            echo "::warning::Unable to upload the public key to any keyserver. Ensure the fingerprint $KEY_FPR is published manually."
+          fi
+
       - name: Get version
         id: version
         run: |

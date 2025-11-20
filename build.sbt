@@ -6,7 +6,7 @@ lazy val Scala3Latest = "3.3.3"
 
 lazy val Scala213Latest = "2.13.14"
 
-ThisBuild / organization := "io.toonformat"
+ThisBuild / organization := "com.vitthalmirji"
 
 ThisBuild / scalaVersion := Scala3Latest
 

@@ -274,7 +274,7 @@ See also: [Token benchmarks](./SCALA-TOON-SPECIFICATION.md#token-benchmarks)
 
 ```scala
 // build.sbt
-libraryDependencies += "io.toonformat" %% "toon4s-core" % "0.1.0"
+libraryDependencies += "com.vitthalmirji" %% "toon4s-core" % "0.1.0"
 ```
 
 Prefer CLI only? Ship the staged script (diagram below):
@@ -609,6 +609,10 @@ sbt scalafmtCheckAll   # formatting
 sbt +test              # Scala 2.13 and 3.3 suites
 ./smoke-tests/run-smoke.sh
 ```
+
+Releases are fully automated, but you must complete the prerequisites in
+[`docs/releasing.md`](docs/releasing.md) (namespace approval + PGP key upload)
+before the GitHub Actions workflows can publish to Maven Central.
 
 GitHub actions runs:
 
