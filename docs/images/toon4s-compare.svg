@@ -28,9 +28,9 @@
   <text x="20" y="410" class="t">Production hardened</text>
 
   <!-- Row 1: Conformance -->
-  <rect x="220" y="80" width="140" height="30" class="cell ok"/><text x="250" y="100" class="t">v2.0.1 spec</text>
-  <rect x="400" y="80" width="140" height="30" class="cell ok"/><text x="430" y="100" class="t">v2.0.1 spec</text>
-  <rect x="580" y="80" width="140" height="30" class="cell ok"/><text x="610" y="100" class="t">v2.0.1 spec</text>
+  <rect x="220" y="80" width="140" height="30" class="cell ok"/><text x="250" y="100" class="t">v2.1.0 spec</text>
+  <rect x="400" y="80" width="140" height="30" class="cell ok"/><text x="430" y="100" class="t">v2.1.0 spec</text>
+  <rect x="580" y="80" width="140" height="30" class="cell ok"/><text x="610" y="100" class="t">v2.1.0 spec</text>
 
   <!-- Row 2: Token savings -->
   <rect x="220" y="115" width="140" height="30" class="cell ok"/><text x="232" y="135" class="t">30-60%</text>

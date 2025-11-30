@@ -201,7 +201,7 @@ object ArrayHeaderParser {
     var content = seg
 
     if (content.startsWith("#")) {
-      throw DecodeError.InvalidHeader("Length marker syntax [#N] is not supported in TOON v2.0")
+      throw DecodeError.InvalidHeader("Length marker syntax [#N] is not supported in TOON v2.x")
     }
 
     // Check for delimiter suffix
