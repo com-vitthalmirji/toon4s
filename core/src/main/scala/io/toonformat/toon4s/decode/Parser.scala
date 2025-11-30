@@ -65,7 +65,7 @@ object Parser {
    * @see
    *   [[parsers.ArrayHeaderParser.parseBracketSegment]]
    */
-  def parseBracketSegment(seg: String, defaultDelim: Delimiter): (Int, Delimiter, Boolean) =
+  def parseBracketSegment(seg: String, defaultDelim: Delimiter): (Int, Delimiter) =
     ArrayHeaderParser.parseBracketSegment(seg, defaultDelim)
 
   /**

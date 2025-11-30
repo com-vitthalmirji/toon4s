@@ -4,7 +4,7 @@
   "description": "Tabular array encoding - arrays of uniform objects with primitive values",
   "tests": [
     {
-      "name": "encodes arrays of similar objects in tabular format",
+      "name": "encodes arrays of uniform objects in tabular format",
       "input": {
         "items": [
           { "sku": "A1", "qty": 2, "price": 9.99 },

@@ -84,7 +84,16 @@ object ImmutableDecoders {
       case Some(first) if isArrayHeaderAfterHyphen(first.content) =>
         Parser.parseArrayHeaderLine(first.content, Delimiter.Comma) match {
         case Some((header, inline)) =>
-          val (result, _) = decodeArrayFromHeader(header, inline, cursor.advance, 0, options)
+          val (result, _) =
+            decodeArrayFromHeader(
+              header,
+              inline,
+              cursor.advance,
+              0,
+              options,
+              1,
+              allowFallback = false,
+            )
           result
         case None =>
           if (scan.lines.length == 1 && !isKeyValueLine(first))
@@ -263,6 +272,7 @@ object ImmutableDecoders {
       cursor: ImmutableLineCursor,
       depth: Int,
       options: DecodeOptions,
+      listContext: Boolean = false,
   )(implicit strictness: Strictness): (JsonValue, ImmutableLineCursor) = {
     cursor.peek match {
     case Some(line) if line.depth < depth =>
@@ -275,7 +285,17 @@ object ImmutableDecoders {
       // Check for array header
       Parser.parseArrayHeaderLine(content, Delimiter.Comma) match {
       case Some((header, inline)) =>
-        decodeArrayFromHeader(header, inline, cursor.advance, depth, options)
+        val rowOffset = if (listContext && header.fields.nonEmpty) 2 else 1
+        val allowFallback = listContext && rowOffset > 1
+        decodeArrayFromHeader(
+          header,
+          inline,
+          cursor.advance,
+          depth,
+          options,
+          rowOffset,
+          allowFallback,
+        )
 
       case None if content.startsWith(Constants.ListItemPrefix) =>
         // List array
@@ -325,6 +345,8 @@ object ImmutableDecoders {
       cursor: ImmutableLineCursor,
       baseDepth: Int,
       options: DecodeOptions,
+      rowDepthOffset: Int,
+      allowFallback: Boolean,
   )(implicit strictness: Strictness): (JsonValue, ImmutableLineCursor) = {
     Validation.validateArrayLength(header.length, options)
 
@@ -338,7 +360,14 @@ object ImmutableDecoders {
 
     case None if header.fields.nonEmpty =>
       // Tabular array
-      decodeTabularArray(cursor, header, baseDepth, options)
+      decodeTabularArrayWithFallback(
+        cursor,
+        header,
+        baseDepth,
+        options,
+        rowDepthOffset,
+        allowFallback,
+      )
 
     case None =>
       // List array
@@ -380,7 +409,7 @@ object ImmutableDecoders {
       else {
         current.peek match {
         case Some(line) if line.depth == itemDepth =>
-          val (value, nextCursor) = decodeValue(current, itemDepth, options)
+          val (value, nextCursor) = decodeValue(current, itemDepth, options, listContext = true)
           collectItems(nextCursor, acc :+ value, count + 1)
 
         case _ => (acc, current)
@@ -420,7 +449,7 @@ object ImmutableDecoders {
       current.peek match {
       case Some(line)
           if line.depth == depth && line.content.startsWith(Constants.ListItemPrefix) =>
-        val (value, nextCursor) = decodeValue(current, depth, options)
+        val (value, nextCursor) = decodeValue(current, depth, options, listContext = true)
         collectItems(nextCursor, acc :+ value)
 
       case _ => (acc, current)
@@ -452,8 +481,10 @@ object ImmutableDecoders {
       header: parsers.ArrayHeaderInfo,
       baseDepth: Int,
       options: DecodeOptions,
+      rowDepthOffset: Int,
   )(implicit strictness: Strictness): (JsonValue, ImmutableLineCursor) = {
-    val rowDepth = baseDepth + 1
+    val declaredDepth = baseDepth + rowDepthOffset
+    val rowDepth = cursor.peek.map(_.depth).filter(_ > baseDepth).getOrElse(declaredDepth)
 
     @tailrec
     def collectRows(
@@ -478,6 +509,25 @@ object ImmutableDecoders {
     val (rows, finalCursor) = collectRows(cursor, Vector.empty, 0)
     Validation.assertExpectedCount(rows.length, header.length, "tabular rows")
     (JArray(rows), finalCursor)
+  }
+
+  private def decodeTabularArrayWithFallback(
+      cursor: ImmutableLineCursor,
+      header: parsers.ArrayHeaderInfo,
+      baseDepth: Int,
+      options: DecodeOptions,
+      primaryOffset: Int,
+      allowFallback: Boolean,
+  )(implicit strictness: Strictness): (JsonValue, ImmutableLineCursor) = {
+    try decodeTabularArray(cursor, header, baseDepth, options, primaryOffset)
+    catch {
+      case err: DecodeError if allowFallback =>
+        val candidateOffset = cursor.peek.map(_.depth - baseDepth).getOrElse(primaryOffset)
+        val fallbackOffset =
+          if (candidateOffset > 0 && candidateOffset != primaryOffset) candidateOffset
+          else math.max(1, primaryOffset - 1)
+        decodeTabularArray(cursor, header, baseDepth, options, fallbackOffset)
+    }
   }
 
   /**

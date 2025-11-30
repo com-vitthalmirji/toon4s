@@ -17,7 +17,7 @@ a compact, LLM-friendly data format that blends YAML-style indentation with CSV-
 - **Type safety first**: sealed ADTs, exhaustive pattern matching, zero unsafe casts, VectorMap for deterministic ordering
 - **Stack-safe by design**: @tailrec-verified functions, constant stack usage, handles arbitrarily deep structures
 - **Modern JVM ready**: Virtual thread compatible (no ThreadLocal), streaming optimized, zero dependencies (491KB core JAR)
-- **Production hardened**: 480+ passing tests, property-based testing, Either-based error handling, security limits
+- **Production hardened**: 500+ passing tests, property-based testing, Either-based error handling, security limits
 - **Railway-oriented programming**: For-comprehension error handling, no exceptions in happy paths, composable with Cats/ZIO/FS2
 
 > **Example**: `{ "tags": ["jazz","chill","lofi"] }` → `tags[3]: jazz,chill,lofi` (40-60% token savings)
@@ -48,7 +48,7 @@ a compact, LLM-friendly data format that blends YAML-style indentation with CSV-
 
 | Theme | What you get                                                                                                                                                                 | Why it matters on the JVM |
 | ----- |------------------------------------------------------------------------------------------------------------------------------------------------------------------------------| ------------------------- |
-| **Spec‑complete** | Full conformance with TOON v1.4 spec; parity with `toon` (TS) and `JToon` (Java).                                                                                            | Mixed stacks behave the same; token math is consistent across platforms. |
+| **Spec‑complete** | Targets TOON v2.1.0 and emits the v3 row-depth (+2) layout for tabular arrays in list-item first-field position; parity with `toon` (TS) and `JToon` (Java).               | Mixed stacks behave the same; token math is consistent across platforms. |
 | **Typed APIs (2 & 3)** | Scala 3 derivation for `Encoder`/`Decoder`; Scala 2.13 typeclasses via `ToonTyped`.                                                                                          | Compile‑time guarantees, no `Any`; safer refactors and zero-cost abstractions. |
 | **Pure & total** | All encoders/decoders are pure functions; decode returns `Either[DecodeError, JsonValue]`.                                                                                   | Idiomatic FP: easy to compose in Cats/ZIO/FS2; referentially transparent. |
 | **Deterministic ADTs** | `JsonValue` as a sealed ADT with `VectorMap` for objects; stable field ordering.                                                                                             | Exhaustive pattern matching; predictable serialization for testing/debugging. |
@@ -58,7 +58,7 @@ a compact, LLM-friendly data format that blends YAML-style indentation with CSV-
 | **Strictness profiles** | `Strict` (spec-compliant) vs `Lenient` (error-tolerant) modes with validation policies.                                                                                      | Safer ingestion of LLM outputs and human-edited data; configurable validation. |
 | **CLI with budgets** | Built-in `--stats` (token counts), `--optimize` (delimiter selection); cross-platform.                                                                                       | Track token savings in CI/CD; pick optimal delimiter for your data shape. |
 | **Virtual thread ready** | No ThreadLocal usage; compatible with Java 21+ Project Loom virtual threads.                                                                                                 | Future-proof for modern JVM concurrency; scales to millions of concurrent tasks. |
-| **Production hardened** | 480+ passing tests; property-based testing; strict mode validation; security limits.                                                                                         | Battle-tested edge cases; prevents DoS via depth/length limits; safe for production. |
+| **Production hardened** | 500+ passing tests; property-based testing; strict mode validation; security limits.                                                                                         | Battle-tested edge cases; prevents DoS via depth/length limits; safe for production. |
 
 ---
 
@@ -158,7 +158,7 @@ xs.foldLeft[Either[DecodeError, List[A]]](Right(Nil)) {
 | Metric | Value                    | Meaning |
 |--------|--------------------------|---------|
 | **Production code** | 5,887 lines (56 files)   | Well-organized, modular |
-| **Test coverage** | 480+ tests, 100% passing | Comprehensive validation |
+| **Test coverage** | 500+ tests, 100% passing | Comprehensive validation |
 | **Tail-recursive fns** | With `@tailrec`          | Stack-safe, verified |
 | **Sealed ADTs** | traits/classes           | Exhaustive matching |
 | **VectorMap usage** | 32+ occurrences          | Deterministic ordering |
@@ -214,7 +214,7 @@ See also: [SCALA-TOON-SPECIFICATION.md](./SCALA-TOON-SPECIFICATION.md) for encod
 
 <img src="docs/images/toon4s-usp2.svg" alt="toon4s Scala USP diagram" width="760" />
 
-See also: [Encoding rules](./SCALA-TOON-SPECIFICATION.md#encoding-rules), [Strict mode](./SCALA-TOON-SPECIFICATION.md#strict-mode-semantics), [Delimiters & markers](./SCALA-TOON-SPECIFICATION.md#delimiters--length-markers)
+See also: [Encoding rules](./SCALA-TOON-SPECIFICATION.md#encoding-rules), [Strict mode](./SCALA-TOON-SPECIFICATION.md#strict-mode-semantics), [Delimiters & headers](./SCALA-TOON-SPECIFICATION.md#delimiters--length-markers)
 
 ## Benchmarks at a glance
 
@@ -325,8 +325,8 @@ println(json)
 # Encode JSON -> TOON with 4-space indentation and tab delimiters
 toon4s-cli --encode data.json --indent 4 --delimiter tab -o data.toon
 
-# Decode TOON -> JSON (strict mode on by default)
-toon4s-cli --decode data.toon --strict true -o roundtrip.json
+# Decode TOON -> JSON (strict mode on by default; pass lenient if needed)
+toon4s-cli --decode data.toon --strictness lenient -o roundtrip.json
 ```
 
 Available flags:
@@ -336,10 +336,13 @@ Available flags:
 | `--encode` / `--decode` | Required: choose direction explicitly. |
 | `--indent <n>` | Pretty-print indentation (default `2`). |
 | `--delimiter <comma\|tab\|pipe>` | Column delimiter for tabular arrays. |
-| `--length-marker` | Emit `[#N]` markers to disambiguate lengths in prompts. |
+| `--key-folding <off\|safe>` | Fold single-key object chains into dotted paths (safe mode respects quoting). |
+| `--flatten-depth <n>` | Limit folding depth when `--key-folding safe` (default: unlimited). |
+| `--expand-paths <off\|safe>` | Decode dotted keys into nested objects (safe mode keeps quoted literals). |
+| `--strictness <strict\|lenient>` | Strict enforces spec errors; lenient tolerates recoverable issues. |
+| `--optimize` | Auto-pick delimiter and folding for token savings (implies `--stats`). |
 | `--stats` | Print input/output token counts and savings to stderr. |
 | `--tokenizer <cl100k\|o200k\|p50k\|r50k>` | Select tokenizer for `--stats` (default `cl100k`). |
-| `--strict <bool>` | Enforce indentation/escape rules when decoding. |
 | `-o, --output <file>` | Target file (stdout when omitted). |
 
 Use `--stats` to measure token impact. Choose a tokenizer with `--tokenizer` (e.g., `o200k`).
@@ -358,7 +361,7 @@ flowchart LR
     scala["Scala data\nMap / Case Class / Iterable"]
     norm["Normalize\n(JsonValue)"]
     encoder["Encoders\n(pure)"]
-    toon["TOON text\n(length markers, headers)"]
+    toon["TOON text\n(headers)"]
     llm["LLM prompt\n(token-efficient)"]
 
     scala --> norm --> encoder --> toon --> llm
@@ -381,7 +384,7 @@ orders[2]{id,user,total,items}:
   1002,bob,15.00,[1]: gift-card
 ```
 
-- `orders[2]` says “array length 2”. Optional `#` makes it `[#2]`.
+- `orders[2]` says “array length 2”.
 - `{id,user,...}` declares columns for the following rows.
 - Nested arrays either go inline (`[3]: gift-card,store-credit`) or open their own blocks.
 
@@ -395,7 +398,7 @@ See also: [Encoding rules](./SCALA-TOON-SPECIFICATION.md#encoding-rules)
 
 - **Strict indentation**: use spaces (tabs rejected when `strict=true`). Indent levels must be multiples of `DecodeOptions.indent`.
 - **Quotes only when required**: strings with spaces, delimiters, or structural characters need `".."` wrapping.
-- **Length markers**: recommended for LLM prompts; they let you validate response lengths quickly.
+- **Array headers carry lengths**: headers include the declared row count; strict mode validates it. Keep them intact in prompts to cross-check model output.
 - **Delimiters**: choose comma (default), tab (token-efficient), or pipe (human-friendly). The delimiter is encoded in the header, so consumers know what to expect.
 - **Uniform rows**: tabular arrays must have consistent field counts; strict mode enforces this.
 
@@ -522,13 +525,13 @@ System: You are a precise data validator.
 User:
 Please read the following TOON payload describing purchase orders.
 Return JSON with fields {id, total, status} for every order with total > 100.
-Validate row counts against the markers.
+Validate row counts against the headers.
 ```
 
 Then attach:
 
 ```
-orders[#3]{id,total,status}:
+orders[3]{id,total,status}:
   101,250.10,pending
   102,89.00,fulfilled
   103,140.00,review
@@ -536,13 +539,13 @@ orders[#3]{id,total,status}:
 
 Why it helps:
 
-- Length markers give you a checksum (“model must return 3 rows”).
+- Array headers give you a checksum (“model must return 3 rows”).
 - Tabular headers reduce hallucinations (model sees explicit columns).
 - Reduced tokens = cheaper prompts; faster iteration = cheaper eval runs.
 
 For response validation, decode the model output using `Toon.decode` (if the LLM responds in TOON) or rehydrate JSON responses and compare lengths/keys.
 
-See also: [Delimiters & markers](./SCALA-TOON-SPECIFICATION.md#delimiters--length-markers), [Strict mode](./SCALA-TOON-SPECIFICATION.md#strict-mode-semantics)
+See also: [Delimiters & headers](./SCALA-TOON-SPECIFICATION.md#delimiters--length-markers), [Strict mode](./SCALA-TOON-SPECIFICATION.md#strict-mode-semantics)
 
 ---
 
@@ -596,7 +599,7 @@ These are conscious design decisions:
 | Inline primitives | `tags[3]: reading,gaming,coding` | Quotes only when needed. |
 | Tabular array | `users[2]{id,name}:\n  1,Ada\n  2,Bob` | Header defines columns. |
 | Nested tabular | `orders[1]{id,items}:\n  1,[2]{sku,qty}: ...` | Inner header scoped to nested block. |
-| Length marker | `items[#2|]{sku|qty}` | `#` emphasizes count; `|` encodes delimiter. |
+| Header with delimiter | `items[2|]{sku|qty}` | Header declares length and delimiter (`|` here). |
 | Empty array/object | `prefs[0]:` or `prefs: {}` | Choose whichever fits your schema. |
 | Comments | *(not part of spec - strip before encoding)* | Keep prompts clean; TOON itself has no comment syntax. |
 

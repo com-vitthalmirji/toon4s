@@ -5,7 +5,14 @@ import java.nio.file.{Files, Path, Paths}
 import scala.jdk.CollectionConverters._
 import scala.util.Using
 
-import io.toonformat.toon4s.{DecodeOptions, Delimiter, EncodeOptions, Toon}
+import io.toonformat.toon4s.{
+  DecodeOptions,
+  Delimiter,
+  EncodeOptions,
+  KeyFolding,
+  PathExpansion,
+  Toon,
+}
 import io.toonformat.toon4s.JsonValue
 import io.toonformat.toon4s.JsonValue._
 import io.toonformat.toon4s.json.SimpleJson
@@ -122,7 +129,12 @@ class ConformanceSuite extends FunSuite {
     val indent = obj.get("indent").map(asInt(_, "indent"))
     val strict = obj.get("strict").map(asBoolean(_, "strict"))
     val strictness = if (strict.getOrElse(true)) Strictness.Strict else Strictness.Lenient
-    DecodeOptions(indent = indent.getOrElse(2), strictness = strictness)
+    val expand = obj
+      .get("expandPaths")
+      .map(v => asString(Some(v), "expandPaths"))
+      .map(parseExpandPaths)
+      .getOrElse(PathExpansion.Off)
+    DecodeOptions(indent = indent.getOrElse(2), strictness = strictness, expandPaths = expand)
   }
 
   private def parseEncodeOptions(value: JsonValue): EncodeOptions = {
@@ -133,14 +145,17 @@ class ConformanceSuite extends FunSuite {
       .map(v => asString(Some(v), "delimiter"))
       .map(parseDelimiter)
       .getOrElse(Delimiter.Comma)
-    val lengthFlag = obj.get("lengthMarker").exists {
-      case JString(s) => s.contains('#')
-      case _          => false
-    }
+    val keyFolding = obj
+      .get("keyFolding")
+      .map(v => asString(Some(v), "keyFolding"))
+      .map(parseKeyFolding)
+      .getOrElse(KeyFolding.Off)
+    val flattenDepth = obj.get("flattenDepth").map(asInt(_, "flattenDepth")).getOrElse(Int.MaxValue)
     EncodeOptions(
       indent = indentOpt.getOrElse(2),
       delimiter = delimiter,
-      lengthMarker = lengthFlag,
+      keyFolding = keyFolding,
+      flattenDepth = flattenDepth,
     )
   }
 
@@ -149,6 +164,18 @@ class ConformanceSuite extends FunSuite {
   case "|"   => Delimiter.Pipe
   case ","   => Delimiter.Comma
   case other => throw new IllegalArgumentException(s"Unsupported delimiter: '$other'")
+  }
+
+  private def parseKeyFolding(value: String): KeyFolding = value.toLowerCase match {
+  case "safe" => KeyFolding.Safe
+  case "off"  => KeyFolding.Off
+  case other  => throw new IllegalArgumentException(s"Unsupported keyFolding: '$other'")
+  }
+
+  private def parseExpandPaths(value: String): PathExpansion = value.toLowerCase match {
+  case "safe" => PathExpansion.Safe
+  case "off"  => PathExpansion.Off
+  case other  => throw new IllegalArgumentException(s"Unsupported expandPaths: '$other'")
   }
 
   private def asObject(value: JsonValue, context: String): Map[String, JsonValue] = value match {

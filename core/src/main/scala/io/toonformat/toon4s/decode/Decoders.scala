@@ -14,10 +14,13 @@ import io.toonformat.toon4s.error.{DecodeError, ErrorLocation}
 
 object Decoders {
 
+  private val QuotedKeyPrefix = "\u0001"
+
   def decode(input: String, options: DecodeOptions): JsonValue = {
     val isStrict = options.strictness == Strictness.Strict
     val scan = Scanner.toParsedLines(input, options.indent, isStrict)
-    decodeScan(scan, options)
+    val parsed = decodeScan(scan, options)
+    PathExpander.expand(parsed, options)
   }
 
   /** Parse primitive token with string length validation. */
@@ -66,7 +69,12 @@ object Decoders {
     }
   }
 
-  final private case class KeyValueParse(key: String, value: JsonValue, followDepth: Int)
+  final private case class KeyValueParse(
+      key: String,
+      value: JsonValue,
+      followDepth: Int,
+      quoted: Boolean,
+  )
 
   private def decodeObject(
       cursor: LineCursor,
@@ -85,9 +93,10 @@ object Decoders {
         val td = targetDepth.orElse(Some(line.depth))
         if (td.contains(line.depth)) {
           cursor.advance()
-          val KeyValueParse(key, value, _) =
+          val KeyValueParse(key, value, _, quoted) =
             decodeKeyValue(line.content, cursor, line.depth, options)
-          builder += ((key, value))
+          val storedKey = if (quoted) QuotedKeyPrefix + key else key
+          builder += ((storedKey, value))
           targetDepth = td
         } else continue = false
       }
@@ -101,10 +110,11 @@ object Decoders {
       baseDepth: Int,
       options: DecodeOptions,
   ): KeyValueParse = {
+    val keyQuoted = content.dropWhile(_.isWhitespace).headOption.contains('"')
     parseArrayHeaderLine(content, Delimiter.Comma) match {
     case Some((header, inline)) if header.key.nonEmpty =>
       val arrayValue = decodeArrayFromHeader(header, inline, cursor, baseDepth, options)
-      KeyValueParse(header.key.get, arrayValue, baseDepth + 1)
+      KeyValueParse(header.key.get, arrayValue, baseDepth + 1, keyQuoted)
     case _ =>
       val (key, restIndex) = parseKeyToken(content, 0)
       val rest = content.substring(restIndex).trim
@@ -112,12 +122,12 @@ object Decoders {
         cursor.peek match {
         case Some(next) if next.depth > baseDepth =>
           val nested = decodeObject(cursor, baseDepth + 1, options)
-          KeyValueParse(key, nested, baseDepth + 1)
+          KeyValueParse(key, nested, baseDepth + 1, keyQuoted)
         case _ =>
-          KeyValueParse(key, JObj(VectorMap.empty), baseDepth + 1)
+          KeyValueParse(key, JObj(VectorMap.empty), baseDepth + 1, keyQuoted)
         }
       } else {
-        KeyValueParse(key, parsePrimitiveWithValidation(rest, options), baseDepth + 1)
+        KeyValueParse(key, parsePrimitiveWithValidation(rest, options), baseDepth + 1, keyQuoted)
       }
     }
   }
@@ -128,11 +138,23 @@ object Decoders {
       cursor: LineCursor,
       baseDepth: Int,
       options: DecodeOptions,
+      rowDepthOffset: Int = 1,
+      allowRowDepthFallback: Boolean = false,
   ): JsonValue = {
     inlineValues match {
     case Some(inline) => decodeInlinePrimitiveArray(header, inline, options)
     case None         =>
-      if (header.fields.nonEmpty) JArray(decodeTabularArray(header, cursor, baseDepth, options))
+      if (header.fields.nonEmpty)
+        JArray(
+          decodeTabularArrayWithFallback(
+            header,
+            cursor,
+            baseDepth,
+            options,
+            rowDepthOffset,
+            allowRowDepthFallback,
+          )
+        )
       else JArray(decodeListArray(header, cursor, baseDepth, options))
     }
   }
@@ -207,10 +229,12 @@ object Decoders {
       cursor: LineCursor,
       baseDepth: Int,
       options: DecodeOptions,
+      rowDepthOffset: Int,
   ): Vector[JsonValue] = {
     validateArrayLength(header.length, options)
     val rows = ArrayBuffer.empty[JsonValue]
-    val rowDepth = baseDepth + 1
+    val declaredDepth = baseDepth + rowDepthOffset
+    val rowDepth = cursor.peek.map(_.depth).filter(_ > baseDepth).getOrElse(declaredDepth)
     var startLine: Option[Int] = None
     var endLine: Option[Int] = None
     var continue = true
@@ -252,6 +276,25 @@ object Decoders {
     table
   }
 
+  private def decodeTabularArrayWithFallback(
+      header: ArrayHeaderInfo,
+      cursor: LineCursor,
+      baseDepth: Int,
+      options: DecodeOptions,
+      primaryOffset: Int,
+      allowFallback: Boolean,
+  ): Vector[JsonValue] = {
+    try decodeTabularArray(header, cursor, baseDepth, options, primaryOffset)
+    catch {
+      case err: DecodeError if allowFallback =>
+        val candidateOffset = cursor.peek.map(_.depth - baseDepth).getOrElse(primaryOffset)
+        val fallbackOffset =
+          if (candidateOffset > 0 && candidateOffset != primaryOffset) candidateOffset
+          else math.max(1, primaryOffset - 1)
+        decodeTabularArray(header, cursor, baseDepth, options, fallbackOffset)
+    }
+  }
+
   private def decodeListItem(
       cursor: LineCursor,
       baseDepth: Int,
@@ -277,7 +320,15 @@ object Decoders {
           if (isArrayHeaderAfterHyphen(afterHyphen))
             parseArrayHeaderLine(afterHyphen, Delimiter.Comma).map {
               case (header, inline) =>
-                decodeArrayFromHeader(header, inline, cursor, baseDepth, options)
+                decodeArrayFromHeader(
+                  header,
+                  inline,
+                  cursor,
+                  baseDepth,
+                  options,
+                  rowDepthOffset = 2,
+                  allowRowDepthFallback = true,
+                )
             }
           else None
 
@@ -299,10 +350,11 @@ object Decoders {
       options: DecodeOptions,
   ): JsonValue = {
     val afterHyphen = firstLine.content.drop(C.ListItemPrefix.length)
-    val KeyValueParse(firstKey, firstValue, followDepth) =
+    val KeyValueParse(firstKey, firstValue, followDepth, firstQuoted) =
       decodeKeyValue(afterHyphen, cursor, baseDepth, options)
+    val storedHeadKey = if (firstQuoted) QuotedKeyPrefix + firstKey else firstKey
     val builder = Vector.newBuilder[(String, JsonValue)]
-    builder += ((firstKey, firstValue))
+    builder += ((storedHeadKey, firstValue))
     var continue = true
 
     while (continue && !cursor.atEnd) {
@@ -312,8 +364,10 @@ object Decoders {
       case Some(line)
           if line.depth == followDepth && !line.content.startsWith(C.ListItemPrefix) =>
         cursor.advance()
-        val KeyValueParse(k, v, _) = decodeKeyValue(line.content, cursor, followDepth, options)
-        builder += ((k, v))
+        val KeyValueParse(k, v, _, quoted) =
+          decodeKeyValue(line.content, cursor, followDepth, options)
+        val storedKey = if (quoted) QuotedKeyPrefix + k else k
+        builder += ((storedKey, v))
       case _ =>
         continue = false
       }

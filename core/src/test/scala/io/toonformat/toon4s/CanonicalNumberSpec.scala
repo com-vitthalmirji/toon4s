@@ -6,7 +6,7 @@ import io.toonformat.toon4s.JsonValue._
 import munit.FunSuite
 
 /**
- * Tests for TOON v1.4 §2 canonical number encoding requirements.
+ * Tests for TOON v2.0 §2 canonical number encoding requirements.
  *
  * Spec requirements:
  *   - No exponent notation (1e6 → 1000000)

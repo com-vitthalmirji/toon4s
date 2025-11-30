@@ -21,9 +21,11 @@ package io.toonformat.toon4s
  * @param delimiter
  *   Delimiter character for inline arrays and tabular data (default: Comma). See [[Delimiter]] for
  *   options.
- * @param lengthMarker
- *   Whether to emit [N] length markers for arrays (default: false). When true, arrays are prefixed
- *   with their length (e.g., "arr[3]: 1,2,3"). Useful for validation but adds verbosity.
+ * @param keyFolding
+ *   Optional dotted-path key folding (default: Off). When set to [[KeyFolding.Safe]], chains of
+ *   single-key objects that satisfy IdentifierSegment rules are folded into `a.b` style keys.
+ * @param flattenDepth
+ *   Maximum number of segments to fold when [[KeyFolding.Safe]] is enabled (default: unlimited).
  *
  * @see
  *   [[Delimiter]] for delimiter options
@@ -33,11 +35,24 @@ package io.toonformat.toon4s
 final case class EncodeOptions(
     indent: Int = 2,
     delimiter: Delimiter = Delimiter.Comma,
-    lengthMarker: Boolean = false,
+    keyFolding: KeyFolding = KeyFolding.Off,
+    flattenDepth: Int = Int.MaxValue,
 ) {
 
   require(indent > 0, s"indent must be positive, got: $indent")
 
   require(indent <= 32, s"indent must be <= 32 for readability, got: $indent")
+
+  require(flattenDepth >= 0, s"flattenDepth must be non-negative, got: $flattenDepth")
+
+}
+
+sealed trait KeyFolding
+
+object KeyFolding {
+
+  case object Off extends KeyFolding
+
+  case object Safe extends KeyFolding
 
 }

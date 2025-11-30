@@ -175,7 +175,7 @@ object DecodeError {
    * @example
    *   {{{
    * Toon.decode("arr[invalid]: 1,2,3") // Left(InvalidHeader("Invalid array length", None))
-   * Toon.decode("arr{}: 1,2") // Left(InvalidHeader("Missing length marker", None))
+   * Toon.decode("arr{}: 1,2") // Left(InvalidHeader("Invalid array header", None))
    *   }}}
    */
   final case class InvalidHeader(
