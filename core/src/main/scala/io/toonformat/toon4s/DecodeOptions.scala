@@ -1,7 +1,7 @@
 package io.toonformat.toon4s
 
 /**
-  * Strictness level for TOON decoding, per TOON v2.1 §14.
+ * Strictness level for TOON decoding, per TOON v2.1 §14.
  *
  * TOON specification defines strict mode as a boolean (strict vs non-strict). This sealed trait
  * provides type-safe pattern matching for the two modes.
@@ -11,7 +11,7 @@ sealed trait Strictness
 object Strictness {
 
   /**
-    * Strict mode (TOON v2.1 §14): Enforces all spec requirements:
+   * Strict mode (TOON v2.1 §14): Enforces all spec requirements:
    *   - Array length counts must match declared [N]
    *   - Indentation must be exact multiples of indentSize
    *   - No tabs in indentation
