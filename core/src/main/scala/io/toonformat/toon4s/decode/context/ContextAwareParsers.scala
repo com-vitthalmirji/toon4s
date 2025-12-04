@@ -228,12 +228,12 @@ object ContextAwareParsers {
    * @param ctx
    *   Parse context for location tracking
    * @return
-   *   Tuple of (length, delimiter, has marker flag)
+   *   Tuple of (length, delimiter)
    */
   def parseBracketSegment(
       seg: String,
       defaultDelim: Delimiter,
-  )(implicit ctx: ParseContext): (Int, Delimiter, Boolean) = {
+  )(implicit ctx: ParseContext): (Int, Delimiter) = {
     ctx.withLocation {
       ArrayHeaderParser.parseBracketSegment(seg, defaultDelim)
     }

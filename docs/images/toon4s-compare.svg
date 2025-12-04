@@ -28,54 +28,54 @@
   <text x="20" y="410" class="t">Production hardened</text>
 
   <!-- Row 1: Conformance -->
-  <rect x="220" y="80" width="140" height="30" class="cell ok"/><text x="250" y="100" class="t">v1.4 spec</text>
-  <rect x="400" y="80" width="140" height="30" class="cell ok"/><text x="430" y="100" class="t">v1.4 spec</text>
-  <rect x="580" y="80" width="140" height="30" class="cell ok"/><text x="610" y="100" class="t">v1.4 spec</text>
+  <rect x="220" y="80" width="140" height="30" class="cell ok"/><text x="250" y="100" class="t">v2.1.0 spec</text>
+  <rect x="400" y="80" width="140" height="30" class="cell ok"/><text x="430" y="100" class="t">v2.1.0 spec</text>
+  <rect x="580" y="80" width="195" height="30" class="cell ok"/><text x="610" y="100" class="t">v2.1.0 spec</text>
 
   <!-- Row 2: Token savings -->
   <rect x="220" y="115" width="140" height="30" class="cell ok"/><text x="232" y="135" class="t">30-60%</text>
   <rect x="400" y="115" width="140" height="30" class="cell ok"/><text x="412" y="135" class="t">30-60%</text>
-  <rect x="580" y="115" width="140" height="30" class="cell ok"/><text x="592" y="135" class="t">30-60%</text>
+  <rect x="580" y="115" width="195" height="30" class="cell ok"/><text x="592" y="135" class="t">30-60%</text>
 
   <!-- Row 3: Encode throughput -->
-  <rect x="220" y="150" width="140" height="30" class="cell"/><text x="228" y="170" class="t">~200 ops/ms</text>
-  <rect x="400" y="150" width="140" height="30" class="cell"/><text x="408" y="170" class="t">~200 ops/ms</text>
-  <rect x="580" y="150" width="140" height="30" class="cell ok"/><text x="588" y="170" class="t">~205 ops/ms</text>
+  <rect x="220" y="150" width="140" height="30" class="cell"/><text x="228" y="170" class="t">200 ops/ms</text>
+  <rect x="400" y="150" width="140" height="30" class="cell"/><text x="408" y="170" class="t">200 ops/ms</text>
+  <rect x="580" y="150" width="195" height="30" class="cell ok"/><text x="586" y="170" class="t">encode_object: 138.9 ops/ms</text>
 
   <!-- Row 4: Decode throughput -->
-  <rect x="220" y="185" width="140" height="30" class="cell"/><text x="242" y="205" class="t">Yes</text>
-  <rect x="400" y="185" width="140" height="30" class="cell mid"/><text x="415" y="205" class="t">Encode-first</text>
-  <rect x="580" y="185" width="140" height="30" class="cell ok"/><text x="590" y="205" class="t">~1089 ops/ms</text>
+  <rect x="220" y="185" width="140" height="30" class="cell"/><text x="242" y="205" class="t">n/a</text>
+  <rect x="400" y="185" width="140" height="30" class="cell mid"/><text x="415" y="205" class="t">n/a</text>
+  <rect x="580" y="185" width="195" height="30" class="cell ok"/><text x="590" y="205" class="t">decode: 415/389/275 ops/ms</text>
 
   <!-- Row 5: Type system -->
   <rect x="220" y="220" width="140" height="30" class="cell"/><text x="230" y="240" class="t">TS types</text>
   <rect x="400" y="220" width="140" height="30" class="cell"/><text x="402" y="240" class="t">Java generics</text>
-  <rect x="580" y="220" width="140" height="30" class="cell ok"/><text x="586" y="240" class="t">ADTs + derives</text>
+  <rect x="580" y="220" width="195" height="30" class="cell ok"/><text x="586" y="240" class="t">ADTs + derives</text>
 
   <!-- Row 6: FP idioms -->
   <rect x="220" y="255" width="140" height="30" class="cell"/><text x="254" y="275" class="t">varies</text>
   <rect x="400" y="255" width="140" height="30" class="cell"/><text x="428" y="275" class="t">imperative</text>
-  <rect x="580" y="255" width="140" height="30" class="cell ok"/><text x="586" y="275" class="t">Either/pure</text>
+  <rect x="580" y="255" width="195" height="30" class="cell ok"/><text x="586" y="275" class="t">Either/pure</text>
 
   <!-- Row 7: Core deps -->
   <rect x="220" y="290" width="140" height="30" class="cell"/><text x="266" y="310" class="t">npm</text>
   <rect x="400" y="290" width="140" height="30" class="cell"/><text x="436" y="310" class="t">JVM libs</text>
-  <rect x="580" y="290" width="140" height="30" class="cell ok"/><text x="604" y="310" class="t">stdlib only</text>
+  <rect x="580" y="290" width="195" height="30" class="cell ok"/><text x="604" y="310" class="t">stdlib only</text>
 
   <!-- Row 8: Streaming -->
   <rect x="220" y="325" width="140" height="30" class="cell"/><text x="258" y="345" class="t">varies</text>
   <rect x="400" y="325" width="140" height="30" class="cell"/><text x="438" y="345" class="t">varies</text>
-  <rect x="580" y="325" width="140" height="30" class="cell ok"/><text x="590" y="345" class="t">tabular/nested</text>
+  <rect x="580" y="325" width="195" height="30" class="cell ok"/><text x="590" y="345" class="t">tabular/nested</text>
 
   <!-- Row 9: CLI -->
   <rect x="220" y="360" width="140" height="30" class="cell"/><text x="258" y="380" class="t">varies</text>
   <rect x="400" y="360" width="140" height="30" class="cell"/><text x="438" y="380" class="t">varies</text>
-  <rect x="580" y="360" width="140" height="30" class="cell ok"/><text x="590" y="380" class="t">--stats/optimize</text>
+  <rect x="580" y="360" width="195" height="30" class="cell ok"/><text x="590" y="380" class="t">--stats/optimize</text>
 
   <!-- Row 10: Production hardened -->
   <rect x="220" y="395" width="140" height="30" class="cell"/><text x="258" y="415" class="t">varies</text>
   <rect x="400" y="395" width="140" height="30" class="cell"/><text x="438" y="415" class="t">varies</text>
-  <rect x="580" y="395" width="140" height="30" class="cell ok"/><text x="596" y="415" class="t">381 tests</text>
+  <rect x="580" y="395" width="195" height="30" class="cell ok"/><text x="596" y="415" class="t">500+ tests</text>
 
   <text x="20" y="435" class="cap">Token savings are format-driven (equivalent across implementations). Choose by ecosystem fit and ergonomics.</text>
 </svg>

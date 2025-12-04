@@ -19,19 +19,17 @@ import io.toonformat.toon4s.Delimiter
  *   Delimiter character for values (comma, tab, or pipe)
  * @param fields
  *   Field names for tabular arrays from `{field1,field2}`
- * @param hasLengthMarker
- *   Whether the header had a `#` length marker
  *
  * @example
  *   {{{
  * // arr[3]: 1,2,3
- * ArrayHeaderInfo(Some("arr"), 3, Delimiter.Comma, Nil, false)
+ * ArrayHeaderInfo(Some("arr"), 3, Delimiter.Comma, Nil)
  *
  * // users[2]{id,name}:
- * ArrayHeaderInfo(Some("users"), 2, Delimiter.Comma, List("id", "name"), false)
+ * ArrayHeaderInfo(Some("users"), 2, Delimiter.Comma, List("id", "name"))
  *
- * // [#5|]:
- * ArrayHeaderInfo(None, 5, Delimiter.Pipe, Nil, true)
+ * // [5|]:
+ * ArrayHeaderInfo(None, 5, Delimiter.Pipe, Nil)
  *   }}}
  */
 final case class ArrayHeaderInfo(
@@ -39,5 +37,4 @@ final case class ArrayHeaderInfo(
     length: Int,
     delimiter: Delimiter,
     fields: List[String],
-    hasLengthMarker: Boolean,
 )

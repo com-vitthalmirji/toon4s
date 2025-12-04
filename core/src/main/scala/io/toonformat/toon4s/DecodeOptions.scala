@@ -1,7 +1,7 @@
 package io.toonformat.toon4s
 
 /**
- * Strictness level for TOON decoding, per TOON v1.4 §1.7.
+ * Strictness level for TOON decoding, per TOON v2.1 §14.
  *
  * TOON specification defines strict mode as a boolean (strict vs non-strict). This sealed trait
  * provides type-safe pattern matching for the two modes.
@@ -11,7 +11,7 @@ sealed trait Strictness
 object Strictness {
 
   /**
-   * Strict mode (TOON v1.4 §14): Enforces all spec requirements:
+   * Strict mode (TOON v2.1 §14): Enforces all spec requirements:
    *   - Array length counts must match declared [N]
    *   - Indentation must be exact multiples of indentSize
    *   - No tabs in indentation
@@ -60,6 +60,9 @@ object Strictness {
  *   encoding.
  * @param strictness
  *   Validation strictness level (default: Strict). See [[Strictness]] for details.
+ * @param expandPaths
+ *   Path expansion mode (default: Off). When [[PathExpansion.Safe]], dotted keys are expanded into
+ *   nested objects with strict/LWW conflict resolution.
  * @param maxDepth
  *   Maximum nesting depth (default: Some(1000), None = no limit). Prevents stack overflow from
  *   deeply nested structures.
@@ -78,6 +81,7 @@ object Strictness {
 final case class DecodeOptions(
     indent: Int = 2,
     strictness: Strictness = Strictness.Strict,
+    expandPaths: PathExpansion = PathExpansion.Off,
     maxDepth: Option[Int] = Some(1000),
     maxArrayLength: Option[Int] = Some(100000),
     maxStringLength: Option[Int] = Some(1000000),
@@ -99,5 +103,15 @@ final case class DecodeOptions(
   maxStringLength.foreach {
     len => require(len > 0, s"maxStringLength must be positive if specified, got: $len")
   }
+
+}
+
+sealed trait PathExpansion
+
+object PathExpansion {
+
+  case object Off extends PathExpansion
+
+  case object Safe extends PathExpansion
 
 }

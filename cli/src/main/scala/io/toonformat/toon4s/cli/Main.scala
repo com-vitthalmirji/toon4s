@@ -23,7 +23,9 @@ object Main {
       indent: Int = 2,
       strictness: String = "strict", // CLI string, converted to Strictness
       delimiter: Delimiter = Delimiter.Comma,
-      lengthMarker: Boolean = false,
+      keyFolding: String = "off",
+      flattenDepth: Int = Int.MaxValue,
+      expandPaths: String = "off",
       stats: Boolean = false,
       optimize: Boolean = false,
       tokenizer: String = "cl100k",
@@ -86,7 +88,8 @@ object Main {
       base = EncodeOptions(
         indent = config.indent,
         delimiter = config.delimiter,
-        lengthMarker = config.lengthMarker,
+        keyFolding = asKeyFolding(config.keyFolding),
+        flattenDepth = config.flattenDepth,
       )
       opt <- if (config.optimize) optimize(scalaValue, base, config.tokenizer) else Right(base)
       encoded <- Toon.encode(scalaValue, opt).left.map(_.message)
@@ -98,6 +101,7 @@ object Main {
     val options = DecodeOptions(
       indent = config.indent,
       strictness = asStrictness(config.strictness),
+      expandPaths = asExpandPaths(config.expandPaths),
     )
     for {
       toonInput <- readUtf8(config.input)
@@ -142,9 +146,19 @@ object Main {
         .text("Optional output path; defaults to stdout."),
       opt[Int]("indent")
         .valueName("<n>")
-        .validate(n => if (n >= 0) success else failure("indent must be non-negative"))
+        .validate(n => if (n > 0) success else failure("indent must be positive"))
         .action((indent, c) => c.copy(indent = indent))
         .text("Indentation used for encoding (default: 2)."),
+      opt[Boolean]("strict")
+        .hidden()
+        .optional()
+        .action { (v, c) =>
+          System.err.println(
+            "[deprecated] --strict is deprecated; use --strictness strict|lenient (defaults to strict)."
+          )
+          c.copy(strictness = if (v) "strict" else "lenient")
+        }
+        .text("Deprecated alias for --strictness (use --strictness strict|lenient)."),
       opt[String]("strictness")
         .valueName("strict|lenient")
         .validate(v =>
@@ -154,7 +168,7 @@ object Main {
         .action((v, c) => c.copy(strictness = v.toLowerCase))
         .text(
           "Strictness mode (default: strict). " +
-            "'strict' enforces TOON v1.4 §14: count mismatches, indentation errors, etc. " +
+            "'strict' enforces TOON v2.1 §14: count mismatches, indentation errors, etc. " +
             "'lenient' accepts malformed input when possible."
         ),
       opt[String]("delimiter")
@@ -170,12 +184,30 @@ object Main {
             .getOrElse(c)
         )
         .text("Delimiter for encoding tabular data (default: comma)."),
-      opt[Unit]("length-marker")
-        .action((_, c) => c.copy(lengthMarker = true))
-        .text("Emit #length markers for encoded arrays."),
+      opt[String]("key-folding")
+        .valueName("off|safe")
+        .validate(v =>
+          if (Set("off", "safe").contains(v.toLowerCase)) success
+          else failure("key-folding must be 'off' or 'safe'")
+        )
+        .action((v, c) => c.copy(keyFolding = v.toLowerCase))
+        .text("Fold single-key object chains into dotted paths (default: off)."),
+      opt[Int]("flatten-depth")
+        .valueName("<n>")
+        .validate(n => if (n >= 0) success else failure("flatten-depth must be non-negative"))
+        .action((n, c) => c.copy(flattenDepth = n))
+        .text("Maximum segments to fold when key-folding is safe (default: unlimited)."),
+      opt[String]("expand-paths")
+        .valueName("off|safe")
+        .validate(v =>
+          if (Set("off", "safe").contains(v.toLowerCase)) success
+          else failure("expand-paths must be 'off' or 'safe'")
+        )
+        .action((v, c) => c.copy(expandPaths = v.toLowerCase))
+        .text("Decode dotted keys into nested objects (default: off)."),
       opt[Unit]("optimize")
         .action((_, c) => c.copy(optimize = true, stats = true))
-        .text("Optimize delimiter and markers for token savings (enables --stats)."),
+        .text("Optimize delimiter and key-folding for token savings (enables --stats)."),
       opt[Unit]("stats")
         .action((_, c) => c.copy(stats = true))
         .text("Print GPT token counts for input/output to stderr."),
@@ -204,19 +236,27 @@ object Main {
   case _         => Strictness.Strict // Default to strict for safety
   }
 
+  private def asKeyFolding(s: String): KeyFolding = s.toLowerCase match {
+  case "safe" => KeyFolding.Safe
+  case _      => KeyFolding.Off
+  }
+
+  private def asExpandPaths(s: String): PathExpansion = s.toLowerCase match {
+  case "safe" => PathExpansion.Safe
+  case _      => PathExpansion.Off
+  }
+
   private def optimize(
       scalaValue: Any,
       base: EncodeOptions,
       tokenizer: String,
   ): Either[String, EncodeOptions] = {
-    val candidates = List(
-      base.copy(delimiter = Delimiter.Comma, lengthMarker = false),
-      base.copy(delimiter = Delimiter.Comma, lengthMarker = true),
-      base.copy(delimiter = Delimiter.Tab, lengthMarker = false),
-      base.copy(delimiter = Delimiter.Tab, lengthMarker = true),
-      base.copy(delimiter = Delimiter.Pipe, lengthMarker = false),
-      base.copy(delimiter = Delimiter.Pipe, lengthMarker = true),
-    )
+    val delimiters = List(Delimiter.Comma, Delimiter.Tab, Delimiter.Pipe)
+    val foldingModes = List(KeyFolding.Off, KeyFolding.Safe)
+    val candidates = for {
+      d <- delimiters
+      f <- foldingModes
+    } yield base.copy(delimiter = d, keyFolding = f)
     val normalized = io.toonformat.toon4s.internal.Normalize.toJson(scalaValue)
     val scored = candidates.map {
       opt =>

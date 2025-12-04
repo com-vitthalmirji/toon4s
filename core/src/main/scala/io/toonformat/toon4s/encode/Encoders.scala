@@ -1,34 +1,54 @@
 package io.toonformat.toon4s
 package encode
 
+import scala.collection.immutable.VectorMap
+
 import Primitives._
-import io.toonformat.toon4s.{Delimiter, EncodeOptions}
+import io.toonformat.toon4s.{Delimiter, EncodeOptions, KeyFolding}
 import io.toonformat.toon4s.JsonValue._
 
 object Encoders {
 
-  def encodeTo(value: JsonValue, out: java.io.Writer, options: EncodeOptions): Unit = value match {
-  case JNull | JBool(_) | JNumber(_) | JString(_) =>
-    out.write(encodePrimitive(value, options.delimiter))
-  case JArray(values) =>
-    val writer = new StreamLineWriter(options.indent, out)
-    encodeArray(None, values, writer, 0, options)
-  case JObj(fields) =>
-    val writer = new StreamLineWriter(options.indent, out)
-    encodeObject(fields, writer, 0, options)
+  final private case class FieldEntry(
+      key: String,
+      value: JsonValue,
+      disableChildFolding: Boolean,
+  )
+
+  final private case class FoldResult(
+      key: String,
+      value: JsonValue,
+      disableChildFolding: Boolean,
+  )
+
+  def encodeTo(value: JsonValue, out: java.io.Writer, options: EncodeOptions): Unit = {
+    val folded = applyKeyFolding(value, options)
+    folded match {
+    case JNull | JBool(_) | JNumber(_) | JString(_) =>
+      out.write(encodePrimitive(folded, options.delimiter))
+    case JArray(values) =>
+      val writer = new StreamLineWriter(options.indent, out)
+      encodeArray(None, values, writer, 0, options)
+    case JObj(fields) =>
+      val writer = new StreamLineWriter(options.indent, out)
+      encodeObject(fields, writer, 0, options)
+    }
   }
 
-  def encode(value: JsonValue, options: EncodeOptions): String = value match {
-  case JNull | JBool(_) | JNumber(_) | JString(_) =>
-    encodePrimitive(value, options.delimiter)
-  case JArray(values) =>
-    val writer = new LineWriter(options.indent)
-    encodeArray(None, values, writer, 0, options)
-    writer.toString
-  case JObj(fields) =>
-    val writer = new LineWriter(options.indent)
-    encodeObject(fields, writer, 0, options)
-    writer.toString
+  def encode(value: JsonValue, options: EncodeOptions): String = {
+    val folded = applyKeyFolding(value, options)
+    folded match {
+    case JNull | JBool(_) | JNumber(_) | JString(_) =>
+      encodePrimitive(folded, options.delimiter)
+    case JArray(values) =>
+      val writer = new LineWriter(options.indent)
+      encodeArray(None, values, writer, 0, options)
+      writer.toString
+    case JObj(fields) =>
+      val writer = new LineWriter(options.indent)
+      encodeObject(fields, writer, 0, options)
+      writer.toString
+    }
   }
 
   private def formatHeader(
@@ -36,14 +56,13 @@ object Encoders {
       key: Option[String],
       fields: List[String],
       delimiter: Delimiter,
-      lengthMarker: Boolean,
   ): String = {
     val delimiterSuffix = delimiter match {
     case Delimiter.Tab   => "\t"
     case Delimiter.Pipe  => "|"
     case Delimiter.Comma => ""
     }
-    val lengthLabel = (if (lengthMarker) s"#$length" else length.toString) + delimiterSuffix
+    val lengthLabel = length.toString + delimiterSuffix
     val lengthPart = s"[$lengthLabel]"
     val keyPart = key.map(encodeKey).getOrElse("")
     val fieldsPart =
@@ -59,10 +78,99 @@ object Encoders {
       writer: EncodeLineWriter,
       depth: Int,
       options: EncodeOptions,
+      allowFolding: Boolean = true,
   ): Unit = {
-    fields.foreach {
-      case (k, v) =>
-        encodeKeyValue(k, v, writer, depth, options)
+    val prepared = prepareObjectFields(fields, options, allowFolding)
+    prepared.foreach {
+      case FieldEntry(k, v, disableChildFolding) =>
+        encodeKeyValue(k, v, writer, depth, options, allowFolding && !disableChildFolding)
+    }
+  }
+
+  private val IdentifierSegmentPattern = "^[A-Za-z_][A-Za-z0-9_]*$".r
+
+  private def isIdentifierSegment(segment: String): Boolean =
+    IdentifierSegmentPattern.matches(segment)
+
+  private def prepareObjectFields(
+      fields: VectorMap[String, JsonValue],
+      options: EncodeOptions,
+      allowFolding: Boolean,
+  ): Vector[FieldEntry] = {
+    if (!allowFolding || options.keyFolding != KeyFolding.Safe || options.flattenDepth < 2)
+      fields.toVector.map { case (k, v) => FieldEntry(k, v, disableChildFolding = false) }
+    else {
+      val literalKeys = fields.keySet
+      var emitted = Set.empty[String]
+      val builder = Vector.newBuilder[FieldEntry]
+
+      fields.foreach {
+        case (key, value) =>
+          val FoldResult(foldedKey, foldedValue, disableChild) =
+            foldKeyIfEligible(key, value, literalKeys, emitted, options.flattenDepth)
+          emitted += foldedKey
+          builder += FieldEntry(foldedKey, foldedValue, disableChild)
+      }
+
+      builder.result()
+    }
+  }
+
+  private def applyKeyFolding(value: JsonValue, options: EncodeOptions): JsonValue = value
+
+  private def foldKeyIfEligible(
+      key: String,
+      value: JsonValue,
+      literalKeys: Set[String],
+      emittedKeys: Set[String],
+      flattenDepth: Int,
+  ): FoldResult = {
+    def collectChain(
+        currentKey: String,
+        currentValue: JsonValue,
+        acc: Vector[String],
+    ): (Vector[String], JsonValue) =
+      currentValue match {
+      case JObj(obj) if obj.size == 1 =>
+        val (nextKey, nextVal) = obj.head
+        collectChain(nextKey, nextVal, acc :+ currentKey)
+      case other => (acc :+ currentKey, other)
+      }
+
+    val (segments, leaf) = value match {
+    case JObj(obj) if obj.nonEmpty && obj.size == 1 =>
+      collectChain(key, JObj(obj), Vector.empty)
+    case other => (Vector(key), other)
+    }
+
+    if (segments.length < 2) FoldResult(key, value, disableChildFolding = false)
+    else {
+      val depthLimit = math.min(segments.length, flattenDepth)
+      val prefix = segments.take(depthLimit)
+
+      val safeSegments =
+        prefix.forall(seg => isIdentifierSegment(seg) && isValidUnquotedKey(seg))
+      if (!safeSegments) FoldResult(key, value, disableChildFolding = true)
+      else {
+        val foldedKey = prefix.mkString(".")
+        val collidesWithLiteral =
+          literalKeys.exists(existing => existing == foldedKey && existing != key)
+        val collidesWithEmitted =
+          emittedKeys.contains(foldedKey) && foldedKey != key
+
+        if (collidesWithLiteral || collidesWithEmitted)
+          FoldResult(key, value, disableChildFolding = true)
+        else {
+          val remainder = segments.drop(depthLimit)
+          val foldedValue =
+            if (remainder.isEmpty) leaf
+            else remainder.foldRight(leaf: JsonValue) {
+              case (segment, acc) => JObj(VectorMap(segment -> acc))
+            }
+          val disableChildren = remainder.nonEmpty
+          FoldResult(foldedKey, foldedValue, disableChildren)
+        }
+      }
     }
   }
 
@@ -72,6 +180,7 @@ object Encoders {
       writer: EncodeLineWriter,
       depth: Int,
       options: EncodeOptions,
+      allowChildFolding: Boolean,
   ): Unit = value match {
   case JNull | JBool(_) | JNumber(_) | JString(_) =>
     writer match {
@@ -80,14 +189,14 @@ object Encoders {
       writer.push(depth, s"${encodeKey(key)}: ${encodePrimitive(value, options.delimiter)}")
     }
   case JArray(values) =>
-    encodeArray(Some(key), values, writer, depth, options)
+    encodeArray(Some(key), values, writer, depth, options, allowChildFolding)
   case JObj(obj) =>
     writer match {
     case sw: StreamLineWriter => sw.pushKeyOnly(depth, key)
     case _                    => writer.push(depth, s"${encodeKey(key)}:")
     }
     if (obj.nonEmpty) {
-      encodeObject(obj, writer, depth + 1, options)
+      encodeObject(obj, writer, depth + 1, options, allowChildFolding)
     }
   }
 
@@ -130,11 +239,12 @@ object Encoders {
       writer: EncodeLineWriter,
       depth: Int,
       options: EncodeOptions,
+      allowFolding: Boolean = true,
   ): Unit = {
     if (values.isEmpty) {
-      writer.push(depth, formatHeader(0, key, Nil, options.delimiter, options.lengthMarker))
+      writer.push(depth, formatHeader(0, key, Nil, options.delimiter))
     } else if (isArrayOfPrimitives(values)) {
-      val header = formatHeader(values.length, key, Nil, options.delimiter, options.lengthMarker)
+      val header = formatHeader(values.length, key, Nil, options.delimiter)
       writer match {
       case sw: StreamLineWriter =>
         sw.pushDelimitedPrimitives(depth, header, values, options.delimiter)
@@ -157,7 +267,7 @@ object Encoders {
       extractTabularHeader(rows) match {
       case Some(headerFields) =>
         val header =
-          formatHeader(rows.length, key, headerFields, options.delimiter, options.lengthMarker)
+          formatHeader(rows.length, key, headerFields, options.delimiter)
         writer.push(depth, header)
         rows.foreach {
           row =>
@@ -181,14 +291,14 @@ object Encoders {
         }
       case None =>
         val header =
-          formatHeader(values.length, key, Nil, options.delimiter, options.lengthMarker)
+          formatHeader(values.length, key, Nil, options.delimiter)
         writer.push(depth, header)
-        values.foreach(v => encodeListItem(v, writer, depth + 1, options))
+        values.foreach(v => encodeListItem(v, writer, depth + 1, options, allowFolding))
       }
     } else {
-      val header = formatHeader(values.length, key, Nil, options.delimiter, options.lengthMarker)
+      val header = formatHeader(values.length, key, Nil, options.delimiter)
       writer.push(depth, header)
-      values.foreach(v => encodeListItem(v, writer, depth + 1, options))
+      values.foreach(v => encodeListItem(v, writer, depth + 1, options, allowFolding))
     }
   }
 
@@ -198,11 +308,12 @@ object Encoders {
       writer: EncodeLineWriter,
       depth: Int,
       options: EncodeOptions,
+      allowFolding: Boolean,
   ): Unit = value match {
   case JNull | JBool(_) | JNumber(_) | JString(_) =>
     writer.pushListItem(depth, encodePrimitive(value, options.delimiter))
   case JArray(inner) if isArrayOfPrimitives(inner) =>
-    val header = formatHeader(inner.length, None, Nil, options.delimiter, options.lengthMarker)
+    val header = formatHeader(inner.length, None, Nil, options.delimiter)
     writer match {
     case sw: StreamLineWriter =>
       sw.pushListItemDelimitedPrimitives(depth, header, inner, options.delimiter)
@@ -219,10 +330,14 @@ object Encoders {
       writer.pushListItem(depth, line)
     }
   case JObj(fields) =>
-    if (fields.isEmpty) {
+    val prepared = prepareObjectFields(fields, options, allowFolding)
+    if (prepared.isEmpty) {
       writer.pushListItem(depth, "")
     } else {
-      val (firstKey, firstVal) = fields.head
+      val headEntry = prepared.head
+      val firstKey = headEntry.key
+      val firstVal = headEntry.value
+      val headAllow = allowFolding && !headEntry.disableChildFolding
       firstVal match {
       case JNull | JBool(_) | JNumber(_) | JString(_) =>
         writer.pushListItem(
@@ -231,7 +346,7 @@ object Encoders {
         )
       case JArray(arr) if isArrayOfPrimitives(arr) =>
         val header =
-          formatHeader(arr.length, Some(firstKey), Nil, options.delimiter, options.lengthMarker)
+          formatHeader(arr.length, Some(firstKey), Nil, options.delimiter)
         writer match {
         case sw: StreamLineWriter =>
           sw.pushListItemDelimitedPrimitives(depth, header, arr, options.delimiter)
@@ -258,7 +373,6 @@ object Encoders {
             Some(firstKey),
             headerFields,
             options.delimiter,
-            options.lengthMarker,
           )
           writer.pushListItem(depth, header)
           objectRows.foreach {
@@ -271,7 +385,7 @@ object Encoders {
                 sb.append(encodePrimitive(row(key), options.delimiter))
                 i += 1
               }
-              writer.push(depth + 1, sb.result())
+              writer.push(depth + 2, sb.result())
           }
         case None =>
           val header = formatHeader(
@@ -279,10 +393,9 @@ object Encoders {
             Some(firstKey),
             Nil,
             options.delimiter,
-            options.lengthMarker,
           )
           writer.pushListItem(depth, header)
-          arr.foreach(elem => encodeListItem(elem, writer, depth + 1, options))
+          arr.foreach(elem => encodeListItem(elem, writer, depth + 1, options, headAllow))
         }
       case JArray(arr) =>
         val header = formatHeader(
@@ -290,23 +403,22 @@ object Encoders {
           Some(firstKey),
           Nil,
           options.delimiter,
-          options.lengthMarker,
         )
         writer.pushListItem(depth, header)
-        arr.foreach(elem => encodeListItem(elem, writer, depth + 1, options))
+        arr.foreach(elem => encodeListItem(elem, writer, depth + 1, options, headAllow))
       case JObj(next) =>
         writer.pushListItem(depth, s"${encodeKey(firstKey)}:")
-        encodeObject(next, writer, depth + 2, options)
+        encodeObject(next, writer, depth + 2, options, headAllow)
       }
-      fields.tail.foreach {
-        case (k, v) =>
-          encodeKeyValue(k, v, writer, depth + 1, options)
+      prepared.tail.foreach {
+        case FieldEntry(k, v, disableChild) =>
+          encodeKeyValue(k, v, writer, depth + 1, options, allowFolding && !disableChild)
       }
     }
   case JArray(other) =>
-    val header = formatHeader(other.length, None, Nil, options.delimiter, options.lengthMarker)
+    val header = formatHeader(other.length, None, Nil, options.delimiter)
     writer.pushListItem(depth, header)
-    other.foreach(elem => encodeListItem(elem, writer, depth + 1, options))
+    other.foreach(elem => encodeListItem(elem, writer, depth + 1, options, allowFolding))
   }
 
 }

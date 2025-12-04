@@ -12,7 +12,7 @@ import io.toonformat.toon4s.error.DecodeError
  *
  * This object handles only array header parsing:
  *   - Extracting key names
- *   - Parsing bracket segments `[N]`, `[#N]`, `[N\t]`, etc.
+ *   - Parsing bracket segments `[N]`, `[N\t]`, etc.
  *   - Parsing field lists `{field1,field2}`
  *   - Finding inline values after colon
  *
@@ -30,10 +30,10 @@ import io.toonformat.toon4s.error.DecodeError
  * @example
  *   {{{
  * ArrayHeaderParser.parseArrayHeaderLine("arr[3]: 1,2,3", Delimiter.Comma)
- * // Some((ArrayHeaderInfo(Some("arr"), 3, Comma, Nil, false), Some("1,2,3")))
+ * // Some((ArrayHeaderInfo(Some("arr"), 3, Comma, Nil), Some("1,2,3")))
  *
  * ArrayHeaderParser.parseArrayHeaderLine("users[2]{id,name}:", Delimiter.Comma)
- * // Some((ArrayHeaderInfo(Some("users"), 2, Comma, List("id","name"), false), None))
+ * // Some((ArrayHeaderInfo(Some("users"), 2, Comma, List("id","name")), None))
  *   }}}
  */
 object ArrayHeaderParser {
@@ -126,7 +126,7 @@ object ArrayHeaderParser {
         ) None
         else {
           val bracketSegment = content.substring(bracketStart + 1, bracketEnd)
-          val (length, delimiter, hasMarker) = parseBracketSegment(bracketSegment, defaultDelim)
+          val (length, delimiter) = parseBracketSegment(bracketSegment, defaultDelim)
           cursor = skipWhitespace(bracketEnd + 1)
 
           // Phase 3: Parse optional field list {field1,field2,...}
@@ -158,7 +158,7 @@ object ArrayHeaderParser {
                 case ""    => None
                 case other => Some(other)
                 }
-                Some(ArrayHeaderInfo(keyOpt, length, delimiter, fields, hasMarker) -> inline)
+                Some(ArrayHeaderInfo(keyOpt, length, delimiter, fields) -> inline)
               }
           }
         }
@@ -173,10 +173,8 @@ object ArrayHeaderParser {
    *
    * Bracket segment syntax:
    *   - `5` → length 5, default delimiter
-   *   - `#5` → length 5, has length marker
    *   - `5\t` → length 5, tab delimiter
    *   - `5|` → length 5, pipe delimiter
-   *   - `#5\t` → length 5, tab delimiter, has marker
    *
    * @param seg
    *   The string inside brackets
@@ -190,26 +188,20 @@ object ArrayHeaderParser {
    * @example
    *   {{{
    * parseBracketSegment("5", Delimiter.Comma)
-   * // (5, Delimiter.Comma, false)
-   *
-   * parseBracketSegment("#10", Delimiter.Comma)
-   * // (10, Delimiter.Comma, true)
+   * // (5, Delimiter.Comma)
    *
    * parseBracketSegment("3\t", Delimiter.Comma)
-   * // (3, Delimiter.Tab, false)
+   * // (3, Delimiter.Tab)
    *
-   * parseBracketSegment("#7|", Delimiter.Comma)
-   * // (7, Delimiter.Pipe, true)
+   * parseBracketSegment("7|", Delimiter.Comma)
+   * // (7, Delimiter.Pipe)
    *   }}}
    */
-  def parseBracketSegment(seg: String, defaultDelim: Delimiter): (Int, Delimiter, Boolean) = {
-    var hasMarker = false
+  def parseBracketSegment(seg: String, defaultDelim: Delimiter): (Int, Delimiter) = {
     var content = seg
 
-    // Check for # length marker
     if (content.startsWith("#")) {
-      hasMarker = true
-      content = content.drop(1)
+      throw DecodeError.InvalidHeader("Length marker syntax [#N] is not supported in TOON v2.x")
     }
 
     // Check for delimiter suffix
@@ -227,7 +219,7 @@ object ArrayHeaderParser {
       throw DecodeError.InvalidHeader(s"Invalid array length: $seg")
     }
 
-    (len, delimiter, hasMarker)
+    (len, delimiter)
   }
 
   /**
