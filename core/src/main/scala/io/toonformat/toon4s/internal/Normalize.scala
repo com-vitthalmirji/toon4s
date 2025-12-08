@@ -31,29 +31,50 @@ private[toon4s] object Normalize {
   case Some(v)                 => toJson(v)
   case None                    => JNull
   case m: ScalaMap[_, _]       =>
-    val converted = VectorMap.from(m.iterator.map {
-      case (k, v) => stringifyKey(k) -> toJson(v)
-    })
-    JObj(converted)
+    val iter = m.iterator
+    if (!iter.hasNext) JObj(VectorMap.empty)
+    else {
+      val builder = VectorMap.newBuilder[String, JsonValue]
+      while (iter.hasNext) {
+        val (k, v) = iter.next()
+        builder.addOne(stringifyKey(k), toJson(v))
+      }
+      JObj(builder.result())
+    }
   case set: collection.Set[_] =>
-    JArray(set.iterator.map(toJson).toVector)
+    iteratorToJArray(set.iterator)
   case array: Array[_] =>
-    JArray(array.iterator.map(toJson).toVector)
+    iteratorToJArray(array.iterator)
   case temporal: TemporalAccessor =>
     JString(formatTemporal(temporal))
   case date: java.util.Date =>
     JString(date.toInstant.toString)
   case it: Iterable[_] =>
-    JArray(it.iterator.map(toJson).toVector)
+    iteratorToJArray(it.iterator)
   case p: Product =>
     val names = p.productElementNames
     val elems = p.productIterator
-    val fields = VectorMap.from(names.zip(elems).map {
-      case (k, v) => k -> toJson(v)
-    })
-    JObj(fields)
+    if (!names.hasNext) JObj(VectorMap.empty)
+    else {
+      val builder = VectorMap.newBuilder[String, JsonValue]
+      while (names.hasNext) {
+        builder.addOne(names.next(), toJson(elems.next()))
+      }
+      JObj(builder.result())
+    }
   case other =>
     JString(String.valueOf(other))
+  }
+
+  private def iteratorToJArray(iter: Iterator[_]): JArray = {
+    if (!iter.hasNext) JArray(Vector.empty)
+    else {
+      val builder = Vector.newBuilder[JsonValue]
+      while (iter.hasNext) {
+        builder.addOne(toJson(iter.next()))
+      }
+      JArray(builder.result())
+    }
   }
 
   private val SafeIntegerMax = BigInt("9007199254740991")

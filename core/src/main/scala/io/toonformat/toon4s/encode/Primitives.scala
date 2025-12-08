@@ -15,7 +15,7 @@ private[toon4s] object Primitives {
   }
 
   def encodeStringLiteral(s: String, delim: Delimiter): String = {
-    if (isSafeUnquoted(s, delim)) s else "\"" + escapeString(s) + "\""
+    if (isSafeUnquoted(s, delim)) s else quoteAndEscape(s)
   }
 
   private def normalizeNumber(n: BigDecimal): String = {
@@ -24,19 +24,20 @@ private[toon4s] object Primitives {
   }
 
   def encodeKey(key: String): String = {
-    if (isValidUnquotedKey(key)) key else "\"" + escapeString(key) + "\""
+    if (isValidUnquotedKey(key)) key else quoteAndEscape(key)
   }
 
   private val ValidKeyRegex = "^[A-Za-z_][A-Za-z0-9_.]*$".r
 
   def isValidUnquotedKey(key: String): Boolean = ValidKeyRegex.matches(key)
 
+  val structuralChars = Set('"', '\\', '[', ']', '{', '}', '\n', '\r', '\t')
+
   def isSafeUnquoted(value: String, delim: Delimiter): Boolean = {
-    val structuralChars = Set('"', '\\', '[', ']', '{', '}', '\n', '\r', '\t')
-    val trimmed = value.trim
     val passesBasicChecks =
       value.nonEmpty &&
-        trimmed == value &&
+        !Character.isWhitespace(value.charAt(0)) &&
+        !Character.isWhitespace(value.charAt(value.length - 1)) &&
         !value.contains(':') &&
         !value.contains(delim.char) &&
         !value.startsWith(C.ListItemMarker)
@@ -95,6 +96,23 @@ private[toon4s] object Primitives {
       case c if c.isControl => builder.append(f"\\u${c.toInt}%04x")
       case c                => builder.append(c)
     }
+    builder.result()
+  }
+
+  /** Quote and escape a string in one pass. */
+  def quoteAndEscape(s: String): String = {
+    val builder = new StringBuilder(s.length + 18) // +2 for quotes, +16 for escapes
+    builder.append('"')
+    s.foreach {
+      case '\\'             => builder.append("\\\\")
+      case '"'              => builder.append("\\\"")
+      case '\n'             => builder.append("\\n")
+      case '\r'             => builder.append("\\r")
+      case '\t'             => builder.append("\\t")
+      case c if c.isControl => builder.append(f"\\u${c.toInt}%04x")
+      case c                => builder.append(c)
+    }
+    builder.append('"')
     builder.result()
   }
 
