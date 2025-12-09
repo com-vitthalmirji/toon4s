@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.4.3] - 2025-12-09
+
+
+### Documentation
+- credit @rorygraves for PR #42 performance improvements ([`99f7713`](https://github.com/vim89/toon4s/commit/99f7713cd9c43ba74842df1f3186efb39055ce97)) by @vim89
+- Fix [skip ci] [skip release] ([`31158b4`](https://github.com/vim89/toon4s/commit/31158b42baec6b51b454eba2dbb22c36102a1377)) by @vim89
+- update CHANGELOG.md for main [skip ci] ([`e0bda3f`](https://github.com/vim89/toon4s/commit/e0bda3f1162d8d172950b7a56a9d91044053ed03)) by @github-actions[bot]
+
+
 ## [0.4.2] - 2025-12-09
 
 
@@ -24,7 +33,7 @@
 
 
 ### Performance
-- optimize encode performance ~2x improvement ([`f8933be`](https://github.com/vim89/toon4s/commit/f8933be4f1fb3213bbc8a081a0cbed2db3336582)) [#42](https://github.com/vim89/toon4s/pull/42) by @rorygraves, Thank you Rory!
+- optimize encode performance ~2x improvement ([`f8933be`](https://github.com/vim89/toon4s/commit/f8933be4f1fb3213bbc8a081a0cbed2db3336582))
 
 
 ## [0.4.0] - 2025-12-04
