@@ -9,7 +9,7 @@
 
 
 ### Performance
-- optimize encode performance ~2x improvement ([`f8933be`](https://github.com/vim89/toon4s/commit/f8933be4f1fb3213bbc8a081a0cbed2db3336582))
+- optimize encode performance ~2x improvement ([`f8933be`](https://github.com/vim89/toon4s/commit/f8933be4f1fb3213bbc8a081a0cbed2db3336582)) [#42](https://github.com/vim89/toon4s/pull/42) by @rorygraves
 
 
 ## [0.4.0] - 2025-12-04
