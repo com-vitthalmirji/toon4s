@@ -56,7 +56,7 @@ private[toon4s] object Primitives {
   }
 
   def encodeKey(key: String): String = {
-    if (isValidUnquotedKey(key)) key else "\"" + escapeString(key) + "\""
+    if (isValidUnquotedKey(key)) key else quoteAndEscape(key)
   }
 
   private val ValidKeyRegex = "^[A-Za-z_][A-Za-z0-9_.]*$".r
