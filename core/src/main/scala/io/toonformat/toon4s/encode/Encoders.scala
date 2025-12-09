@@ -215,16 +215,20 @@ object Encoders {
   private def extractTabularHeader(
       rows: Vector[scala.collection.immutable.VectorMap[String, JsonValue]]
   ): Option[List[String]] = {
-    rows.headOption.flatMap {
-      first =>
-        val keys = first.keys.toList
-        val uniform = rows.forall {
-          row =>
-            row.keySet == first.keySet && row.forall {
-              case (_, v) => isPrimitive(v)
-            }
+    // Early exit optimization using iterator.forall for short-circuit
+    if (rows.isEmpty) None
+    else {
+      val first = rows.head
+      val keys = first.keys.toList
+      if (keys.isEmpty) None
+      else {
+        val firstKeySet = first.keySet
+        // Use iterator for early exit on non-uniform rows
+        val uniform = rows.iterator.forall { row =>
+          row.keySet == firstKeySet && row.valuesIterator.forall(isPrimitive)
         }
-        if (uniform && keys.nonEmpty) Some(keys) else None
+        if (uniform) Some(keys) else None
+      }
     }
   }
 
