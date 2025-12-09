@@ -249,7 +249,10 @@ object Encoders {
       case sw: StreamLineWriter =>
         sw.pushDelimitedPrimitives(depth, header, values, options.delimiter)
       case _ =>
-        val sb = new StringBuilder
+        // Pre-allocate StringBuilder capacity to avoid resizing during append
+        // Estimate: ~10 chars per value + delimiters
+        val estimatedSize = values.length * 11
+        val sb = new StringBuilder(estimatedSize)
         var i = 0
         while (i < values.length) {
           if (i > 0) sb.append(options.delimiter.char)
@@ -278,7 +281,9 @@ object Encoders {
                 .toVector
               sw.pushRowPrimitives(depth + 1, vs, options.delimiter)
             case _ =>
-              val sb = new StringBuilder
+              // Pre-allocate StringBuilder capacity to avoid resizing
+              val estimatedSize = headerFields.length * 11
+              val sb = new StringBuilder(estimatedSize)
               var i = 0
               while (i < headerFields.length) {
                 if (i > 0) sb.append(options.delimiter.char)
@@ -318,7 +323,9 @@ object Encoders {
     case sw: StreamLineWriter =>
       sw.pushListItemDelimitedPrimitives(depth, header, inner, options.delimiter)
     case _ =>
-      val sb = new StringBuilder
+      // Pre-allocate StringBuilder capacity to avoid resizing
+      val estimatedSize = inner.length * 11
+      val sb = new StringBuilder(estimatedSize)
       var i = 0
       while (i < inner.length) {
         if (i > 0) sb.append(options.delimiter.char)
@@ -351,7 +358,9 @@ object Encoders {
         case sw: StreamLineWriter =>
           sw.pushListItemDelimitedPrimitives(depth, header, arr, options.delimiter)
         case _ =>
-          val sb = new StringBuilder
+          // Pre-allocate StringBuilder capacity to avoid resizing
+          val estimatedSize = arr.length * 11
+          val sb = new StringBuilder(estimatedSize)
           var i = 0
           while (i < arr.length) {
             if (i > 0) sb.append(options.delimiter.char)
@@ -377,7 +386,9 @@ object Encoders {
           writer.pushListItem(depth, header)
           objectRows.foreach {
             row =>
-              val sb = new StringBuilder
+              // Pre-allocate StringBuilder capacity to avoid resizing
+              val estimatedSize = headerFields.length * 11
+              val sb = new StringBuilder(estimatedSize)
               var i = 0
               while (i < headerFields.length) {
                 if (i > 0) sb.append(options.delimiter.char)
