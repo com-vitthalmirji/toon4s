@@ -1,5 +1,37 @@
 # Changelog
 
+## [0.4.1] - 2025-12-08
+
+
+### Documentation
+- update CHANGELOG.md for main [skip ci] ([`7551c81`](https://github.com/vim89/toon4s/commit/7551c81ea9ee2ce7fd3bc2f207955c51b4d7c82d)) by @github-actions[bot]
+
+
+
+### Performance
+- optimize encode performance ~2x improvement ([`f8933be`](https://github.com/vim89/toon4s/commit/f8933be4f1fb3213bbc8a081a0cbed2db3336582))
+
+
+## [0.4.0] - 2025-12-04
+
+
+### Documentation
+- update CHANGELOG.md for main [skip ci] ([`c1405fb`](https://github.com/vim89/toon4s/commit/c1405fb0c91d94365ee9f10309af3f4278ae8dc3)) by @github-actions[bot]
+
+
+
+### Features
+- Align toon4s with TOON v2.1.0 and emit v3 row-depth tabular layout. ([`555b989`](https://github.com/vim89/toon4s/commit/555b989709b620b6be30ac607482c6f68b49bd87)) by @vim89
+- Align toon4s with TOON v2.1.0 and emit v3 row-depth tabular layout. ([`4c79d84`](https://github.com/vim89/toon4s/commit/4c79d84ad7469b737be1e728c1d35c9cfb2b7ba4)) by @vim89
+- align toon4s with TOON v2.1.0 and v3 row-depth layout ([`248021c`](https://github.com/vim89/toon4s/commit/248021c53c2f1f4720f4305ce78f1f30f0ec9530)) by @vim89
+
+
+
+### Chroe
+- scalafmt ([`cfd0fa6`](https://github.com/vim89/toon4s/commit/cfd0fa61bb71e9b6d3b1497b9fe9802928fe5082)) by @vim89
+- updated toon compare svg ([`d3e3028`](https://github.com/vim89/toon4s/commit/d3e302850227817840b330a5b2a551f1efb7af83)) by @vim89
+
+
 ## [0.3.2] - 2025-11-20
 
 
