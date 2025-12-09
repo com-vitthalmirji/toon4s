@@ -63,8 +63,6 @@ private[toon4s] object Primitives {
 
   def isValidUnquotedKey(key: String): Boolean = ValidKeyRegex.matches(key)
 
-  val structuralChars = Set('"', '\\', '[', ']', '{', '}', '\n', '\r', '\t')
-
   def isSafeUnquoted(value: String, delim: Delimiter): Boolean = {
     val passesBasicChecks =
       value.nonEmpty &&
@@ -128,23 +126,6 @@ private[toon4s] object Primitives {
       case c if c.isControl => builder.append(f"\\u${c.toInt}%04x")
       case c                => builder.append(c)
     }
-    builder.result()
-  }
-
-  /** Quote and escape a string in one pass. */
-  def quoteAndEscape(s: String): String = {
-    val builder = new StringBuilder(s.length + 18) // +2 for quotes, +16 for escapes
-    builder.append('"')
-    s.foreach {
-      case '\\'             => builder.append("\\\\")
-      case '"'              => builder.append("\\\"")
-      case '\n'             => builder.append("\\n")
-      case '\r'             => builder.append("\\r")
-      case '\t'             => builder.append("\\t")
-      case c if c.isControl => builder.append(f"\\u${c.toInt}%04x")
-      case c                => builder.append(c)
-    }
-    builder.append('"')
     builder.result()
   }
 
