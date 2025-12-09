@@ -53,5 +53,5 @@
   <circle cx="470" cy="255" r="6" fill="#2d7a2d"/><text x="485" y="259" class="label">Zero dependencies: 491KB JAR, pure Scala stdlib, 380+ passing tests</text>
 
 
-  <text x="35" y="320" class="caption">Use it for TOON encoding. Performance: ~866 ops/ms tabular decode (JMH, Java 21).</text>
+  <text x="35" y="320" class="caption">Use it for TOON encoding. Performance: ~838 ops/ms tabular decode, ~520 ops/ms encode (JMH, Java 21, 2025-12-09).</text>
 </svg>
