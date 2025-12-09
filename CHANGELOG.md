@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.4.2] - 2025-12-09
+
+
+### Bug fixes
+- remove duplicate definitions in Primitives.scala ([`f634b4f`](https://github.com/vim89/toon4s/commit/f634b4f25d3f212021c4db39c40aed3965347695)) by @vim89
+- cleanup ([`a184813`](https://github.com/vim89/toon4s/commit/a184813d3ee8d6aa538f4a82a72bf7cadbbc92eb)) by @vim89
+
+
+
+### Documentation
+- update CHANGELOG.md for main [skip ci] ([`4fe9090`](https://github.com/vim89/toon4s/commit/4fe909054aab2bb0549eb236d26ce55596f5613f)) by @github-actions[bot]
+- add performance optimization results showing 2x improvement ([`81fbca6`](https://github.com/vim89/toon4s/commit/81fbca65169027175337992f9a1857613185d064)) by @vim89
+- update benchmarks with 2x performance improvement results ([`9a5f701`](https://github.com/vim89/toon4s/commit/9a5f70127b840dc41fb590a8d7f682025e11ef24)) by @vim89
+
+
 ## [0.4.1] - 2025-12-08
 
 
@@ -15,6 +30,11 @@
 ## [0.4.0] - 2025-12-04
 
 
+### Bug fixes
+- cleanup ([`5f37b2b`](https://github.com/vim89/toon4s/commit/5f37b2be37d83916f89dcbf5ed8f7832859c3b92)) by @vim89
+
+
+
 ### Documentation
 - update CHANGELOG.md for main [skip ci] ([`c1405fb`](https://github.com/vim89/toon4s/commit/c1405fb0c91d94365ee9f10309af3f4278ae8dc3)) by @github-actions[bot]
 
@@ -24,6 +44,16 @@
 - Align toon4s with TOON v2.1.0 and emit v3 row-depth tabular layout. ([`555b989`](https://github.com/vim89/toon4s/commit/555b989709b620b6be30ac607482c6f68b49bd87)) by @vim89
 - Align toon4s with TOON v2.1.0 and emit v3 row-depth tabular layout. ([`4c79d84`](https://github.com/vim89/toon4s/commit/4c79d84ad7469b737be1e728c1d35c9cfb2b7ba4)) by @vim89
 - align toon4s with TOON v2.1.0 and v3 row-depth layout ([`248021c`](https://github.com/vim89/toon4s/commit/248021c53c2f1f4720f4305ce78f1f30f0ec9530)) by @vim89
+
+
+
+### Performance
+- hoist structuralChars Set and avoid trim allocation in Primitives ([`1d18cb2`](https://github.com/vim89/toon4s/commit/1d18cb2a31e69047a6d9031a809d237b2557a456)) by @vim89
+- pre-allocate StringBuilder capacity in Encoders hot paths ([`52cce65`](https://github.com/vim89/toon4s/commit/52cce650421d4990467186f294541baafa72511c)) by @vim89
+- add quoteAndEscape single-pass method and use in StringifyVisitor ([`c077f25`](https://github.com/vim89/toon4s/commit/c077f25f2db8d31318b75cd3f313570b752a5ba4)) by @vim89
+- eliminate trim allocations in DelimitedValuesParser by trimming during building ([`757380e`](https://github.com/vim89/toon4s/commit/757380e3b7bca2edc3f58e0c3dc2c57de139e588)) by @vim89
+- optimize SimpleJson.stringify and quote with while loops ([`81582b9`](https://github.com/vim89/toon4s/commit/81582b9f161a57a6a56ef20c20fbbd9ae65aeeda)) by @vim89
+- add early exit optimization to extractTabularHeader ([`8cc34c7`](https://github.com/vim89/toon4s/commit/8cc34c70a76e51cdd3fd8d05e2c58a144e20426b)) by @vim89
 
 
 
