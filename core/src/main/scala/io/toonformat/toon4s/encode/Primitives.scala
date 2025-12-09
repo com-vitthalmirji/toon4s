@@ -19,7 +19,35 @@ private[toon4s] object Primitives {
   }
 
   def encodeStringLiteral(s: String, delim: Delimiter): String = {
-    if (isSafeUnquoted(s, delim)) s else "\"" + escapeString(s) + "\""
+    if (isSafeUnquoted(s, delim)) s else quoteAndEscape(s)
+  }
+
+  /**
+   * Quote and escape a string in a single pass, avoiding intermediate allocations.
+   *
+   * Merges quoting and escaping into one operation to eliminate intermediate StringBuilder
+   * allocations. Hot path optimization - called for every string value that needs quoting during
+   * encoding.
+   *
+   * @param s
+   *   The string to quote and escape
+   * @return
+   *   Quoted and escaped string
+   */
+  def quoteAndEscape(s: String): String = {
+    val builder = new StringBuilder(s.length + 18)
+    builder.append('"')
+    s.foreach {
+      case '\\'             => builder.append("\\\\")
+      case '"'              => builder.append("\\\"")
+      case '\n'             => builder.append("\\n")
+      case '\r'             => builder.append("\\r")
+      case '\t'             => builder.append("\\t")
+      case c if c.isControl => builder.append(f"\\u${c.toInt}%04x")
+      case c                => builder.append(c)
+    }
+    builder.append('"')
+    builder.result()
   }
 
   private def normalizeNumber(n: BigDecimal): String = {

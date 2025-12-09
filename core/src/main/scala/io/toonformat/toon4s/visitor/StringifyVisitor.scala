@@ -62,8 +62,10 @@ final class StringifyVisitor(indent: Int = 2) extends Visitor[String] {
    *   The string in TOON format (quoted if necessary)
    */
   override def visitString(value: String): String = {
+    // Use Primitives.quoteAndEscape for single-pass quoting and escaping
+    // Avoids intermediate string allocations from concatenation
     if (needsQuoting(value)) {
-      "\"" + Primitives.escapeString(value) + "\""
+      Primitives.quoteAndEscape(value)
     } else {
       value
     }
