@@ -64,6 +64,8 @@ object DelimitedValuesParser {
     val builder = new StringBuilder
     var i = 0
     var inQuotes = false
+    // Track if we're still in leading whitespace to skip it during building
+    var leadingWs = true
 
     while (i < input.length) {
       val ch = input.charAt(i)
@@ -71,29 +73,44 @@ object DelimitedValuesParser {
       // Handle escape sequences inside quotes
       if (ch == '\\' && i + 1 < input.length && inQuotes) {
         builder.append(ch).append(input.charAt(i + 1))
+        leadingWs = false
         i += 2
       }
       // Toggle quote state
       else if (ch == '"') {
         inQuotes = !inQuotes
         builder.append(ch)
+        leadingWs = false
         i += 1
       }
       // Delimiter outside quotes - split here
       else if (ch == delim.char && !inQuotes) {
-        out += builder.result().trim
+        // Trim trailing whitespace by shrinking builder
+        while (builder.nonEmpty && Character.isWhitespace(builder.last)) {
+          builder.setLength(builder.length - 1)
+        }
+        out += builder.result()
         builder.clear()
+        leadingWs = true
         i += 1
       }
-      // Regular character - append
+      // Regular character - append (skip leading whitespace unless quoted)
       else {
-        builder.append(ch)
+        if (!leadingWs || !Character.isWhitespace(ch)) {
+          builder.append(ch)
+          leadingWs = false
+        }
         i += 1
       }
     }
 
-    // Add final value if present
-    if (builder.nonEmpty || out.nonEmpty) out += builder.result().trim
+    // Add final value if present (trim trailing whitespace)
+    if (builder.nonEmpty || out.nonEmpty) {
+      while (builder.nonEmpty && Character.isWhitespace(builder.last)) {
+        builder.setLength(builder.length - 1)
+      }
+      out += builder.result()
+    }
 
     out.toVector
   }
