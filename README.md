@@ -62,6 +62,172 @@ a compact, LLM-friendly data format that blends YAML-style indentation with CSV-
 
 ---
 
+## Architecture & Design
+
+### High-Level Architecture
+
+toon4s is built on a layered architecture that separates concerns and enables composability:
+
+```mermaid
+flowchart TD
+    USER["User Code"] --> API["Public API Layer"]
+    API --> ENCODE["Encoder Path"]
+    API --> DECODE["Decoder Path"]
+    API --> VISITOR["Visitor Path"]
+
+    ENCODE --> PRIMITIVES["Primitives Module"]
+    ENCODE --> NORM["Normalize Module"]
+    ENCODE --> WRITER["EncodeLineWriter"]
+
+    DECODE --> SCANNER["Scanner"]
+    SCANNER --> PARSER["Parser Layer"]
+    PARSER --> CURSOR["Cursor + Validation"]
+    CURSOR --> JSON["JsonValue ADT"]
+
+    VISITOR --> TREEWALKER["TreeWalker"]
+    TREEWALKER --> VISITORS["Visitor Implementations"]
+    VISITORS --> TRANSFORM["Streaming Transform"]
+
+    style USER fill:#e1f5ff,stroke:#0066cc,color:#000
+    style API fill:#fff4e1,stroke:#cc8800,color:#000
+    style ENCODE fill:#e1ffe1,stroke:#2d7a2d,color:#000
+    style DECODE fill:#e1ffe1,stroke:#2d7a2d,color:#000
+    style VISITOR fill:#e1ffe1,stroke:#2d7a2d,color:#000
+    style JSON fill:#f0e1ff,stroke:#8800cc,color:#000
+    style TRANSFORM fill:#f0e1ff,stroke:#8800cc,color:#000
+```
+
+### Core Modules
+
+**Decode Path** (`decode/`):
+- **Scanner**: Tokenizes TOON text into structured lines with indentation tracking
+- **Parser**: Converts tokens to `JsonValue` ADT with strict/lenient modes
+- **Cursor**: Stack-safe navigation through nested structures
+- **Validation**: Depth, length, and size limit enforcement
+
+**Encode Path** (`encode/`):
+- **Encoders**: Pure functions from `JsonValue` to TOON format
+- **Primitives**: Low-level string quoting and primitive encoding
+- **Normalize**: Array/object structure analysis for optimal layout selection
+
+**Visitor Pattern** (`visitor/`):
+- **TreeWalker**: Universal adapter for external JSON libraries (Jackson, Circe, Play)
+- **Streaming Visitors**: O(1) memory transformations (filter, repair, stringify)
+- **Composable**: Chain multiple visitors in single pass
+
+### Encode Flow
+
+```mermaid
+flowchart LR
+    START["JsonValue"] --> ANALYZE["Normalize.analyze"]
+    ANALYZE --> DECISION{"Array type?"}
+    DECISION -->|"Uniform objects"| TABULAR["Tabular format"]
+    DECISION -->|"Primitives"| INLINE["Inline format"]
+    DECISION -->|"Mixed/nested"| LIST["List format"]
+
+    TABULAR --> HEADER["Format header + rows"]
+    INLINE --> DELIM["Join with delimiter"]
+    LIST --> NESTED["Recursive encode"]
+
+    HEADER --> OUTPUT["TOON string"]
+    DELIM --> OUTPUT
+    NESTED --> OUTPUT
+
+    style START fill:#e1f5ff,stroke:#0066cc,color:#000
+    style ANALYZE fill:#fff4e1,stroke:#cc8800,color:#000
+    style DECISION fill:#f0e1ff,stroke:#8800cc,color:#000
+    style TABULAR fill:#e1ffe1,stroke:#2d7a2d,color:#000
+    style INLINE fill:#e1ffe1,stroke:#2d7a2d,color:#000
+    style LIST fill:#e1ffe1,stroke:#2d7a2d,color:#000
+    style OUTPUT fill:#90EE90,stroke:#2d7a2d,color:#000
+```
+
+### Decode Flow
+
+```mermaid
+flowchart LR
+    INPUT["TOON string"] --> SCANNER["Scanner.scan"]
+    SCANNER --> LINES["Structured lines"]
+    LINES --> PARSE["Parser.parse"]
+    PARSE --> VALIDATE["Validation"]
+
+    VALIDATE -->|"Valid"| SUCCESS["Right(JsonValue)"]
+    VALIDATE -->|"Invalid"| ERROR["Left(DecodeError)"]
+
+    SUCCESS --> TYPED["Optional: Decoder[T]"]
+    TYPED --> RESULT["T"]
+
+    style INPUT fill:#e1f5ff,stroke:#0066cc,color:#000
+    style SCANNER fill:#fff4e1,stroke:#cc8800,color:#000
+    style LINES fill:#fff4e1,stroke:#cc8800,color:#000
+    style PARSE fill:#fff4e1,stroke:#cc8800,color:#000
+    style VALIDATE fill:#f0e1ff,stroke:#8800cc,color:#000
+    style SUCCESS fill:#e1ffe1,stroke:#2d7a2d,color:#000
+    style ERROR fill:#ffe1e1,stroke:#cc0000,color:#000
+    style TYPED fill:#e1ffe1,stroke:#2d7a2d,color:#000
+    style RESULT fill:#90EE90,stroke:#2d7a2d,color:#000
+```
+
+### Visitor Pattern Flow
+
+```mermaid
+flowchart TD
+    EXTERNAL["External JSON<br/>(Jackson/Circe/Play)"] --> WALKER["TreeWalker.dispatch"]
+    JSONVAL["JsonValue ADT"] --> WALKER
+
+    WALKER --> VISITOR["Visitor Trait"]
+    VISITOR --> IMPL{"Implementation"}
+
+    IMPL -->|"StringifyVisitor"| STRINGIFY["TOON string"]
+    IMPL -->|"FilterKeysVisitor"| FILTER["Filtered JSON"]
+    IMPL -->|"JsonRepairVisitor"| REPAIR["Repaired JSON"]
+    IMPL -->|"ConstructionVisitor"| CONSTRUCT["JsonValue"]
+
+    FILTER --> CHAIN["Chain visitors"]
+    REPAIR --> CHAIN
+    CHAIN --> ONEPASS["Single-pass transform"]
+
+    style EXTERNAL fill:#e1f5ff,stroke:#0066cc,color:#000
+    style JSONVAL fill:#e1f5ff,stroke:#0066cc,color:#000
+    style WALKER fill:#fff4e1,stroke:#cc8800,color:#000
+    style VISITOR fill:#f0e1ff,stroke:#8800cc,color:#000
+    style STRINGIFY fill:#e1ffe1,stroke:#2d7a2d,color:#000
+    style FILTER fill:#e1ffe1,stroke:#2d7a2d,color:#000
+    style REPAIR fill:#e1ffe1,stroke:#2d7a2d,color:#000
+    style CONSTRUCT fill:#e1ffe1,stroke:#2d7a2d,color:#000
+    style ONEPASS fill:#90EE90,stroke:#2d7a2d,color:#000
+```
+
+### Performance Architecture
+
+toon4s achieves **2x performance** through systematic optimization:
+
+**Allocation Reduction**:
+- Pre-allocated `StringBuilder` capacity based on estimated output size
+- Single-pass parsing (combined quote-finding + unescaping)
+- Cached common header patterns (array lengths 0-10)
+- `VectorBuilder` + while loops instead of functional chains
+
+**Hot Path Optimization**:
+- `Character.isWhitespace()` instead of `String.trim()` allocation
+- Pattern matching for delimiter dispatch
+- Early exit with `iterator.forall` for uniform array detection
+- Hoisted constants outside loops
+
+**Memory Efficiency**:
+- Streaming visitors with O(d) memory (depth-dependent, not size-dependent)
+- Tail-recursive iteration for large arrays
+- Stack-safe cursor navigation
+- No intermediate allocations in visitor chains
+
+**Benchmark Results** (encode_object: 287 → 600 ops/ms, decode_tabular: 417 → 874 ops/ms):
+- P0 quick wins: 20-30% gain
+- P1 high impact: 45-70% gain
+- P2 optimizations: 4-15% additional gain
+- **Total: ~2x improvement** while maintaining functional purity
+
+---
+
 ## Design principles
 
 **This is what sets toon4s apart**: While most libraries compromise on architecture for convenience, toon4s demonstrates that you can have **both production performance and functional purity**. Every design decision prioritizes correctness, composability, and type safety-making toon4s a reference implementation for modern Scala projects.
@@ -239,20 +405,20 @@ sbt jmhFull # heavy JMH runs
 Throughput (JMH heavy, macOS M‑series, Java 21.0.9, Temurin OpenJDK; 5 warmup iterations × 2s, 5 measurement iterations × 2s):
 
 ```
-Benchmark                          Mode  Cnt     Score    Error   Units
-EncodeDecodeBench.decode_list     thrpt    5   745.404 ± 65.664  ops/ms
-EncodeDecodeBench.decode_nested   thrpt    5   537.574 ±  3.083  ops/ms
-EncodeDecodeBench.decode_tabular  thrpt    5   837.589 ±  2.472  ops/ms
-EncodeDecodeBench.encode_object   thrpt    5   519.942 ±  7.398  ops/ms
+Benchmark                          Mode  Cnt     Score   Error   Units
+EncodeDecodeBench.decode_list     thrpt    5   784.240 ± 3.439  ops/ms
+EncodeDecodeBench.decode_nested   thrpt    5   570.729 ± 0.844  ops/ms
+EncodeDecodeBench.decode_tabular  thrpt    5   874.285 ± 3.410  ops/ms
+EncodeDecodeBench.encode_object   thrpt    5   600.403 ± 1.240  ops/ms
 ```
-*Latest results from perf/apply-optimization-opportunities branch (2025-12-09)*
+*Latest results with P0+P1+P2+P3 optimizations (2025-12-10)*
 *Represents ~2x performance improvement over PR #43 baseline through systematic hot-path optimization*
 
 **Performance highlights:**
-- **Tabular decoding**: ~838 ops/ms - optimized for CSV-like structures
-- **List decoding**: ~745 ops/ms - fast array processing
-- **Nested decoding**: ~538 ops/ms - efficient for deep object hierarchies
-- **Object encoding**: ~520 ops/ms - consistent encoding performance
+- **Tabular decoding**: ~874 ops/ms - optimized for CSV-like structures
+- **List decoding**: ~784 ops/ms - fast array processing
+- **Nested decoding**: ~571 ops/ms - efficient for deep object hierarchies
+- **Object encoding**: ~600 ops/ms - consistent encoding performance
 
 Note: numbers vary by JVM/OS/data shape. Run your own payloads with JMH for apples‑to‑apples comparison.
 
