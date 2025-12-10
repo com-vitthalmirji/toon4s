@@ -88,13 +88,13 @@ flowchart TD
     VISITOR --> TREEWALKER["TreeWalker"]
     TREEWALKER --> VISITORS["Visitor implementations"]
     VISITORS --> TRANSFORM["Streaming transform"]
-    style USER fill: #e1f5ff, stroke: #0066cc, color: #000
-    style API fill: #fff4e1, stroke: #cc8800, color: #000
-    style ENCODE fill: #e1ffe1, stroke: #2d7a2d, color: #000
-    style DECODE fill: #e1ffe1, stroke: #2d7a2d, color: #000
-    style VISITOR fill: #e1ffe1, stroke: #2d7a2d, color: #000
-    style JSON fill: #f0e1ff, stroke: #8800cc, color: #000
-    style TRANSFORM fill: #f0e1ff, stroke: #8800cc, color: #000
+    style USER fill:#e1f5ff,stroke:#0066cc,color:#000
+    style API fill:#fff4e1,stroke:#cc8800,color:#000
+    style ENCODE fill:#e1ffe1,stroke:#2d7a2d,color:#000
+    style DECODE fill:#e1ffe1,stroke:#2d7a2d,color:#000
+    style VISITOR fill:#e1ffe1,stroke:#2d7a2d,color:#000
+    style JSON fill:#f0e1ff,stroke:#8800cc,color:#000
+    style TRANSFORM fill:#f0e1ff,stroke:#8800cc,color:#000
 ```
 
 ### Core modules
@@ -133,13 +133,13 @@ flowchart LR
     HEADER --> OUTPUT["TOON string"]
     DELIM --> OUTPUT
     NESTED --> OUTPUT
-    style START fill: #e1f5ff, stroke: #0066cc, color: #000
-    style ANALYZE fill: #fff4e1, stroke: #cc8800, color: #000
-    style DECISION fill: #f0e1ff, stroke: #8800cc, color: #000
-    style TABULAR fill: #e1ffe1, stroke: #2d7a2d, color: #000
-    style INLINE fill: #e1ffe1, stroke: #2d7a2d, color: #000
-    style LIST fill: #e1ffe1, stroke: #2d7a2d, color: #000
-    style OUTPUT fill: #90EE90, stroke: #2d7a2d, color: #000
+    style START fill:#e1f5ff,stroke:#0066cc,color:#000
+    style ANALYZE fill:#fff4e1,stroke:#cc8800,color:#000
+    style DECISION fill:#f0e1ff,stroke:#8800cc,color:#000
+    style TABULAR fill:#e1ffe1,stroke:#2d7a2d,color:#000
+    style INLINE fill:#e1ffe1,stroke:#2d7a2d,color:#000
+    style LIST fill:#e1ffe1,stroke:#2d7a2d,color:#000
+    style OUTPUT fill:#90EE90,stroke:#2d7a2d,color:#000
 ```
 
 ### Decode flow
@@ -154,15 +154,15 @@ flowchart LR
     VALIDATE -->|" Invalid "| ERROR["Left(DecodeError)"]
     SUCCESS --> TYPED["Optional: Decoder[T]"]
     TYPED --> RESULT["T"]
-    style INPUT fill: #e1f5ff, stroke: #0066cc, color: #000
-    style SCANNER fill: #fff4e1, stroke: #cc8800, color: #000
-    style LINES fill: #fff4e1, stroke: #cc8800, color: #000
-    style PARSE fill: #fff4e1, stroke: #cc8800, color: #000
-    style VALIDATE fill: #f0e1ff, stroke: #8800cc, color: #000
-    style SUCCESS fill: #e1ffe1, stroke: #2d7a2d, color: #000
-    style ERROR fill: #ffe1e1, stroke: #cc0000, color: #000
-    style TYPED fill: #e1ffe1, stroke: #2d7a2d, color: #000
-    style RESULT fill: #90EE90, stroke: #2d7a2d, color: #000
+    style INPUT fill:#e1f5ff,stroke:#0066cc,color:#000
+    style SCANNER fill:#fff4e1,stroke:#cc8800,color:#000
+    style LINES fill:#fff4e1,stroke:#cc8800,color:#000
+    style PARSE fill:#fff4e1,stroke:#cc8800,color:#000
+    style VALIDATE fill:#f0e1ff,stroke:#8800cc,color:#000
+    style SUCCESS fill:#e1ffe1,stroke:#2d7a2d,color:#000
+    style ERROR fill:#ffe1e1,stroke:#cc0000,color:#000
+    style TYPED fill:#e1ffe1,stroke:#2d7a2d,color:#000
+    style RESULT fill:#90EE90,stroke:#2d7a2d,color:#000
 ```
 
 ### Visitor pattern flow
@@ -180,15 +180,15 @@ flowchart TD
     FILTER --> CHAIN["Chain visitors"]
     REPAIR --> CHAIN
     CHAIN --> ONEPASS["Single-pass transform"]
-    style EXTERNAL fill: #e1f5ff, stroke: #0066cc, color: #000
-    style JSONVAL fill: #e1f5ff, stroke: #0066cc, color: #000
-    style WALKER fill: #fff4e1, stroke: #cc8800, color: #000
-    style VISITOR fill: #f0e1ff, stroke: #8800cc, color: #000
-    style STRINGIFY fill: #e1ffe1, stroke: #2d7a2d, color: #000
-    style FILTER fill: #e1ffe1, stroke: #2d7a2d, color: #000
-    style REPAIR fill: #e1ffe1, stroke: #2d7a2d, color: #000
-    style CONSTRUCT fill: #e1ffe1, stroke: #2d7a2d, color: #000
-    style ONEPASS fill: #90EE90, stroke: #2d7a2d, color: #000
+    style EXTERNAL fill:#e1f5ff,stroke:#0066cc,color:#000
+    style JSONVAL fill:#e1f5ff,stroke:#0066cc,color:#000
+    style WALKER fill:#fff4e1,stroke:#cc8800,color:#000
+    style VISITOR fill:#f0e1ff,stroke:#8800cc,color:#000
+    style STRINGIFY fill:#e1ffe1,stroke:#2d7a2d,color:#000
+    style FILTER fill:#e1ffe1,stroke:#2d7a2d,color:#000
+    style REPAIR fill:#e1ffe1,stroke:#2d7a2d,color:#000
+    style CONSTRUCT fill:#e1ffe1,stroke:#2d7a2d,color:#000
+    style ONEPASS fill:#90EE90,stroke:#2d7a2d,color:#000
 ```
 
 ### Performance architecture
@@ -256,13 +256,13 @@ JsonValue <|-- JArray
 JsonValue <|-- JObj
 JArray --> JsonValue: contains
 JObj --> JsonValue: contains
-style JsonValue fill: #f0e1ff, stroke: #8800cc, color: #000
-style JNull fill: #e1ffe1, stroke: #2d7a2d, color: #000
-style JBool fill: #e1ffe1, stroke: #2d7a2d, color: #000
-style JNumber fill: #e1ffe1, stroke: #2d7a2d, color: #000
-style JString fill: #e1ffe1, stroke: #2d7a2d, color: #000
-style JArray fill: #fff4e1, stroke: #cc8800, color: #000
-style JObj fill: #fff4e1, stroke: #cc8800, color: #000
+style JsonValue fill:#f0e1ff,stroke:#8800cc,color:#000
+style JNull fill:#e1ffe1,stroke:#2d7a2d,color:#000
+style JBool fill:#e1ffe1,stroke:#2d7a2d,color:#000
+style JNumber fill:#e1ffe1,stroke:#2d7a2d,color:#000
+style JString fill:#e1ffe1,stroke:#2d7a2d,color:#000
+style JArray fill:#fff4e1,stroke:#cc8800,color:#000
+style JObj fill:#fff4e1,stroke:#cc8800,color:#000
 ```
 
 ### Visitor pattern architecture
@@ -305,12 +305,12 @@ classDiagram
     Visitor <|.. ConstructionVisitor
     Visitor <|.. JsonRepairVisitor
     TreeWalker --> Visitor: uses
-    style Visitor fill: #f0e1ff, stroke: #8800cc, color: #000
-    style TreeWalker fill: #fff4e1, stroke: #cc8800, color: #000
-    style StringifyVisitor fill: #e1ffe1, stroke: #2d7a2d, color: #000
-    style FilterKeysVisitor fill: #e1ffe1, stroke: #2d7a2d, color: #000
-    style ConstructionVisitor fill: #e1ffe1, stroke: #2d7a2d, color: #000
-    style JsonRepairVisitor fill: #e1ffe1, stroke: #2d7a2d, color: #000
+    style Visitor fill:#f0e1ff,stroke:#8800cc,color:#000
+    style TreeWalker fill:#fff4e1,stroke:#cc8800,color:#000
+    style StringifyVisitor fill:#e1ffe1,stroke:#2d7a2d,color:#000
+    style FilterKeysVisitor fill:#e1ffe1,stroke:#2d7a2d,color:#000
+    style ConstructionVisitor fill:#e1ffe1,stroke:#2d7a2d,color:#000
+    style JsonRepairVisitor fill:#e1ffe1,stroke:#2d7a2d,color:#000
 ```
 
 ### Encode sequence diagram
@@ -409,12 +409,12 @@ graph TD
     VISITORS --> JSON
     ERROR --> API
     BUILD --> API
-    style API fill: #e1f5ff, stroke: #0066cc, color: #000
-    style CODEC fill: #fff4e1, stroke: #cc8800, color: #000
-    style JSON fill: #f0e1ff, stroke: #8800cc, color: #000
-    style ENCODE fill: #e1ffe1, stroke: #2d7a2d, color: #000
-    style DECODE fill: #e1ffe1, stroke: #2d7a2d, color: #000
-    style VISITOR fill: #e1ffe1, stroke: #2d7a2d, color: #000
+    style API fill:#e1f5ff,stroke:#0066cc,color:#000
+    style CODEC fill:#fff4e1,stroke:#cc8800,color:#000
+    style JSON fill:#f0e1ff,stroke:#8800cc,color:#000
+    style ENCODE fill:#e1ffe1,stroke:#2d7a2d,color:#000
+    style DECODE fill:#e1ffe1,stroke:#2d7a2d,color:#000
+    style VISITOR fill:#e1ffe1,stroke:#2d7a2d,color:#000
 ```
 
 ---
@@ -900,11 +900,11 @@ flowchart LR
     toon["TOON text\n(headers)"]
     llm["LLM prompt\n(token-efficient)"]
     scala --> norm --> encoder --> toon --> llm
-    style scala fill: #e1f5ff, stroke: #0066cc, color: #000
-    style norm fill: #f0e1ff, stroke: #8800cc, color: #000
-    style encoder fill: #fff4e1, stroke: #cc8800, color: #000
-    style toon fill: #e1ffe1, stroke: #2d7a2d, color: #000
-    style llm fill: #ffe1e1, stroke: #cc0000, color: #000
+    style scala fill:#e1f5ff,stroke:#0066cc,color:#000
+    style norm fill:#f0e1ff,stroke:#8800cc,color:#000
+    style encoder fill:#fff4e1,stroke:#cc8800,color:#000
+    style toon fill:#e1ffe1,stroke:#2d7a2d,color:#000
+    style llm fill:#ffe1e1,stroke:#cc0000,color:#000
 ```
 
 Example:
@@ -965,13 +965,13 @@ flowchart TD
     check3 -- no --> check4{boolean/null or numeric-like?}
     check4 -- yes --> q
     check4 -- no --> u[unquoted]
-    style s fill: #e1f5ff, stroke: #0066cc, color: #000
-    style q fill: #ffe1e1, stroke: #cc0000, color: #000
-    style u fill: #e1ffe1, stroke: #2d7a2d, color: #000
-    style check1 fill: #f0e1ff, stroke: #8800cc, color: #000
-    style check2 fill: #f0e1ff, stroke: #8800cc, color: #000
-    style check3 fill: #f0e1ff, stroke: #8800cc, color: #000
-    style check4 fill: #f0e1ff, stroke: #8800cc, color: #000
+    style s fill:#e1f5ff,stroke:#0066cc,color:#000
+    style q fill:#ffe1e1,stroke:#cc0000,color:#000
+    style u fill:#e1ffe1,stroke:#2d7a2d,color:#000
+    style check1 fill:#f0e1ff,stroke:#8800cc,color:#000
+    style check2 fill:#f0e1ff,stroke:#8800cc,color:#000
+    style check3 fill:#f0e1ff,stroke:#8800cc,color:#000
+    style check4 fill:#f0e1ff,stroke:#8800cc,color:#000
 ```
 
 See also: [Encoding rules](./SCALA-TOON-SPECIFICATION.md#encoding-rules)
@@ -1045,11 +1045,11 @@ flowchart TD
     mapScala["Pattern match /\ncustom decoder"]
     domain["Domain model\n(case class, DTO)"]
     raw --> parse --> json --> mapScala --> domain
-    style raw fill: #e1f5ff, stroke: #0066cc, color: #000
-    style parse fill: #fff4e1, stroke: #cc8800, color: #000
-    style json fill: #f0e1ff, stroke: #8800cc, color: #000
-    style mapScala fill: #ffe1e1, stroke: #cc0000, color: #000
-    style domain fill: #e1ffe1, stroke: #2d7a2d, color: #000
+    style raw fill:#e1f5ff,stroke:#0066cc,color:#000
+    style parse fill:#fff4e1,stroke:#cc8800,color:#000
+    style json fill:#f0e1ff,stroke:#8800cc,color:#000
+    style mapScala fill:#ffe1e1,stroke:#cc0000,color:#000
+    style domain fill:#e1ffe1,stroke:#2d7a2d,color:#000
 ```
 
 ---
@@ -1251,12 +1251,12 @@ flowchart LR
     REPAIR --> FILTER["FilterKeysVisitor"]
     FILTER --> STRINGIFY["StringifyVisitor"]
     STRINGIFY --> OUTPUT["TOON String"]
-    style JSON fill: #e1f5ff, stroke: #0066cc, color: #000
-    style DISPATCH fill: #fff4e1, stroke: #cc8800, color: #000
-    style REPAIR fill: #f0e1ff, stroke: #8800cc, color: #000
-    style FILTER fill: #f0e1ff, stroke: #8800cc, color: #000
-    style STRINGIFY fill: #f0e1ff, stroke: #8800cc, color: #000
-    style OUTPUT fill: #e1ffe1, stroke: #2d7a2d, color: #000
+    style JSON fill:#e1f5ff,stroke:#0066cc,color:#000
+    style DISPATCH fill:#fff4e1,stroke:#cc8800,color:#000
+    style REPAIR fill:#f0e1ff,stroke:#8800cc,color:#000
+    style FILTER fill:#f0e1ff,stroke:#8800cc,color:#000
+    style STRINGIFY fill:#f0e1ff,stroke:#8800cc,color:#000
+    style OUTPUT fill:#e1ffe1,stroke:#2d7a2d,color:#000
 ```
 
 **Performance comparison:**
@@ -1276,12 +1276,12 @@ flowchart TD
         V2 --> V3["String"]
     end
 
-    style W2 fill: #ffe1e1, stroke: #cc0000, color: #000
-    style W4 fill: #ffe1e1, stroke: #cc0000, color: #000
-    style W6 fill: #e1ffe1, stroke: #2d7a2d, color: #000
-    style V1 fill: #f0e1ff, stroke: #8800cc, color: #000
-    style V2 fill: #fff4e1, stroke: #cc8800, color: #000
-    style V3 fill: #e1ffe1, stroke: #2d7a2d, color: #000
+    style W2 fill:#ffe1e1,stroke:#cc0000,color:#000
+    style W4 fill:#ffe1e1,stroke:#cc0000,color:#000
+    style W6 fill:#e1ffe1,stroke:#2d7a2d,color:#000
+    style V1 fill:#f0e1ff,stroke:#8800cc,color:#000
+    style V2 fill:#fff4e1,stroke:#cc8800,color:#000
+    style V3 fill:#e1ffe1,stroke:#2d7a2d,color:#000
 ```
 
 **Dispatch algorithm (how visitor traversal works):**
@@ -1309,22 +1309,22 @@ flowchart TD
     VNULL --> RETURN
     VARR --> RETURN
     DONE --> RETURN
-    style START fill: #e1f5ff, stroke: #0066cc, color: #000
-    style MATCH fill: #fff4e1, stroke: #cc8800, color: #000
-    style VS fill: #f0e1ff, stroke: #8800cc, color: #000
-    style VN fill: #f0e1ff, stroke: #8800cc, color: #000
-    style VB fill: #f0e1ff, stroke: #8800cc, color: #000
-    style VNULL fill: #f0e1ff, stroke: #8800cc, color: #000
-    style ARR fill: #f0e1ff, stroke: #8800cc, color: #000
-    style OBJ fill: #f0e1ff, stroke: #8800cc, color: #000
-    style VARR fill: #f0e1ff, stroke: #8800cc, color: #000
-    style LOOP fill: #fff4e1, stroke: #cc8800, color: #000
-    style VKEY fill: #f0e1ff, stroke: #8800cc, color: #000
-    style VVAL fill: #f0e1ff, stroke: #8800cc, color: #000
-    style REC fill: #fff4e1, stroke: #cc8800, color: #000
-    style VVALRES fill: #f0e1ff, stroke: #8800cc, color: #000
-    style DONE fill: #f0e1ff, stroke: #8800cc, color: #000
-    style RETURN fill: #e1ffe1, stroke: #2d7a2d, color: #000
+    style START fill:#e1f5ff,stroke:#0066cc,color:#000
+    style MATCH fill:#fff4e1,stroke:#cc8800,color:#000
+    style VS fill:#f0e1ff,stroke:#8800cc,color:#000
+    style VN fill:#f0e1ff,stroke:#8800cc,color:#000
+    style VB fill:#f0e1ff,stroke:#8800cc,color:#000
+    style VNULL fill:#f0e1ff,stroke:#8800cc,color:#000
+    style ARR fill:#f0e1ff,stroke:#8800cc,color:#000
+    style OBJ fill:#f0e1ff,stroke:#8800cc,color:#000
+    style VARR fill:#f0e1ff,stroke:#8800cc,color:#000
+    style LOOP fill:#fff4e1,stroke:#cc8800,color:#000
+    style VKEY fill:#f0e1ff,stroke:#8800cc,color:#000
+    style VVAL fill:#f0e1ff,stroke:#8800cc,color:#000
+    style REC fill:#fff4e1,stroke:#cc8800,color:#000
+    style VVALRES fill:#f0e1ff,stroke:#8800cc,color:#000
+    style DONE fill:#f0e1ff,stroke:#8800cc,color:#000
+    style RETURN fill:#e1ffe1,stroke:#2d7a2d,color:#000
 ```
 
 **ObjectVisitor lifecycle (zero-overhead secret):**
