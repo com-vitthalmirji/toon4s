@@ -74,20 +74,20 @@ toon4s is built on a layered architecture that separates concerns and enables co
 
 ```mermaid
 flowchart TD
-    USER["User Code"] --> API["Public API Layer"]
-    API --> ENCODE["Encoder Path"]
-    API --> DECODE["Decoder Path"]
-    API --> VISITOR["Visitor Path"]
-    ENCODE --> PRIMITIVES["Primitives Module"]
-    ENCODE --> NORM["Normalize Module"]
+    USER["User code"] --> API["Public API layer"]
+    API --> ENCODE["Encoder path"]
+    API --> DECODE["Decoder path"]
+    API --> VISITOR["Visitor path"]
+    ENCODE --> PRIMITIVES["Primitives module"]
+    ENCODE --> NORM["Normalize module"]
     ENCODE --> WRITER["EncodeLineWriter"]
     DECODE --> SCANNER["Scanner"]
-    SCANNER --> PARSER["Parser Layer"]
+    SCANNER --> PARSER["Parser layer"]
     PARSER --> CURSOR["Cursor + Validation"]
     CURSOR --> JSON["JsonValue ADT"]
     VISITOR --> TREEWALKER["TreeWalker"]
-    TREEWALKER --> VISITORS["Visitor Implementations"]
-    VISITORS --> TRANSFORM["Streaming Transform"]
+    TREEWALKER --> VISITORS["Visitor implementations"]
+    VISITORS --> TRANSFORM["Streaming transform"]
     style USER fill: #e1f5ff, stroke: #0066cc, color: #000
     style API fill: #fff4e1, stroke: #cc8800, color: #000
     style ENCODE fill: #e1ffe1, stroke: #2d7a2d, color: #000
@@ -171,7 +171,7 @@ flowchart LR
 flowchart TD
     EXTERNAL["External JSON<br/>(Jackson/Circe/Play)"] --> WALKER["TreeWalker.dispatch"]
     JSONVAL["JsonValue ADT"] --> WALKER
-    WALKER --> VISITOR["Visitor Trait"]
+    WALKER --> VISITOR["Visitor trait"]
     VISITOR --> IMPL{"Implementation"}
     IMPL -->|" StringifyVisitor "| STRINGIFY["TOON string"]
     IMPL -->|" FilterKeysVisitor "| FILTER["Filtered JSON"]
@@ -195,28 +195,28 @@ flowchart TD
 
 toon4s achieves **2x performance** through systematic optimization:
 
-**Allocation Reduction**:
+**Allocation reduction**:
 
 - Pre-allocated `StringBuilder` capacity based on estimated output size
 - Single-pass parsing (combined quote-finding + unescaping)
 - Cached common header patterns (array lengths 0-10)
 - `VectorBuilder` + while loops instead of functional chains
 
-**Hot Path Optimization**:
+**Hot path optimization**:
 
 - `Character.isWhitespace()` instead of `String.trim()` allocation
 - Pattern matching for delimiter dispatch
 - Early exit with `iterator.forall` for uniform array detection
 - Hoisted constants outside loops
 
-**Memory Efficiency**:
+**Memory efficiency**:
 
 - Streaming visitors with O(d) memory (depth-dependent, not size-dependent)
 - Tail-recursive iteration for large arrays
 - Stack-safe cursor navigation
 - No intermediate allocations in visitor chains
 
-**Benchmark Results** (encode_object: 287 → 600 ops/ms, decode_tabular: 417 → 874 ops/ms):
+**Benchmark results** (encode_object: 287 → 600 ops/ms, decode_tabular: 417 → 874 ops/ms):
 
 - P0 quick wins: 20-30% gain
 - P1 high impact: 45-70% gain
@@ -228,41 +228,41 @@ toon4s achieves **2x performance** through systematic optimization:
 ```mermaid
 classDiagram
     class JsonValue {
-        <<sealed trait>>
-    }
-    class JNull {
-        <<case object>>
-    }
-    class JBool {
-        +Boolean value
-    }
-    class JNumber {
-        +BigDecimal value
-    }
-    class JString {
-        +String value
-    }
-    class JArray {
-        +Vector~JsonValue~ values
-    }
-    class JObj {
-        +VectorMap~String,JsonValue~ fields
-    }
-    JsonValue <|-- JNull
-    JsonValue <|-- JBool
-    JsonValue <|-- JNumber
-    JsonValue <|-- JString
-    JsonValue <|-- JArray
-    JsonValue <|-- JObj
-    JArray --> JsonValue : contains
-    JObj --> JsonValue : contains
-    style JsonValue fill: #f0e1ff, stroke: #8800cc, color: #000
-    style JNull fill: #e1ffe1, stroke: #2d7a2d, color: #000
-    style JBool fill: #e1ffe1, stroke: #2d7a2d, color: #000
-    style JNumber fill: #e1ffe1, stroke: #2d7a2d, color: #000
-    style JString fill: #e1ffe1, stroke: #2d7a2d, color: #000
-    style JArray fill: #fff4e1, stroke: #cc8800, color: #000
-    style JObj fill: #fff4e1, stroke: #cc8800, color: #000
+<<sealedtrait>>
+}
+class JNull {
+<<caseobject>>
+}
+class JBool {
++Boolean value
+}
+class JNumber {
++BigDecimal value
+}
+class JString {
++String value
+}
+class JArray {
++Vector~JsonValue~ values
+}
+class JObj {
++VectorMap~String,JsonValue~ fields
+}
+JsonValue <|-- JNull
+JsonValue <|-- JBool
+JsonValue <|-- JNumber
+JsonValue <|-- JString
+JsonValue <|-- JArray
+JsonValue <|-- JObj
+JArray --> JsonValue: contains
+JObj --> JsonValue: contains
+style JsonValue fill: #f0e1ff, stroke: #8800cc, color: #000
+style JNull fill: #e1ffe1, stroke: #2d7a2d, color: #000
+style JBool fill: #e1ffe1, stroke: #2d7a2d, color: #000
+style JNumber fill: #e1ffe1, stroke: #2d7a2d, color: #000
+style JString fill: #e1ffe1, stroke: #2d7a2d, color: #000
+style JArray fill: #fff4e1, stroke: #cc8800, color: #000
+style JObj fill: #fff4e1, stroke: #cc8800, color: #000
 ```
 
 ### Visitor pattern architecture
@@ -304,7 +304,7 @@ classDiagram
     Visitor <|.. FilterKeysVisitor
     Visitor <|.. ConstructionVisitor
     Visitor <|.. JsonRepairVisitor
-    TreeWalker --> Visitor : uses
+    TreeWalker --> Visitor: uses
     style Visitor fill: #f0e1ff, stroke: #8800cc, color: #000
     style TreeWalker fill: #fff4e1, stroke: #cc8800, color: #000
     style StringifyVisitor fill: #e1ffe1, stroke: #2d7a2d, color: #000
@@ -322,21 +322,21 @@ sequenceDiagram
     participant Normalize
     participant Primitives
     participant Writer
-    User->>Encoder: encode(JsonValue)
-    Encoder->>Normalize: analyze(array)
-    Normalize-->>Encoder: StructuralInfo
+    User ->> Encoder: encode(JsonValue)
+    Encoder ->> Normalize: analyze(array)
+    Normalize -->> Encoder: StructuralInfo
     alt Tabular format
-        Encoder->>Encoder: extractHeader + rows
-        Encoder->>Writer: writeTabular
+        Encoder ->> Encoder: extractHeader + rows
+        Encoder ->> Writer: writeTabular
     else Inline format
-        Encoder->>Primitives: quoteAndEscape
-        Encoder->>Writer: writeInline
+        Encoder ->> Primitives: quoteAndEscape
+        Encoder ->> Writer: writeInline
     else List format
-        Encoder->>Encoder: recursive encode
-        Encoder->>Writer: writeList
+        Encoder ->> Encoder: recursive encode
+        Encoder ->> Writer: writeList
     end
-    Writer-->>User: TOON string
-    Note over Normalize,Writer: Zero allocations in hot path
+    Writer -->> User: TOON string
+    Note over Normalize, Writer: Zero allocations in hot path
     Note over Encoder: Pre-allocated StringBuilder
 ```
 
@@ -350,20 +350,20 @@ sequenceDiagram
     participant Parser
     participant Cursor
     participant Validator
-    User->>Decoder: decode(String)
-    Decoder->>Scanner: scan(input)
-    Scanner-->>Decoder: Vector[StructuredLine]
-    Decoder->>Parser: parse(lines)
-    Parser->>Cursor: navigate structure
+    User ->> Decoder: decode(String)
+    Decoder ->> Scanner: scan(input)
+    Scanner -->> Decoder: Vector[StructuredLine]
+    Decoder ->> Parser: parse(lines)
+    Parser ->> Cursor: navigate structure
     loop For each line
-        Cursor->>Parser: peek + advance
-        Parser->>Parser: parseValue
+        Cursor ->> Parser: peek + advance
+        Parser ->> Parser: parseValue
     end
-    Parser->>Validator: validate limits
+    Parser ->> Validator: validate limits
     alt Valid
-        Validator-->>User: Right(JsonValue)
+        Validator -->> User: Right(JsonValue)
     else Invalid
-        Validator-->>User: Left(DecodeError)
+        Validator -->> User: Left(DecodeError)
     end
     Note over Cursor: Stack-safe navigation
     Note over Parser: Single-pass parsing
@@ -376,9 +376,9 @@ graph TD
     API["Public API<br/>(Encoder/Decoder)"]
     CODEC["Codec Layer<br/>(ToonTyped)"]
     JSON["JsonValue ADT"]
-    ENCODE["Encode Module"]
-    DECODE["Decode Module"]
-    VISITOR["Visitor Module"]
+    ENCODE["Encode module"]
+    DECODE["Decode module"]
+    VISITOR["Visitor module"]
     PRIMITIVES["Primitives"]
     NORMALIZE["Normalize"]
     SCANNER["Scanner"]
@@ -387,9 +387,8 @@ graph TD
     VALIDATOR["Validator"]
     TREEWALKER["TreeWalker"]
     VISITORS["Visitor Impls"]
-    ERROR["Error Types"]
-    BUILD["Builder Pattern"]
-
+    ERROR["Error types"]
+    BUILD["Builder pattern"]
     API --> ENCODE
     API --> DECODE
     API --> VISITOR
@@ -410,7 +409,6 @@ graph TD
     VISITORS --> JSON
     ERROR --> API
     BUILD --> API
-
     style API fill: #e1f5ff, stroke: #0066cc, color: #000
     style CODEC fill: #fff4e1, stroke: #cc8800, color: #000
     style JSON fill: #f0e1ff, stroke: #8800cc, color: #000
@@ -453,30 +451,7 @@ Every function in toon4s is **pure** and **total**:
 
 ### Type safety guarantees
 
-Scala's type system is used to maximum effect:
-
-```scala
-// Sealed ADT - compiler enforces exhaustive matching
-sealed trait JsonValue
-
-case class JString(value: String) extends JsonValue
-
-case class JNumber(value: BigDecimal) extends JsonValue
-
-case class JBool(value: Boolean) extends JsonValue
-
-case object JNull extends JsonValue
-
-case class JArray(values: Vector[JsonValue]) extends JsonValue
-
-case class JObj(fields: VectorMap[String, JsonValue]) extends JsonValue
-
-// Total function - always succeeds or returns typed error
-def decode(input: String): Either[DecodeError, JsonValue]
-
-// Scala 3 derivation - zero-cost abstractions
-case class User(id: Int, name: String) derives Encoder, Decoder
-```
+> Scala's type system is used to maximum effect
 
 Key type safety features:
 
@@ -529,9 +504,13 @@ xs.foldLeft[Either[DecodeError, List[A]]](Right(Nil)) {
 // Generic visitor trait with type parameter R (return type)
 trait Visitor[R] {
   def visitNull(): R
+
   def visitBool(value: Boolean): R
+
   def visitString(value: String): R
+
   def visitArray(items: Vector[R]): R
+
   def visitObject(fields: VectorMap[String, R]): R
 }
 
@@ -555,16 +534,19 @@ val repaired = TreeWalker.dispatch(filtered, JsonRepairVisitor())
 ```scala
 // Different encoding strategies based on structure analysis
 sealed trait EncodingStrategy
+
 case object TabularStrategy extends EncodingStrategy
+
 case object InlineStrategy extends EncodingStrategy
+
 case object ListStrategy extends EncodingStrategy
 
 // Normalize.analyze returns StructuralInfo with detected strategy
 case class StructuralInfo(
-  strategy: EncodingStrategy,
-  commonFields: Option[List[String]],
-  isUniform: Boolean
-)
+                           strategy: EncodingStrategy,
+                           commonFields: Option[List[String]],
+                           isUniform: Boolean
+                         )
 
 // Encoder dispatches based on strategy
 def encodeArray(arr: JArray): String = {
@@ -582,11 +564,14 @@ def encodeArray(arr: JArray): String = {
 ```scala
 // Type-safe builder using phantom types
 sealed trait BuilderState
+
 sealed trait Empty extends BuilderState
+
 sealed trait WithDelimiter extends BuilderState
+
 sealed trait Complete extends BuilderState
 
-class OptionsBuilder[S <: BuilderState] private (config: Map[String, Any]) {
+class OptionsBuilder[S <: BuilderState] private(config: Map[String, Any]) {
   // Only callable in Empty state
   def delimiter(d: Delimiter)(implicit ev: S =:= Empty): OptionsBuilder[WithDelimiter] =
     new OptionsBuilder(config + ("delimiter" -> d))
@@ -605,9 +590,9 @@ class OptionsBuilder[S <: BuilderState] private (config: Map[String, Any]) {
 
 // Usage (type-safe at compile time)
 val opts = OptionsBuilder.empty
-  .delimiter(Delimiter.Comma)  // Must be first
-  .strictness(Strictness.Strict)  // Must be second
-  .build()  // Must be last
+  .delimiter(Delimiter.Comma) // Must be first
+  .strictness(Strictness.Strict) // Must be second
+  .build() // Must be last
 ```
 
 **Typeclass pattern for derivation**
@@ -628,8 +613,8 @@ case class User(id: Int, name: String, email: String) derives Encoder, Decoder
 
 // Usage (type-safe at compile time)
 val user = User(1, "Alice", "alice@example.com")
-val json = Encoder[User].encode(user)  // JsonValue
-val decoded = Decoder[User].decode(json)  // Either[DecodeError, User]
+val json = Encoder[User].encode(user) // JsonValue
+val decoded = Decoder[User].decode(json) // Either[DecodeError, User]
 ```
 
 **Adapter pattern for external libraries**
