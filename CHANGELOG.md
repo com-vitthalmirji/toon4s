@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.4.4] - 2025-12-10
+
+
+### Documentation
+- add co-author attribution guide and helper script ([`f8d9bf5`](https://github.com/vim89/toon4s/commit/f8d9bf598a08f208702b3c6d24350031e0cd288a)) by @vim89
+- update CHANGELOG.md for main [skip ci] ([`b41ef19`](https://github.com/vim89/toon4s/commit/b41ef194d7aa336a5dca56a6795ca1392a5c0c67)) by @github-actions[bot]
+- cleanup ([`9e6562c`](https://github.com/vim89/toon4s/commit/9e6562c5756cd7fc567a66b44e77802aa8e36a98)) by @vim89
+- add architecture diagrams and update benchmarks ([`18946cc`](https://github.com/vim89/toon4s/commit/18946cc3c47cd7a7270166746c2856b44f27fa93)) by @vim89
+- add architecture diagrams and design patterns ([`75b4675`](https://github.com/vim89/toon4s/commit/75b46752b8573707dd0aeb8e383e8e8c02811573)) by @vim89
+- cleanup ([`df34963`](https://github.com/vim89/toon4s/commit/df34963a0cd13f5758dca146b03e5254cb4ffa0d)) by @vim89
+- cleanup ([`44ee817`](https://github.com/vim89/toon4s/commit/44ee817c0431eafe18c45fef193e306168be7a21)) by @vim89
+- cleanup ([`868ac32`](https://github.com/vim89/toon4s/commit/868ac3214841729de3dda0abe30df96a089487a2)) by @vim89
+
+
 ## [0.4.3] - 2025-12-09
 
 
@@ -22,6 +36,12 @@
 - update CHANGELOG.md for main [skip ci] ([`4fe9090`](https://github.com/vim89/toon4s/commit/4fe909054aab2bb0549eb236d26ce55596f5613f)) by @github-actions[bot]
 - add performance optimization results showing 2x improvement ([`81fbca6`](https://github.com/vim89/toon4s/commit/81fbca65169027175337992f9a1857613185d064)) by @vim89
 - update benchmarks with 2x performance improvement results ([`9a5f701`](https://github.com/vim89/toon4s/commit/9a5f70127b840dc41fb590a8d7f682025e11ef24)) by @vim89
+
+
+
+### Performance
+- cache common array headers ([`8c31c64`](https://github.com/vim89/toon4s/commit/8c31c6427d5eddd4f13ae53148bf5518ee2801ea)) by @vim89
+- combine quote find and unescape ([`865742b`](https://github.com/vim89/toon4s/commit/865742b24c5180d40f980c6c247f5d5dc03ed97b)) by @vim89
 
 
 ## [0.4.1] - 2025-12-08
