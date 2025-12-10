@@ -9,6 +9,13 @@ import io.toonformat.toon4s.JsonValue._
 
 object Encoders {
 
+  // Cache for common empty array headers (length 0-10)
+  private val emptyHeadersComma = (0 to 10).map(n => s"[$n]:").toArray
+
+  private val emptyHeadersTab = (0 to 10).map(n => s"[$n\t]:").toArray
+
+  private val emptyHeadersPipe = (0 to 10).map(n => s"[$n|]:").toArray
+
   final private case class FieldEntry(
       key: String,
       value: JsonValue,
@@ -57,20 +64,41 @@ object Encoders {
       fields: List[String],
       delimiter: Delimiter,
   ): String = {
-    val delimiterSuffix = delimiter match {
-    case Delimiter.Tab   => "\t"
-    case Delimiter.Pipe  => "|"
-    case Delimiter.Comma => ""
+    // Fast path: empty array with no key
+    if (key.isEmpty && fields.isEmpty && length <= 10) {
+      return delimiter match {
+      case Delimiter.Comma => emptyHeadersComma(length)
+      case Delimiter.Tab   => emptyHeadersTab(length)
+      case Delimiter.Pipe  => emptyHeadersPipe(length)
+      }
     }
-    val lengthLabel = length.toString + delimiterSuffix
-    val lengthPart = s"[$lengthLabel]"
-    val keyPart = key.map(encodeKey).getOrElse("")
-    val fieldsPart =
-      if (fields.nonEmpty) {
-        val joined = fields.map(encodeKey).mkString(delimiter.char.toString)
-        s"{$joined}"
-      } else ""
-    s"$keyPart$lengthPart$fieldsPart:"
+
+    // Slow path: use StringBuilder
+    val builder = new StringBuilder(64)
+
+    key.foreach(k => builder.append(encodeKey(k)))
+
+    builder.append('[').append(length)
+    delimiter match {
+    case Delimiter.Tab   => builder.append('\t')
+    case Delimiter.Pipe  => builder.append('|')
+    case Delimiter.Comma => // no suffix
+    }
+    builder.append(']')
+
+    if (fields.nonEmpty) {
+      builder.append('{')
+      var i = 0
+      while (i < fields.length) {
+        if (i > 0) builder.append(delimiter.char)
+        builder.append(encodeKey(fields(i)))
+        i += 1
+      }
+      builder.append('}')
+    }
+
+    builder.append(':')
+    builder.result()
   }
 
   private def encodeObject(
