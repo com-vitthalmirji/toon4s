@@ -54,14 +54,39 @@ object StringLiteralParser {
    */
   def parseStringLiteral(token: String): String = {
     val trimmed = token.trim
-    trimmed.headOption.filter(_ == '"') match {
-    case Some(_) =>
-      val end = findClosingQuote(trimmed, 0)
-      if (end < 0 || end != trimmed.length - 1)
-        throw DecodeError.Syntax("Unterminated or trailing content after string literal")
-      unescapeString(trimmed.slice(1, end))
-    case None => trimmed
+    if (trimmed.isEmpty || trimmed.charAt(0) != '"') return trimmed
+
+    // Single pass: find closing quote AND unescape
+    val builder = new StringBuilder(trimmed.length - 2)
+    var i = 1 // Skip opening quote
+    var closed = false
+
+    while (i < trimmed.length && !closed) {
+      trimmed.charAt(i) match {
+      case '\\' if i + 1 < trimmed.length =>
+        trimmed.charAt(i + 1) match {
+        case '"'   => builder.append('"'); i += 2
+        case '\\'  => builder.append('\\'); i += 2
+        case 'n'   => builder.append('\n'); i += 2
+        case 'r'   => builder.append('\r'); i += 2
+        case 't'   => builder.append('\t'); i += 2
+        case other => throw DecodeError.Syntax(s"Invalid escape sequence: \\$other")
+        }
+      case '\\' =>
+        throw DecodeError.Syntax("Unterminated escape sequence in string literal")
+      case '"' =>
+        closed = true
+        i += 1
+      case c =>
+        builder.append(c)
+        i += 1
+      }
     }
+
+    if (!closed || i != trimmed.length)
+      throw DecodeError.Syntax("Unterminated or trailing content after string literal")
+
+    builder.result()
   }
 
   /**
