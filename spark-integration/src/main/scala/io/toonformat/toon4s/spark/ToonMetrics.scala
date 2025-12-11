@@ -64,7 +64,7 @@ final case class ToonMetrics(
   }
 
   /**
-   * Estimated cost savings in USD (assuming $0.002 per 1K tokens for GPT-4).
+   * Estimated cost savings in USD (assuming 0.002 USD per 1K tokens for GPT-4).
    *
    * @param costPer1kTokens
    *   Cost in USD per 1000 tokens

@@ -42,7 +42,7 @@ import org.apache.spark.sql.{DataFrame, SparkSession}
  * )
  *
  * snapshot.foreach { toonChunks =>
- *   llmClient.analyze(s"Analyze sales on 2024-12-01: ${toonChunks.mkString}")
+ *   llmClient.analyze("Analyze sales on 2024-12-01: " + toonChunks.mkString)
  * }
  *
  * // Compare two snapshots for trend analysis
@@ -53,7 +53,7 @@ import org.apache.spark.sql.{DataFrame, SparkSession}
  * )
  *
  * comparison.foreach { case (before, after) =>
- *   llmClient.analyze(s"Trend analysis:\nBefore: $before\nAfter: $after")
+ *   llmClient.analyze("Trend analysis:\nBefore: " + before + "\nAfter: " + after)
  * }
  * }}}
  *
@@ -147,7 +147,7 @@ object IcebergTimeTravel {
    * )
    *
    * snapshot.foreach { toon =>
-   *   llmClient.analyze(s"Events on 2024-12-01: $toon")
+   *   llmClient.analyze("Events on 2024-12-01: " + toon)
    * }
    *   }}}
    */
@@ -229,8 +229,8 @@ object IcebergTimeTravel {
    * )
    *
    * metadata.foreach { meta =>
-   *   println(s"Snapshot ${meta.snapshotId}: ${meta.rowCount} rows")
-   *   println(s"Alignment score: ${meta.alignmentScore}")
+   *   println("Snapshot " + meta.snapshotId + ": " + meta.rowCount + " rows")
+   *   println("Alignment score: " + meta.alignmentScore)
    * }
    *   }}}
    */
@@ -284,13 +284,13 @@ object IcebergTimeTravel {
    * )
    *
    * comparison.foreach { case (before, after) =>
-   *   val prompt = s"\"\"\"
+   *   val prompt = "\"\"\"" + """
    *   Analyze demographic changes:
-   *   Q3 data: $before
-   *   Q4 data: $after
+   *   Q3 data: """ + before + """
+   *   Q4 data: """ + after + """
    *
    *   Summarize key trends.
-   *   \"\"\"
+   *   \"\"\""""
    *   llmClient.analyze(prompt)
    * }
    * }}}
@@ -340,7 +340,7 @@ object IcebergTimeTravel {
    *
    * timeSeries.foreach { snapshots =>
    *   snapshots.foreach { case (timestamp, toon) =>
-   *     println(s"Week of $timestamp: ${toon.size} chunks")
+   *     println("Week of " + timestamp + ": " + toon.size + " chunks")
    *   }
    * }
    * }}}
@@ -415,7 +415,7 @@ object IcebergTimeTravel {
    * val alignments = validateSchemaConsistency("events", timestamps)
    *
    * alignments.foreach { case (ts, score) =>
-   *   println(s"$ts: aligned=${score.aligned}, score=${score.score}")
+   *   println(ts + ": aligned=" + score.aligned + ", score=" + score.score)
    * }
    *   }}}
    */

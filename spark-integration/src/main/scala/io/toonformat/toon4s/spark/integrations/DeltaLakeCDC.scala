@@ -52,7 +52,7 @@ import org.apache.spark.sql.streaming.{StreamingQuery, Trigger}
  *   toonChunks.foreach { toon =>
  *     llmClient.analyze(toon) match {
  *       case Right(insights) => processInsights(insights)
- *       case Left(error) => logger.error(s"LLM error: $error")
+ *       case Left(error) => logger.error("LLM error: " + error)
  *     }
  *   }
  * }
@@ -204,8 +204,8 @@ object DeltaLakeCDC {
    * val config = DeltaCDCConfig(tableName = "events", checkpointLocation = "/checkpoints")
    *
    * val query = streamDeltaCDCWithMetadata(config) { metadata =>
-   *   logger.info(s"Batch ${metadata.batchId}: ${metadata.changeTypes}")
-   *   logger.info(s"Alignment score: ${metadata.alignmentScore}")
+   *   logger.info("Batch " + metadata.batchId + ": " + metadata.changeTypes)
+   *   logger.info("Alignment score: " + metadata.alignmentScore)
    *   metadata.toonChunks.foreach(llmClient.analyze)
    * }
    *   }}}
@@ -407,9 +407,9 @@ object DeltaLakeCDC {
    * val alignment = validateTableAlignment("production.events")
    *
    * if (!alignment.aligned) {
-   *   println(s"Table not TOON-aligned: ${alignment.recommendation}")
-   *   println(s"Expected accuracy: ${alignment.expectedAccuracy}")
-   *   println(s"Warnings: ${alignment.warnings.mkString("\n")}")
+   *   println("Table not TOON-aligned: " + alignment.recommendation)
+   *   println("Expected accuracy: " + alignment.expectedAccuracy)
+   *   println("Warnings: " + alignment.warnings.mkString("\n"))
    * }
    *   }}}
    */

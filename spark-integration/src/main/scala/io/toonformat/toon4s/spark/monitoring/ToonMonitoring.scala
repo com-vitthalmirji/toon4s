@@ -36,7 +36,7 @@ import org.apache.spark.sql.{DataFrame, SparkSession}
  *
  * // Real-time alerting
  * if (!health.productionReady) {
- *   alertOncall(s"TOON health check failed: ${health.issues}")
+ *   alertOncall("TOON health check failed: " + health.issues)
  * }
  * }}}
  *
@@ -170,7 +170,7 @@ object ToonMonitoring {
    * if (health.productionReady) {
    *   df.toToon(maxRowsPerChunk = health.chunkStrategy.chunkSize)
    * } else {
-   *   logger.error(s"TOON health check failed: ${health.issues}")
+   *   logger.error("TOON health check failed: " + health.issues)
    *   df.toJSON.collect() // Fall back to JSON
    * }
    *   }}}
@@ -251,9 +251,9 @@ object ToonMonitoring {
    *
    * // Send to Datadog
    * statsd.gauge("toon.alignment_score", telemetry.alignmentScore,
-   *   tags = Seq(s"table:${telemetry.tableName}"))
+   *   tags = Seq("table:" + telemetry.tableName))
    * statsd.gauge("toon.max_depth", telemetry.maxDepth,
-   *   tags = Seq(s"table:${telemetry.tableName}"))
+   *   tags = Seq("table:" + telemetry.tableName))
    *   }}}
    */
   def collectTelemetry(
@@ -300,7 +300,7 @@ object ToonMonitoring {
    * val metrics = measureEncodingPerformance(df)
    *
    * if (metrics.savingsPercent < 15.0) {
-   *   logger.warn(s"Low TOON savings: ${metrics.savingsPercent}% (expected 22%)")
+   *   logger.warn("Low TOON savings: " + metrics.savingsPercent + "% (expected 22%)")
    * }
    *
    * // Track P99 encoding time
@@ -455,7 +455,9 @@ object ToonMonitoring {
     sb.append(s"- **Shallow nesting** (depth 2): 78.6% accuracy, ~18% savings\n")
     sb.append(s"- **Medium nesting** (depth 3): 52.4% accuracy, ~12% savings\n")
     sb.append(s"- **Deep nesting** (depth 4+): 0% one-shot accuracy, NOT RECOMMENDED\n\n")
-    sb.append(s"**Your schema** (depth ${alignment.maxDepth}): ${alignment.expectedAccuracy}\n\n")
+    sb.append(
+      s"**Your schema** (depth ${alignment.maxDepth}): ${alignment.expectedAccuracy}\n\n"
+    )
 
     sb.append(s"## Recommendations\n\n")
     if (health.productionReady) {

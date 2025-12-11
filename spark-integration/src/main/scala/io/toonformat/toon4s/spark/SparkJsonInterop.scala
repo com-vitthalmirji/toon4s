@@ -220,7 +220,7 @@ object SparkJsonInterop {
    * @return
    *   Spark Row matching schema
    *
-   * @throws IllegalArgumentException
+   * @throws java.lang.IllegalArgumentException
    *   if json is not JObj
    *
    * @example
