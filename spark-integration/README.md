@@ -697,6 +697,286 @@ if (health.productionReady) {
 }
 ```
 
+## Architecture & Design
+
+### Component Architecture
+
+```mermaid
+graph TD
+    USER["User Code<br/>(Scala/Spark)"]
+    DFOPS["SparkToonOps<br/>(Extension Methods)"]
+    INTEROP["SparkJsonInterop<br/>(Row ↔ JsonValue)"]
+    METRICS["ToonMetrics<br/>(Token Accounting)"]
+    MONITOR["ToonMonitoring<br/>(Health & Telemetry)"]
+    ALIGN["ToonAlignmentAnalyzer<br/>(Schema Validation)"]
+    CHUNK["AdaptiveChunking<br/>(Prompt Tax Optimization)"]
+    DELTA["DeltaLakeCDC<br/>(Real-time Streaming)"]
+    ICEBERG["IcebergTimeTravel<br/>(Historical Snapshots)"]
+    CORE["toon4s-core<br/>(Toon.encode/decode)"]
+
+    USER --> DFOPS
+    USER --> MONITOR
+    DFOPS --> INTEROP
+    DFOPS --> METRICS
+    DFOPS --> CORE
+    MONITOR --> ALIGN
+    MONITOR --> CHUNK
+    DELTA --> DFOPS
+    ICEBERG --> DFOPS
+    INTEROP --> CORE
+    ALIGN --> CORE
+    CHUNK --> ALIGN
+
+    style USER fill:#e1f5ff,stroke:#0066cc,color:#000
+    style DFOPS fill:#fff4e1,stroke:#cc8800,color:#000
+    style INTEROP fill:#f0e1ff,stroke:#8800cc,color:#000
+    style METRICS fill:#e1ffe1,stroke:#2d7a2d,color:#000
+    style CORE fill:#ffe1e1,stroke:#cc0000,color:#000
+```
+
+### Data Flow
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant SparkToonOps
+    participant ToonAlignmentAnalyzer
+    participant AdaptiveChunking
+    participant SparkJsonInterop
+    participant ToonCore
+
+    User->>SparkToonOps: df.toToon("data")
+    SparkToonOps->>ToonAlignmentAnalyzer: analyzeSchema(df.schema)
+    ToonAlignmentAnalyzer-->>SparkToonOps: AlignmentScore(0.95)
+    SparkToonOps->>AdaptiveChunking: calculateOptimalChunkSize(df)
+    AdaptiveChunking-->>SparkToonOps: ChunkStrategy(1000 rows)
+    SparkToonOps->>SparkToonOps: collect() rows
+    SparkToonOps->>SparkJsonInterop: rowToJsonValue(row, schema)
+    SparkJsonInterop-->>SparkToonOps: JArray[JObj]
+    SparkToonOps->>SparkToonOps: chunk by maxRows
+    SparkToonOps->>ToonCore: Toon.encode(JObj)
+    ToonCore-->>SparkToonOps: Either[Error, String]
+    SparkToonOps-->>User: Either[Error, Vector[String]]
+```
+
+### Strategic Alignment with Spark Ecosystem
+
+toon4s-spark is positioned at the intersection of:
+
+1. **Spark's Strength**: Tabular data, SQL results, ETL pipelines
+2. **TOON's Sweet Spot**: Tabular encoding (90.5% accuracy, 22% token savings)
+3. **2025 Lakehouse Architecture**: Delta Lake, Apache Iceberg, DuckDB
+
+#### Perfect Match: Spark Produces TOON-Aligned Data
+
+**Typical Spark SQL Result:**
+```scala
+val results = spark.sql("""
+  SELECT user_id, name, order_count, total_spent
+  FROM users
+  JOIN orders ON users.id = orders.user_id
+  GROUP BY user_id, name
+""")
+```
+
+**Data Characteristics:**
+- ✅ Tabular (flat row structure)
+- ✅ Uniform schema (all rows same fields)
+- ✅ Shallow nesting (max 1-2 levels for joins)
+- ✅ Large scale (thousands to millions of rows)
+
+**Benchmark Verdict**: 90.5% accuracy, 22% token savings (users case)
+
+#### Scaling Hypothesis Validates Spark
+
+TOON efficiency follows a non-linear curve:
+
+```
+   Efficiency
+       ^
+       |           TOON
+       |          /
+       |         /
+       |    JSON
+       |   -----
+       |  /
+       | /
+       |/
+       +-----------------> Dataset Size
+      Small   Medium   Large
+                       ↑ Spark lives here
+```
+
+**Break-even Analysis:**
+- Small dataset (< 1KB): JSON wins (prompt tax too high)
+- Medium dataset (1-10KB): TOON competitive
+- Large dataset (> 10KB): TOON wins ✅ ← **Spark's typical scale**
+
+**Spark's Reality:**
+- Queries often return thousands to millions of rows
+- Output size: 10KB - 100MB+ per query
+- Perfect match for TOON's break-even point
+
+### Integration Strategy
+
+#### Delta Lake Lakehouse
+- **ACID Transactions**: Consistent TOON snapshots
+- **Change Data Feed**: Real-time TOON streaming
+- **Time Travel**: Historical TOON encoding
+- **Liquid Clustering**: Optimized for TOON chunking
+
+#### Apache Iceberg
+- **Multi-Engine Support**: TOON portability (Spark, Trino, Flink)
+- **Time Travel**: Millisecond-precision historical snapshots
+- **Schema Evolution**: Validated TOON alignment across versions
+
+#### Structured Streaming
+- **Micro-batches**: Uniform tabular data ✅
+- **Real-time Mode**: Millisecond latency (Databricks RT 16.4+)
+- **TOON-Aligned**: Fixed schema, uniform structure, high volume
+
+### Design Principles
+
+#### 1. Pure Functional API
+All operations return `Either[SparkToonError, T]` for explicit error handling:
+```scala
+df.toToon(key = "data") match {
+  case Right(toonChunks) => // Success
+  case Left(error) => // Handle error
+}
+```
+
+#### 2. Schema Alignment Detection
+Pre-flight validation based on benchmark findings:
+```scala
+val alignment = analyzeSchema(df.schema)
+println(s"TOON aligned: ${alignment.aligned}")
+println(s"Expected accuracy: ${alignment.expectedAccuracy}")
+```
+
+#### 3. Adaptive Chunking
+Optimize prompt tax by calculating optimal chunk size:
+```scala
+val strategy = calculateOptimalChunkSize(df)
+df.toToon(maxRowsPerChunk = strategy.chunkSize)
+```
+
+#### 4. Production Monitoring
+Health checks before deployment:
+```scala
+val health = assessDataFrameHealth(df, "production.events")
+if (health.productionReady) {
+  df.toToon()
+} else {
+  // Fall back to JSON
+  df.toJSON.collect()
+}
+```
+
+### Benchmark-Driven Design Decisions
+
+Based on [TOON Generation Benchmark](https://github.com/vetertann/TOON-generation-benchmark):
+
+#### Decision 1: Schema Alignment Scoring
+**Finding**: TOON fails on deep hierarchies (0% one-shot accuracy)
+**Implementation**: `ToonAlignmentAnalyzer` validates schema depth and nesting
+
+#### Decision 2: Prompt Tax Optimization
+**Finding**: Prompt overhead exceeds savings for small datasets
+**Implementation**: `AdaptiveChunking` calculates optimal chunk size based on data size
+
+#### Decision 3: Production Safeguards
+**Finding**: TOON repair loops are expensive (2x+ token cost)
+**Implementation**: Pre-flight health checks prevent non-aligned data from encoding
+
+#### Decision 4: Honest Documentation
+**Finding**: TOON is NOT a general JSON replacement
+**Implementation**: Clear "When to Use TOON vs JSON" guidance with benchmark data
+
+### Real-World Use Cases
+
+#### Use Case 1: LLM-Powered Analytics (Databricks)
+```scala
+// Stream CDC events → TOON → LLM analysis
+val config = DeltaCDCConfig(
+  tableName = "production.transactions",
+  checkpointLocation = "/dbfs/checkpoints/fraud-detection"
+)
+
+streamDeltaCDCToToon(config) { (toonChunks, batchId) =>
+  toonChunks.foreach { toon =>
+    llmClient.analyze(toon) match {
+      case Right(insights) => detectFraud(insights)
+      case Left(error) => logger.error(s"LLM error: $error")
+    }
+  }
+}
+```
+
+#### Use Case 2: Historical Trend Analysis (Iceberg)
+```scala
+// Compare quarterly snapshots for business trends
+val comparison = compareSnapshots(
+  tableName = "warehouse.customer_metrics",
+  beforeTimestamp = Instant.parse("2024-09-30T23:59:59Z"), // Q3
+  afterTimestamp = Instant.parse("2024-12-31T23:59:59Z")   // Q4
+)
+
+comparison.foreach { case (q3Data, q4Data) =>
+  val prompt = s"""
+    Analyze changes from Q3 to Q4:
+    Q3: ${q3Data.mkString("\n")}
+    Q4: ${q4Data.mkString("\n")}
+  """
+  llmClient.analyze(prompt)
+}
+```
+
+#### Use Case 3: Pre-Deployment Validation
+```scala
+// Validate TOON readiness before production deployment
+val health = assessDataFrameHealth(df, "production.critical_events")
+
+if (health.productionReady) {
+  println(s"✅ ${health.summary}")
+  df.toToon(maxRowsPerChunk = health.chunkStrategy.chunkSize)
+} else {
+  println(s"❌ Blocking issues: ${health.issues.mkString(", ")}")
+  // Fall back to JSON
+  df.toJSON.collect()
+}
+```
+
+### Error Handling Strategy
+
+All operations use monadic error handling with typed ADTs:
+
+```scala
+sealed trait SparkToonError {
+  def message: String
+  def cause: Option[Throwable]
+}
+
+case class ConversionError(message: String, cause: Option[Throwable] = None)
+case class EncodingError(toonError: EncodeError, cause: Option[Throwable] = None)
+case class DecodingError(toonError: DecodeError, cause: Option[Throwable] = None)
+case class SchemaMismatch(expected: String, actual: String, cause: Option[Throwable] = None)
+```
+
+Pattern matching for exhaustive error handling:
+```scala
+df.toToon() match {
+  case Right(toonStrings) =>
+    toonStrings.foreach(sendToLLM)
+  case Left(ConversionError(msg, cause)) =>
+    logger.error(s"Conversion failed: $msg", cause.orNull)
+  case Left(EncodingError(toonErr, _)) =>
+    logger.error(s"TOON encoding failed: $toonErr")
+  case Left(error) =>
+    logger.error(s"Unknown error: ${error.message}")
+}
+```
+
 ## Requirements
 
 - Scala 2.13
