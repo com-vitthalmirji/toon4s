@@ -5,7 +5,7 @@ import io.toonformat.toon4s.spark.error.SparkToonError
 import org.apache.spark.sql.{Dataset, Encoder, SparkSession}
 
 /**
- * Extension methods for type-safe Dataset[T] ↔ TOON conversion.
+ * Extension methods for type-safe Dataset[T] <-> TOON conversion.
  *
  * ==Design==
  * Provides compile-time type-safe TOON encoding/decoding for Spark Datasets. Leverages Spark's
@@ -46,12 +46,12 @@ import org.apache.spark.sql.{Dataset, Encoder, SparkSession}
  *   SparkDatasetOps.fromToon[User](toonChunks)
  * }}}
  *
- * ==Key Design Pattern==
+ * ==Key design pattern==
  * Dataset[T] provides compile-time type safety while delegating to DataFrame operations internally.
  * This ensures we reuse the battle-tested DataFrame↔TOON logic while providing a type-safe facade.
  *
  * @see
- *   [[https://spark.apache.org/docs/latest/sql-programming-guide.html#datasets-and-dataframes Spark Datasets Guide]]
+ *   [[https://spark.apache.org/docs/latest/sql-programming-guide.html#datasets-and-dataframes Spark Datasets guide]]
  * @see
  *   [[https://www.chaosgenius.io/blog/apache-spark-with-scala/ Apache Spark With Scala 101]]
  */

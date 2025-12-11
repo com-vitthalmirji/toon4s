@@ -9,18 +9,18 @@ import java.time.Instant
 /**
  * Production monitoring utilities for TOON Spark integration.
  *
- * ==Why Monitor TOON Usage?==
- * Based on TOON Generation Benchmark findings, production deployments must track:
+ * ==Why monitor TOON usage?==
+ * Based on TOON generation benchmark findings, production deployments must track:
  *   - **Schema alignment drift**: Schemas change over time, affecting TOON accuracy
  *   - **Token efficiency**: Verify actual savings match benchmark expectations
  *   - **Prompt tax impact**: Monitor when prompt overhead exceeds syntax savings
  *   - **Error rates**: Track encoding failures and recovery patterns
  *
- * ==Key Metrics==
- *   1. **Alignment Score Trends**: Detect schema changes that reduce TOON effectiveness
- *   2. **Token Savings %**: Compare actual vs benchmark savings (22% for tabular data)
- *   3. **Chunk Size Distribution**: Optimize for prompt tax amortization
- *   4. **Error Frequency**: Identify non-recoverable encoding failures
+ * ==Key metrics==
+ *   1. **Alignment score trends**: Detect schema changes that reduce TOON effectiveness
+ *   2. **Token savings %**: Compare actual vs benchmark savings (22% for tabular data)
+ *   3. **Chunk size distribution**: Optimize for prompt tax amortization
+ *   4. **Error frequency**: Identify non-recoverable encoding failures
  *
  * ==Usage==
  * {{{
@@ -40,7 +40,7 @@ import java.time.Instant
  * }
  * }}}
  *
- * ==Integration with Monitoring Systems==
+ * ==Integration with monitoring systems==
  * This module provides structured metrics for:
  *   - Datadog/New Relic (custom metrics)
  *   - Prometheus (gauge/counter exports)
@@ -151,7 +151,8 @@ object ToonMonitoring {
   /**
    * Assess DataFrame health for TOON encoding.
    *
-   * Comprehensive pre-flight check before production encoding. Combines:
+   * Comprehensive pre-flight check before production encoding.
+   * Combines:
    *   - Schema alignment analysis
    *   - Adaptive chunking recommendations
    *   - Production readiness assessment
@@ -214,9 +215,9 @@ object ToonMonitoring {
     val warningList = warnings.result()
 
     val summary = if (productionReady) {
-      s"✅ $tableName: TOON ready (score=${alignment.score}, savings~${estimateSavings(alignment.score)}%)"
+      s"$tableName: TOON ready (score=${alignment.score}, savings~${estimateSavings(alignment.score)}%)"
     } else {
-      s"❌ $tableName: NOT TOON ready - ${issueList.mkString("; ")}"
+      s"$tableName: NOT TOON ready - ${issueList.mkString("; ")}"
     }
 
     HealthAssessment(
@@ -409,7 +410,7 @@ object ToonMonitoring {
 
     sb.append(s"## Schema Analysis\n\n")
     sb.append(s"- **Alignment Score**: ${alignment.score} / 1.0\n")
-    sb.append(s"- **TOON Aligned**: ${if (alignment.aligned) "✅ Yes" else "❌ No"}\n")
+    sb.append(s"- **TOON Aligned**: ${if (alignment.aligned) "Yes" else "No"}\n")
     sb.append(s"- **Max Nesting Depth**: ${alignment.maxDepth} levels\n")
     sb.append(s"- **Expected Accuracy**: ${alignment.expectedAccuracy}\n")
     sb.append(s"- **Recommendation**: ${alignment.recommendation}\n\n")
@@ -417,31 +418,31 @@ object ToonMonitoring {
     if (alignment.warnings.nonEmpty) {
       sb.append(s"### Warnings\n\n")
       alignment.warnings.foreach { warning =>
-        sb.append(s"- ⚠️ $warning\n")
+        sb.append(s"- $warning\n")
       }
       sb.append("\n")
     }
 
-    sb.append(s"## Dataset Characteristics\n\n")
-    sb.append(s"- **Row Count**: ${telemetry.rowCount}\n")
-    sb.append(s"- **Column Count**: ${telemetry.columnCount}\n")
+    sb.append(s"## Dataset characteristics\n\n")
+    sb.append(s"- **Row count**: ${telemetry.rowCount}\n")
+    sb.append(s"- **Column count**: ${telemetry.columnCount}\n")
     sb.append(
-      s"- **Estimated Size**: ${formatBytes(health.chunkStrategy.estimatedDataSize)}\n"
+      s"- **Estimated size**: ${formatBytes(health.chunkStrategy.estimatedDataSize)}\n"
     )
-    sb.append(s"- **Schema Hash**: `${telemetry.schemaHash}`\n\n")
+    sb.append(s"- **Schema hash**: `${telemetry.schemaHash}`\n\n")
 
-    sb.append(s"## Chunking Strategy\n\n")
+    sb.append(s"## Chunking strategy\n\n")
     sb.append(s"- **Use TOON**: ${if (health.chunkStrategy.useToon) "✅ Yes" else "❌ No"}\n")
-    sb.append(s"- **Recommended Chunk Size**: ${health.chunkStrategy.chunkSize} rows\n")
+    sb.append(s"- **Recommended chunk size**: ${health.chunkStrategy.chunkSize} rows\n")
     sb.append(s"- **Reasoning**: ${health.chunkStrategy.reasoning}\n")
-    sb.append(s"- **Estimated Token Savings**: ~${health.estimatedSavings}%\n\n")
+    sb.append(s"- **Estimated token savings**: ~${health.estimatedSavings}%\n\n")
 
-    sb.append(s"## Production Readiness\n\n")
+    sb.append(s"## Production readiness\n\n")
     if (health.productionReady) {
-      sb.append(s"✅ **READY FOR PRODUCTION**\n\n")
+      sb.append(s"**READY FOR PRODUCTION**\n\n")
     } else {
-      sb.append(s"❌ **NOT READY FOR PRODUCTION**\n\n")
-      sb.append(s"### Blocking Issues\n\n")
+      sb.append(s"**NOT READY FOR PRODUCTION**\n\n")
+      sb.append(s"### Blocking issues\n\n")
       health.issues.foreach { issue =>
         sb.append(s"- 🚫 $issue\n")
       }
@@ -449,15 +450,14 @@ object ToonMonitoring {
     }
 
     if (health.warnings.nonEmpty) {
-      sb.append(s"### Non-Blocking Warnings\n\n")
+      sb.append(s"### Non-blocking warnings\n\n")
       health.warnings.foreach { warning =>
-        sb.append(s"- ⚠️ $warning\n")
+        sb.append(s"- $warning\n")
       }
       sb.append("\n")
     }
 
-    sb.append(s"## Benchmark Comparison\n\n")
-    sb.append(s"Based on [TOON Generation Benchmark](https://github.com/vetertann/TOON-generation-benchmark):\n\n")
+    sb.append(s"## Benchmark comparison\n\n")
     sb.append(s"- **Flat tabular** (depth 0-1): 90.5% accuracy, 22% token savings\n")
     sb.append(s"- **Shallow nesting** (depth 2): 78.6% accuracy, ~18% savings\n")
     sb.append(s"- **Medium nesting** (depth 3): 52.4% accuracy, ~12% savings\n")
@@ -466,14 +466,14 @@ object ToonMonitoring {
 
     sb.append(s"## Recommendations\n\n")
     if (health.productionReady) {
-      sb.append(s"1. ✅ Safe to deploy TOON encoding to production\n")
+      sb.append(s"1. Safe to deploy TOON encoding to production\n")
       sb.append(
         s"2. Use chunk size: `${health.chunkStrategy.chunkSize}` rows\n"
       )
       sb.append(s"3. Monitor token savings to verify ~${health.estimatedSavings}% reduction\n")
       sb.append(s"4. Set up alerting if alignment score drops below 0.7\n")
     } else {
-      sb.append(s"1. ❌ Do NOT deploy TOON encoding yet\n")
+      sb.append(s"1. Do NOT deploy TOON encoding yet\n")
       sb.append(s"2. Address blocking issues listed above\n")
       sb.append(s"3. Consider schema flattening if deep nesting detected\n")
       sb.append(s"4. Alternative: Use JSON encoding instead of TOON\n")

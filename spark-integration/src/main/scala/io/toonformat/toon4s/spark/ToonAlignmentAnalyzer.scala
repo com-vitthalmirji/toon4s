@@ -6,10 +6,10 @@ import org.apache.spark.sql.types._
  * Schema analyzer for TOON alignment detection.
  *
  * ==Design==
- * Based on TOON Generation Benchmark findings (Ivan Matveev, 2025), this analyzer evaluates
+ * Based on TOON generation benchmark findings, this analyzer evaluates
  * DataFrame schemas to predict TOON generation success. The benchmark showed:
- *   - ✅ Aligned data (tabular, shallow): 90.5% accuracy, 22% token savings
- *   - ❌ Non-aligned data (deep hierarchies): 0% one-shot accuracy, massive token waste
+ *   - Aligned data (tabular, shallow): 90.5% accuracy, 22% token savings
+ *   - Non-aligned data (deep hierarchies): 0% one-shot accuracy, massive token waste
  *
  * ==Usage==
  * {{{
@@ -26,15 +26,13 @@ import org.apache.spark.sql.types._
  * }
  * }}}
  *
- * ==Alignment Criteria==
+ * ==Alignment criteria==
  * Based on benchmark results:
  *   - **users case** (90.5% acc): Flat tabular, 3 columns, no nesting
  *   - **order case** (78.6% acc): 1-2 levels nesting, uniform arrays
  *   - **invoice case** (52.4% acc): 2-3 levels, arrays with totals
  *   - **company case** (0% one-shot): Deep hierarchy (4+ levels), recursive structures
  *
- * @see
- *   [[https://github.com/vetertann/TOON-generation-benchmark TOON Generation Benchmark]]
  */
 object ToonAlignmentAnalyzer {
 
@@ -330,15 +328,15 @@ object ToonAlignmentAnalyzer {
    */
   private def buildRecommendation(score: Double, maxDepth: Int): String = {
     if (score >= 0.9) {
-      "✅ Schema is TOON-aligned. This matches benchmark's best-performing cases (users: 90.5% accuracy)."
+      "Schema is TOON-aligned. This matches benchmark's best-performing cases (users: 90.5% accuracy)."
     } else if (score >= 0.7) {
-      "✅ Schema is TOON-aligned. Expected good generation accuracy with minimal repairs."
+      "Schema is TOON-aligned. Expected good generation accuracy with minimal repairs."
     } else if (score >= 0.5) {
-      "⚠️ Schema is partially aligned. TOON may work but expect repair cycles. Consider flattening or use JSON."
+      "Schema is partially aligned. TOON may work but expect repair cycles. Consider flattening or use JSON."
     } else if (score >= 0.3) {
-      "❌ Schema is poorly aligned. TOON generation likely to fail. Strongly recommend JSON instead."
+      "Schema is poorly aligned. TOON generation likely to fail. Strongly recommend JSON instead."
     } else {
-      "❌ Schema is NOT TOON-aligned. Use JSON. Deep hierarchies had 0% one-shot accuracy in benchmark."
+      "Schema is NOT TOON-aligned. Use JSON. Deep hierarchies had 0% one-shot accuracy in benchmark."
     }
   }
 

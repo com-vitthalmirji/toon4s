@@ -7,15 +7,15 @@ import org.apache.spark.sql.streaming.{StreamingQuery, Trigger}
 import org.apache.spark.sql.{DataFrame, SparkSession}
 
 /**
- * Delta Lake Change Data Feed integration for real-time TOON streaming.
+ * Delta lake Change data feed integration for real-time TOON streaming.
  *
- * ==Use Case: Real-Time LLM Processing Pipeline==
+ * ==Use case: Real-time LLM processing pipeline==
  * Databricks workloads often need to process CDC events for:
  *   - Real-time fraud detection (LLM analyzes transaction patterns)
  *   - Customer behavior analysis (LLM identifies trends)
  *   - Data quality monitoring (LLM detects anomalies)
  *
- * ==Problem with JSON Streaming==
+ * ==Problem with JSON streaming==
  * Traditional approach uses JSON for streaming:
  * {{{
  * spark.readStream
@@ -29,7 +29,7 @@ import org.apache.spark.sql.{DataFrame, SparkSession}
  *   }
  * }}}
  *
- * ==TOON Solution==
+ * ==TOON solution==
  * TOON provides:
  *   - 22% token savings for tabular CDC events (benchmark-proven)
  *   - Adaptive chunking to amortize prompt tax
@@ -69,7 +69,7 @@ import org.apache.spark.sql.{DataFrame, SparkSession}
  * [original table columns...]
  * }}}
  *
- * ==Schema Alignment Check==
+ * ==Schema alignment check==
  * Before streaming, this module validates the schema is TOON-aligned:
  *   - Tabular CDC events (depth 0-2): ✅ TOON wins
  *   - Nested CDC events (depth 3+): ⚠️ Consider JSON
@@ -138,7 +138,7 @@ object DeltaLakeCDC {
   )
 
   /**
-   * Stream Delta Lake CDC events as TOON-encoded micro-batches.
+   * Stream Delta lake CDC events as TOON-encoded micro-batches.
    *
    * This is the primary API for real-time TOON streaming from Delta Lake.
    *
@@ -150,7 +150,7 @@ object DeltaLakeCDC {
    *      c. Encode batch to TOON
    *      d. Invoke user callback with metadata
    *
-   * ==Error Handling==
+   * ==Error handling==
    * If TOON encoding fails for a batch:
    *   - Non-recoverable errors: Stream fails (e.g., invalid schema)
    *   - Recoverable errors: Logged, batch skipped
@@ -187,7 +187,7 @@ object DeltaLakeCDC {
   }
 
   /**
-   * Stream Delta Lake CDC events with full batch metadata.
+   * Stream Delta lake CDC events with full batch metadata.
    *
    * Advanced API that provides additional metadata (change type breakdown, alignment score, etc.)
    * for monitoring and debugging.
@@ -237,7 +237,7 @@ object DeltaLakeCDC {
     val alignmentScore = ToonAlignmentAnalyzer.analyzeSchema(cdcStream.schema)
     if (!alignmentScore.aligned) {
       spark.sparkContext.setJobDescription(
-        s"⚠️ TOON Schema Warning: ${alignmentScore.recommendation}"
+        s"TOON schema warning: ${alignmentScore.recommendation}"
       )
     }
 
@@ -307,7 +307,7 @@ object DeltaLakeCDC {
         // Schema not TOON-friendly, but user explicitly requested TOON streaming
         // Use small chunks to minimize damage
         batchDF.sparkSession.sparkContext.setJobDescription(
-          s"⚠️ Batch $batchId: ${strategy.reasoning}"
+          s"Batch $batchId: ${strategy.reasoning}"
         )
       }
       strategy.chunkSize
@@ -331,7 +331,7 @@ object DeltaLakeCDC {
       case Left(error: SparkToonError) =>
         // Log error but don't fail stream (allow recovery)
         batchDF.sparkSession.sparkContext.setJobDescription(
-          s"❌ Batch $batchId TOON encoding failed: ${error.message}"
+          s"Batch $batchId TOON encoding failed: ${error.message}"
         )
         throw new RuntimeException(s"TOON encoding failed for batch $batchId: ${error.message}")
     }
@@ -409,7 +409,7 @@ object DeltaLakeCDC {
    * val alignment = validateTableAlignment("production.events")
    *
    * if (!alignment.aligned) {
-   *   println(s"⚠️ Table not TOON-aligned: ${alignment.recommendation}")
+   *   println(s"Table not TOON-aligned: ${alignment.recommendation}")
    *   println(s"Expected accuracy: ${alignment.expectedAccuracy}")
    *   println(s"Warnings: ${alignment.warnings.mkString("\n")}")
    * }

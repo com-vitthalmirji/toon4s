@@ -10,21 +10,21 @@ import java.time.{Instant, LocalDateTime, ZoneId}
 /**
  * Apache Iceberg time travel integration for historical TOON snapshots.
  *
- * ==Use Case: Temporal LLM Analysis==
+ * ==Use case: Temporal LLM analysis==
  * Modern data lakehouses need temporal analytics:
- *   - **Trend Analysis**: "How did customer behavior change Q1 vs Q2?"
- *   - **Audit & Compliance**: "What did this record look like on 2024-12-01?"
- *   - **A/B Testing**: "Compare model predictions before/after schema change"
- *   - **Root Cause Analysis**: "When did data quality degrade?"
+ *   - **Trend analysis**: "How did customer behavior change Q1 vs Q2?"
+ *   - **Audit & compliance**: "What did this record look like on 2024-12-01?"
+ *   - **A/B testing**: "Compare model predictions before/after schema change"
+ *   - **Root cause analysis**: "When did data quality degrade?"
  *
- * ==Iceberg Time Travel==
+ * ==Iceberg time travel==
  * Apache Iceberg provides:
  *   - Snapshot isolation (query historical state)
  *   - Millisecond-precision time travel
  *   - Efficient metadata-only operations
  *   - Multi-engine support (Spark, Trino, Flink)
  *
- * ==TOON Advantage==
+ * ==TOON advantage==
  * For LLM-based temporal analysis:
  *   - 22% token savings for tabular snapshots (benchmark-proven)
  *   - Efficient multi-snapshot encoding for trend detection
@@ -57,16 +57,16 @@ import java.time.{Instant, LocalDateTime, ZoneId}
  * }
  * }}}
  *
- * ==Schema Evolution Handling==
+ * ==Schema evolution handling==
  * Iceberg supports schema evolution. This module:
  *   - Validates schema compatibility across snapshots
  *   - Warns if schema changed between time ranges
  *   - Projects to common schema for consistent TOON encoding
  *
  * @see
- *   [[https://iceberg.apache.org/docs/latest/spark-queries/#time-travel Iceberg Time Travel]]
+ *   [[https://iceberg.apache.org/docs/latest/spark-queries/#time-travel Iceberg time travel]]
  * @see
- *   [[https://iceberg.apache.org/docs/latest/evolution/ Iceberg Schema Evolution]]
+ *   [[https://iceberg.apache.org/docs/latest/evolution/ Iceberg schema evolution]]
  */
 object IcebergTimeTravel {
 
@@ -274,7 +274,7 @@ object IcebergTimeTravel {
    *
    * Encodes both snapshots as TOON and returns them for LLM comparison.
    *
-   * ==Use Case==
+   * ==Use case==
    * "How did customer demographics change between Q3 and Q4?"
    * {{{
    * val comparison = compareSnapshots(
@@ -328,7 +328,7 @@ object IcebergTimeTravel {
    *
    * Useful for trend analysis over extended periods.
    *
-   * ==Use Case==
+   * ==Use case==
    * "Analyze weekly sales trends over Q4"
    * {{{
    * val timeSeries = generateSnapshotTimeSeries(
@@ -447,7 +447,7 @@ object IcebergTimeTravel {
       val strategy = AdaptiveChunking.calculateOptimalChunkSize(df)
       if (!strategy.useToon) {
         df.sparkSession.sparkContext.setJobDescription(
-          s"⚠️ Snapshot encoding: ${strategy.reasoning}"
+          s"Snapshot encoding: ${strategy.reasoning}"
         )
       }
       strategy.chunkSize

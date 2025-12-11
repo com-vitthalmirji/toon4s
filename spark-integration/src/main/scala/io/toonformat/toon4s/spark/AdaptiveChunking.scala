@@ -7,7 +7,7 @@ import org.apache.spark.sql.types._
  * Adaptive chunking strategy to optimize TOON prompt tax.
  *
  * ==Problem: The "Prompt Tax"==
- * TOON Generation Benchmark revealed a critical issue:
+ * TOON generation benchmarks revealed a critical issue:
  * {{{
  * TOON token savings = (JSON syntax savings) - (TOON prompt overhead)
  *
@@ -15,7 +15,7 @@ import org.apache.spark.sql.types._
  * For LONG outputs: syntax savings > prompt overhead = TOON WINS
  * }}}
  *
- * ==Solution: Adaptive Chunking==
+ * ==Solution: Adaptive chunking==
  * Calculate optimal chunk size based on dataset characteristics to amortize prompt tax over
  * larger chunks.
  *
@@ -32,14 +32,12 @@ import org.apache.spark.sql.types._
  * }
  * }}}
  *
- * ==Benchmark Data==
+ * ==Benchmark data==
  * Break-even analysis from benchmark:
  *   - Small dataset (< 1KB): JSON wins (prompt tax too high)
  *   - Medium dataset (1-10KB): TOON competitive
  *   - Large dataset (> 10KB): TOON wins (cumulative savings)
  *
- * @see
- *   [[https://github.com/vetertann/TOON-generation-benchmark TOON Generation Benchmark]]
  */
 object AdaptiveChunking {
 
