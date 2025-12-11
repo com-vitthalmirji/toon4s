@@ -6,8 +6,11 @@ import org.apache.spark.sql.{Dataset, SparkSession}
 
 // Test case classes - must be defined outside test class for Spark Encoders
 case class User(id: Int, name: String, age: Int)
+
 case class Product(id: Int, name: String, price: Double, inStock: Boolean)
+
 case class Address(street: String, city: String, zip: Int)
+
 case class Employee(id: Int, name: String, address: Address)
 
 class SparkDatasetOpsTest extends FunSuite {

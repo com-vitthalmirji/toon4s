@@ -51,8 +51,7 @@ import org.apache.spark.sql.{Dataset, Encoder, SparkSession}
  * This ensures we reuse the battle-tested DataFrame↔TOON logic while providing a type-safe facade.
  *
  * @see
- *   [[https://spark.apache.org/docs/latest/sql-programming-guide.html#datasets-and-dataframes Spark
- *   Datasets Guide]]
+ *   [[https://spark.apache.org/docs/latest/sql-programming-guide.html#datasets-and-dataframes Spark Datasets Guide]]
  * @see
  *   [[https://www.chaosgenius.io/blog/apache-spark-with-scala/ Apache Spark With Scala 101]]
  */
@@ -152,8 +151,8 @@ object SparkDatasetOps {
   /**
    * Decode TOON documents back to type-safe Dataset[T].
    *
-   * Reconstructs a typed Dataset from TOON-encoded strings. Requires the schema to be inferred
-   * from the type parameter T (via implicit Encoder).
+   * Reconstructs a typed Dataset from TOON-encoded strings. Requires the schema to be inferred from
+   * the type parameter T (via implicit Encoder).
    *
    * @tparam T
    *   Case class type for the Dataset
@@ -214,15 +213,15 @@ object SparkDatasetOps {
     // Extract type name from encoder schema
     val schema = encoder.schema
     schema.catalogString match {
-      case s if s.startsWith("struct<") => "data" // Fallback for complex types
-      case _ =>
-        // Try to extract from encoder's class name
-        scala.util
-          .Try {
-            val className = encoder.getClass.getName
-            className.split('.').last.split('$').head
-          }
-          .getOrElse("data")
+    case s if s.startsWith("struct<") => "data" // Fallback for complex types
+    case _                            =>
+      // Try to extract from encoder's class name
+      scala.util
+        .Try {
+          val className = encoder.getClass.getName
+          className.split('.').last.split('$').head
+        }
+        .getOrElse("data")
     }
   }
 
