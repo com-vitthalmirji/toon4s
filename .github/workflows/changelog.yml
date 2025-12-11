@@ -129,5 +129,5 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Version**: \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "✅ Changelog has been updated and committed to main branch" >> $GITHUB_STEP_SUMMARY
-          echo "🔄 All open PR branches have been synced with main" >> $GITHUB_STEP_SUMMARY
+          echo "Changelog has been updated and committed to main branch" >> $GITHUB_STEP_SUMMARY
+          echo "All open PR branches have been synced with main" >> $GITHUB_STEP_SUMMARY

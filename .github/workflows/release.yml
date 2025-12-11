@@ -13,7 +13,7 @@
 #   5. Creates GitHub Release with CLI artifacts
 #   6. Triggers changelog.yml to update CHANGELOG.md
 #
-# Required GitHub Secrets:
+# Required GitHub secrets:
 #   - PGP_PASSPHRASE: Passphrase for PGP signing key
 #   - PGP_SECRET: Base64 encoded PGP secret key
 #   - SONATYPE_USERNAME: Sonatype Central Portal username
@@ -237,16 +237,16 @@ jobs:
 
             ### Installation
 
-            **Core Library (Scala 3 & 2.13)**:
+            **Core library (Scala 3 & 2.13)**:
             ```scala
             libraryDependencies += "com.vitthalmirji" %% "toon4s-core" % "${{steps.version.outputs.version}}"
             ```
 
-            **Spark Integration (Scala 2.13 only)**:
+            **Apache Spark integration (Scala 2.13 only)**:
             ```scala
             libraryDependencies ++= Seq(
               "com.vitthalmirji" %% "toon4s-spark" % "${{steps.version.outputs.version}}",
-              "org.apache.spark" %% "spark-sql" % "3.5.0" % Provided
+              "org.apache.spark" %% "spark-sql" % "3.5.0" % provided
             )
             ```
 
@@ -268,7 +268,7 @@ jobs:
             </dependency>
             ```
 
-            **Maven (Spark Integration - Scala 2.13)**:
+            **Maven (Apache Spark Integration - Scala 2.13)**:
             ```xml
             <dependency>
               <groupId>com.vitthalmirji</groupId>
@@ -296,7 +296,7 @@ jobs:
           allowUpdates: true
           updateOnlyUnreleased: false
 
-      - name: Trigger Changelog Update
+      - name: Trigger Changelog update
         uses: actions/github-script@v7
         with:
           script: |
@@ -317,9 +317,9 @@ jobs:
           echo "**Version**: \`${{ steps.version.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Published Artifacts**:" >> $GITHUB_STEP_SUMMARY
-          echo "- com.vitthalmirji:toon4s-core_3 → Maven Central" >> $GITHUB_STEP_SUMMARY
-          echo "- com.vitthalmirji:toon4s-core_2.13 → Maven Central" >> $GITHUB_STEP_SUMMARY
-          echo "- com.vitthalmirji:toon4s-spark_2.13 → Maven Central" >> $GITHUB_STEP_SUMMARY
+          echo "- com.vitthalmirji:toon4s-core_3 -> Maven Central" >> $GITHUB_STEP_SUMMARY
+          echo "- com.vitthalmirji:toon4s-core_2.13 -> Maven Central" >> $GITHUB_STEP_SUMMARY
+          echo "- com.vitthalmirji:toon4s-spark_2.13 -> Maven Central" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Links**:" >> $GITHUB_STEP_SUMMARY
           echo "- [GitHub Release](https://github.com/${{ github.repository }}/releases/tag/${{ env.RELEASE_TAG }})" >> $GITHUB_STEP_SUMMARY
@@ -327,4 +327,4 @@ jobs:
           echo "- [toon4s-core (Scala 2.13)](https://central.sonatype.com/artifact/com.vitthalmirji/toon4s-core_2.13/${{ steps.version.outputs.version }})" >> $GITHUB_STEP_SUMMARY
           echo "- [toon4s-spark (Scala 2.13)](https://central.sonatype.com/artifact/com.vitthalmirji/toon4s-spark_2.13/${{ steps.version.outputs.version }})" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "🔄 Changelog update and PR sync will run next..." >> $GITHUB_STEP_SUMMARY
+          echo "Changelog update and PR sync will run next.." >> $GITHUB_STEP_SUMMARY
