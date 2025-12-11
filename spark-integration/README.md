@@ -1,10 +1,10 @@
 # toon4s-spark
 
-Apache Spark integration for TOON format - encode DataFrames to token-efficient TOON format for LLM processing.
+[Apache Spark](https://spark.apache.org/) integration for TOON format - encode DataFrames, Datasets to token-efficient TOON format for LLM processing.
 
 ## Features
 
-- **DataFrame ↔ TOON conversion**: Pure functional API with Either error handling
+- **DataFrame <-> TOON conversion**: Pure functional API with Either error handling
 - **Extension methods**: Fluent `.toToon()` and `.toonMetrics()` on DataFrames
 - **Token metrics**: Compare JSON vs TOON token counts and cost savings
 - **SQL UDFs**: Register TOON functions for use in Spark SQL queries
@@ -21,7 +21,7 @@ Add to your `build.sbt`:
 libraryDependencies += "com.vitthalmirji" %% "toon4s-spark" % "0.1.0"
 ```
 
-For Spark applications, use `Provided` scope since Spark is typically provided by the cluster:
+For spark applications, use `provided` scope since Spark is typically provided by the cluster:
 
 ```scala
 libraryDependencies ++= Seq(
@@ -30,7 +30,7 @@ libraryDependencies ++= Seq(
 )
 ```
 
-## Quick Start
+## Quick start
 
 ### DataFrame to TOON
 
@@ -61,7 +61,7 @@ df.toToon(key = "users") match {
 }
 ```
 
-### Token Metrics
+### Token metrics
 
 ```scala
 // Compare JSON vs TOON token efficiency
@@ -101,7 +101,7 @@ spark.sql("""
 """).show()
 ```
 
-### Round-Trip Conversion
+### Round-trip conversion
 
 ```scala
 implicit val sparkSession: SparkSession = spark
@@ -122,7 +122,7 @@ result match {
 }
 ```
 
-### Chunking Large DataFrames
+### Chunking large DataFrames
 
 ```scala
 // Handle large datasets with automatic chunking
@@ -143,11 +143,11 @@ largeDf.toToon(
 }
 ```
 
-### LLM Integration (llm4s-compatible)
+### LLM integration [llm4s-compatible](https://github.com/llm4s/llm4s)
 
 toon4s-spark provides an LLM client abstraction that mirrors [llm4s](https://github.com/llm4s/llm4s) design patterns for forward compatibility.
 
-#### Conversation-Based API
+#### Conversation-based API
 
 ```scala
 import io.toonformat.toon4s.spark.llm._
@@ -173,7 +173,7 @@ conversation.flatMap { conv =>
 }
 ```
 
-#### Send TOON Data to LLM
+#### Send TOON data to LLM
 
 ```scala
 df.toToon(key = "analytics_data") match {
@@ -199,7 +199,7 @@ df.toToon(key = "analytics_data") match {
 }
 ```
 
-#### Backward-Compatible String API
+#### Backward-compatible string API
 
 ```scala
 // Simple string-based API for quick prototyping
@@ -220,7 +220,7 @@ client.completeWithSystem(
 }
 ```
 
-#### Streaming Support
+#### Streaming support
 
 ```scala
 val result = for {
@@ -231,7 +231,7 @@ val result = for {
 } yield completion
 ```
 
-#### Context Window Management (llm4s pattern)
+#### Context window management (llm4s pattern)
 
 ```scala
 val client = MockLlmClient.alwaysSucceeds
@@ -252,7 +252,7 @@ if (budget.fits(promptTokens)) {
 
 ## API Reference
 
-### Extension Methods on DataFrame
+### Extension methods on DataFrame
 
 **`toToon(key: String, maxRowsPerChunk: Int, options: EncodeOptions): Either[SparkToonError, Vector[String]]`**
 
@@ -270,7 +270,7 @@ Compute token metrics comparing JSON vs TOON efficiency.
 
 Print a sample of TOON-encoded data for debugging (default: 5 rows).
 
-### Static Methods
+### Static methods
 
 **`SparkToonOps.fromToon(toonDocuments: Vector[String], schema: StructType, options: DecodeOptions)(implicit spark: SparkSession): Either[SparkToonError, DataFrame]`**
 
@@ -339,7 +339,7 @@ Test / javaOptions ++= Seq(
 )
 ```
 
-### Spark Configuration
+### Spark configuration
 
 ```scala
 val spark = SparkSession.builder()
@@ -349,7 +349,7 @@ val spark = SparkSession.builder()
   .getOrCreate()
 ```
 
-## Performance Tips
+## Performance tips
 
 1. **Chunking**: Use `maxRowsPerChunk` to control memory usage for large DataFrames
 2. **Caching**: Cache DataFrames before multiple TOON operations
@@ -376,7 +376,7 @@ largeDf.toonMetrics() match {
 
 ## Requirements
 
-- Scala 2.12 or 2.13
+- Scala 2.13
 - Apache Spark 3.5.0+
 - Java 11+ (Java 17+ recommended)
 

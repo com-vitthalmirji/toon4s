@@ -1,12 +1,11 @@
 package io.toonformat.toon4s.spark
 
-import scala.jdk.CollectionConverters._
-
-import SparkToonOps._
-import io.toonformat.toon4s.{DecodeOptions, EncodeOptions}
+import io.toonformat.toon4s.spark.SparkToonOps._
 import munit.FunSuite
-import org.apache.spark.sql.{Row, SparkSession}
 import org.apache.spark.sql.types._
+import org.apache.spark.sql.{Row, SparkSession}
+
+import scala.jdk.CollectionConverters._
 
 class SparkToonOpsTest extends FunSuite {
 

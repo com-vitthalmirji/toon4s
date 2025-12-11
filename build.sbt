@@ -170,8 +170,8 @@ lazy val sparkIntegration = (project in file("spark-integration"))
       "org.scalameta"    %% "munit"     % "1.2.1" % Test,
     ),
     scalacOptions ++= commonScalacOptions,
-    // Cross-build for Spark compatibility (Spark supports Scala 2.12 and 2.13)
-    crossScalaVersions := Seq(Scala213Latest, "2.12.19"),
+    // Cross-build for Spark compatibility (Spark supports Scala 2.13)
+    crossScalaVersions := Seq(Scala213Latest),
     // Fix Spark class loader issues in tests - run tests in forked JVM
     Test / fork := true,
     // Add JVM options for Java 17+ compatibility with Spark
