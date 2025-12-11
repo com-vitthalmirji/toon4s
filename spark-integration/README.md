@@ -9,8 +9,9 @@ Apache Spark integration for TOON format - encode DataFrames to token-efficient 
 - **Token metrics**: Compare JSON vs TOON token counts and cost savings
 - **SQL UDFs**: Register TOON functions for use in Spark SQL queries
 - **Chunking support**: Handle large DataFrames with automatic chunking
-- **LLM client abstraction**: Vendor-agnostic trait for LLM integration
+- **LLM client abstraction**: [llm4s](https://github.com/llm4s/llm4s)-compatible conversation-based API
 - **Type-safe**: Comprehensive Scala type safety with ADT error handling
+- **Forward compatible**: Designed to integrate seamlessly with llm4s when available
 
 ## Installation
 
@@ -142,40 +143,110 @@ largeDf.toToon(
 }
 ```
 
-### LLM Integration
+### LLM Integration (llm4s-compatible)
+
+toon4s-spark provides an LLM client abstraction that mirrors [llm4s](https://github.com/llm4s/llm4s) design patterns for forward compatibility.
+
+#### Conversation-Based API
 
 ```scala
-import io.toonformat.toon4s.spark.{LlmClient, LlmConfig, LlmError, MockLlmClient}
+import io.toonformat.toon4s.spark.llm._
+
+// Create conversation
+val conversation = for {
+  sys <- Message.system("You are a data analyst")
+  user <- Message.user("Analyze this data: ...")
+  conv <- Conversation.create(sys, user)
+} yield conv
 
 // Use mock client for testing
-val client = MockLlmClient(Map(
-  "prompt1" -> "response1"
-))
+val client = MockLlmClient.alwaysSucceeds
 
-// Or implement for your LLM provider
-class OpenAIClient(apiKey: String) extends LlmClient {
-  val config = LlmConfig.default
-
-  def complete(prompt: String): Either[LlmError, String] = {
-    // HTTP call to OpenAI API
-    ???
-  }
+conversation.flatMap { conv =>
+  client.complete(conv, CompletionOptions.default)
+} match {
+  case Right(completion) =>
+    println(s"Response: ${completion.content}")
+    println(s"Tokens: ${completion.usage}")
+  case Left(error) =>
+    println(s"Error: ${error.formatted}")
 }
+```
 
-// Send TOON data to LLM
+#### Send TOON Data to LLM
+
+```scala
 df.toToon(key = "analytics_data") match {
   case Right(toonChunks) =>
     toonChunks.foreach { toon =>
-      val prompt = s"Analyze this data:\\n$toon"
-      client.complete(prompt) match {
-        case Right(response) =>
-          println(s"LLM Response: $response")
-        case Left(error) =>
-          println(s"LLM Error: ${error.message}")
+      val result = for {
+        conv <- Conversation.fromPrompts(
+          "You are a data analyst",
+          s"Analyze this data:\n$toon"
+        )
+        completion <- client.complete(conv)
+      } yield completion
+
+      result.foreach { completion =>
+        println(s"Analysis: ${completion.content}")
+        completion.usage.foreach { usage =>
+          println(s"Cost: ${usage.estimateCost(0.01, 0.03)}")
+        }
       }
     }
   case Left(error) =>
     println(s"Encoding error: ${error.message}")
+}
+```
+
+#### Backward-Compatible String API
+
+```scala
+// Simple string-based API for quick prototyping
+val client = MockLlmClient(Map("test" -> "response"))
+
+client.completeSimple("What is 2+2?") match {
+  case Right(response) => println(response)
+  case Left(error) => println(error.message)
+}
+
+// With system prompt
+client.completeWithSystem(
+  "You are helpful",
+  "What is 2+2?"
+) match {
+  case Right(response) => println(response)
+  case Left(error) => println(error.message)
+}
+```
+
+#### Streaming Support
+
+```scala
+val result = for {
+  conv <- Conversation.userOnly("Tell me a story")
+  completion <- client.streamComplete(conv) { chunk =>
+    chunk.content.foreach(print)  // Print each chunk as it arrives
+  }
+} yield completion
+```
+
+#### Context Window Management (llm4s pattern)
+
+```scala
+val client = MockLlmClient.alwaysSucceeds
+
+// Check context limits
+val contextWindow = client.getContextWindow()  // 128000 for GPT-4o
+val reserved = client.getReserveCompletion()   // 4096 reserved for output
+
+// Calculate available budget
+val budget = client.getContextBudget(HeadroomPercent.Standard)
+println(s"Available: ${budget.available} tokens")
+
+// Check if prompt fits
+if (budget.fits(promptTokens)) {
+  // Send to LLM
 }
 ```
 

@@ -7,14 +7,13 @@ package io.toonformat.toon4s.spark
  *
  * ==Migration Path==
  * When llm4s is published to Maven Central, users can:
- * 1. Add llm4s dependency
- * 2. Use Llm4sAdapter to bridge between toon4s-spark and llm4s
- * 3. Gradually migrate to llm4s-native conversation model
+ *   1. Add llm4s dependency
+ *   2. Use Llm4sAdapter to bridge between toon4s-spark and llm4s
+ *   3. Gradually migrate to llm4s-native conversation model
  *
  * ==Current Status==
- * This package provides a simplified LLM client abstraction that mirrors llm4s design
- * patterns but works standalone. All types use similar naming and structure to llm4s
- * for easy future migration.
+ * This package provides a simplified LLM client abstraction that mirrors llm4s design patterns but
+ * works standalone. All types use similar naming and structure to llm4s for easy future migration.
  */
 package object llm {
 
@@ -25,18 +24,18 @@ package object llm {
    */
   type Result[+A] = Either[LlmError, A]
 
-  /**
-   * Helper methods for Result type (matches llm4s Result companion object).
-   */
+  /** Helper methods for Result type (matches llm4s Result companion object). */
   object Result {
+
     def success[A](value: A): Result[A] = Right(value)
+
     def failure[A](error: LlmError): Result[A] = Left(error)
 
     def sequence[A](results: Vector[Result[A]]): Result[Vector[A]] = {
       results.foldLeft[Result[Vector[A]]](Right(Vector.empty)) {
         case (Right(acc), Right(value)) => Right(acc :+ value)
-        case (Left(err), _) => Left(err)
-        case (_, Left(err)) => Left(err)
+        case (Left(err), _)             => Left(err)
+        case (_, Left(err))             => Left(err)
       }
     }
 
@@ -47,5 +46,7 @@ package object llm {
         case ex: Exception => Left(LlmError.UnknownError(ex.getMessage, Some(ex)))
       }
     }
+
   }
+
 }

@@ -21,7 +21,7 @@ class LlmClientTest extends FunSuite {
   test("Conversation: create from prompts") {
     val result = Conversation.fromPrompts(
       "You are a data analyst",
-      "Analyze this data"
+      "Analyze this data",
     )
     assert(result.isRight)
     result.foreach { conv =>
@@ -64,9 +64,7 @@ class LlmClientTest extends FunSuite {
     } yield completion
 
     assert(result.isRight)
-    result.foreach { completion =>
-      assert(completion.content.contains("Mock response"))
-    }
+    result.foreach(completion => assert(completion.content.contains("Mock response")))
   }
 
   test("MockLlmClient: stream completion") {
@@ -75,9 +73,7 @@ class LlmClientTest extends FunSuite {
 
     val result = for {
       conv <- Conversation.userOnly("test")
-      completion <- client.streamComplete(conv) { chunk =>
-        chunks = chunks :+ chunk
-      }
+      completion <- client.streamComplete(conv) { chunk => chunks = chunks :+ chunk }
     } yield completion
 
     assert(result.isRight)
@@ -134,12 +130,12 @@ class LlmClientTest extends FunSuite {
     val usage = TokenUsage(
       promptTokens = 1000,
       completionTokens = 500,
-      totalTokens = 1500
+      totalTokens = 1500,
     )
 
     val cost = usage.estimateCost(
       promptCostPer1k = 0.01,
-      completionCostPer1k = 0.03
+      completionCostPer1k = 0.03,
     )
 
     // 1000/1000 * 0.01 + 500/1000 * 0.03 = 0.01 + 0.015 = 0.025
@@ -201,4 +197,5 @@ class LlmClientTest extends FunSuite {
     assertEquals(HeadroomPercent.Standard.value, 0.10)
     assertEquals(HeadroomPercent.High.value, 0.20)
   }
+
 }

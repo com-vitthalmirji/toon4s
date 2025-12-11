@@ -3,34 +3,34 @@ package io.toonformat.toon4s.spark.llm
 /**
  * Mock LLM client for testing.
  *
- * Returns predefined responses for testing without making actual API calls.
- * Aligned with llm4s testing patterns.
+ * Returns predefined responses for testing without making actual API calls. Aligned with llm4s
+ * testing patterns.
  *
- * @param config Client configuration
- * @param responses Map of conversation keys to response strings
+ * @param config
+ *   Client configuration
+ * @param responses
+ *   Map of conversation keys to response strings
  */
 class MockLlmClient(
-  val config: LlmConfig,
-  responses: Map[String, String] = Map.empty
+    val config: LlmConfig,
+    responses: Map[String, String] = Map.empty,
 ) extends LlmClient {
 
-  /**
-   * Complete conversation with mock response.
-   */
+  /** Complete conversation with mock response. */
   def complete(
-    conversation: Conversation,
-    options: CompletionOptions = CompletionOptions()
+      conversation: Conversation,
+      options: CompletionOptions = CompletionOptions(),
   ): Result[Completion] = {
     // Create key from last user message
     val key = conversation.messages.lastOption match {
-      case Some(UserMessage(content)) => content
-      case Some(msg) => msg.content
-      case None => ""
+    case Some(UserMessage(content)) => content
+    case Some(msg)                  => msg.content
+    case None                       => ""
     }
 
     val responseContent = responses.getOrElse(
       key,
-      s"Mock response for: ${key.take(50)}..."
+      s"Mock response for: ${key.take(50)}...",
     )
 
     Right(Completion.fromResponse(
@@ -39,17 +39,15 @@ class MockLlmClient(
       usage = Some(TokenUsage(
         promptTokens = key.length / 4,
         completionTokens = responseContent.length / 4,
-        totalTokens = (key.length + responseContent.length) / 4
-      ))
+        totalTokens = (key.length + responseContent.length) / 4,
+      )),
     ))
   }
 
-  /**
-   * Stream mock completion.
-   */
+  /** Stream mock completion. */
   override def streamComplete(
-    conversation: Conversation,
-    options: CompletionOptions = CompletionOptions()
+      conversation: Conversation,
+      options: CompletionOptions = CompletionOptions(),
   )(onChunk: StreamedChunk => Unit): Result[Completion] = {
     complete(conversation, options).map { completion =>
       // Emit chunks for each word
@@ -58,14 +56,14 @@ class MockLlmClient(
         onChunk(StreamedChunk(
           id = completion.id,
           content = Some(word + " "),
-          finishReason = None
+          finishReason = None,
         ))
       }
       // Emit final chunk
       onChunk(StreamedChunk(
         id = completion.id,
         content = None,
-        finishReason = Some("stop")
+        finishReason = Some("stop"),
       ))
       completion
     }
@@ -74,6 +72,7 @@ class MockLlmClient(
   def getContextWindow(): Int = config.contextWindow
 
   def getReserveCompletion(): Int = config.reserveCompletion
+
 }
 
 object MockLlmClient {
@@ -86,7 +85,7 @@ object MockLlmClient {
   /** Create mock client that always succeeds. */
   val alwaysSucceeds: MockLlmClient = new MockLlmClient(
     LlmConfig.default,
-    Map.empty
+    Map.empty,
   )
 
   /** Create mock client that always fails. */
@@ -94,8 +93,8 @@ object MockLlmClient {
     val config: LlmConfig = LlmConfig.default
 
     def complete(
-      conversation: Conversation,
-      options: CompletionOptions = CompletionOptions()
+        conversation: Conversation,
+        options: CompletionOptions = CompletionOptions(),
     ): Result[Completion] = {
       Left(LlmError.ApiError("mock", "Mock failure", Some(500)))
     }
@@ -108,4 +107,5 @@ object MockLlmClient {
   def withConfig(config: LlmConfig, responses: Map[String, String] = Map.empty): MockLlmClient = {
     new MockLlmClient(config, responses)
   }
+
 }
