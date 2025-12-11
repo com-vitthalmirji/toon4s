@@ -67,7 +67,7 @@ val commonScalacOptions = Seq(
 // The publishTo setting is automatically configured by sbt-ci-release for both snapshots and releases
 
 lazy val root = (project in file("."))
-  .aggregate(core, cli, jmh, compare, sparkIntegration)
+  .aggregate(core, cli, jmh, sparkIntegration)
   .settings(
     name := "toon4s",
     publish / skip := true,
@@ -137,20 +137,6 @@ lazy val jmh = (project in file("benchmarks-jmh"))
     name := "toon4s-jmh",
     publish / skip := true,
     scalacOptions ++= commonScalacOptions,
-  )
-
-lazy val compare = (project in file("compare"))
-  .dependsOn(core)
-  .settings(
-    name := "toon4s-compare",
-    publish / skip := true,
-    scalacOptions ++= commonScalacOptions,
-    libraryDependencies ++= Seq(
-      "com.fasterxml.jackson.core" % "jackson-databind" % "2.20.1"
-    ),
-    Compile / unmanagedJars ++= {
-      sys.env.get("JTOON_JAR").toList.map(file)
-    },
   )
 
 // sbt aliases for quick vs heavy JMH runs
