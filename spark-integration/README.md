@@ -29,14 +29,14 @@ token savings** for tabular data with intelligent safeguards for schema alignmen
 
 TOON generation benchmark:
 
-| Dataset Type         | Nesting Depth | TOON Accuracy   | Token Savings | Recommendation   |
-|----------------------|---------------|-----------------|---------------|------------------|
-| **users** (tabular)  | 0-1 levels    | **90.5%**       | **22%**       | ✅ **TOON wins**  |
-| **order** (shallow)  | 2 levels      | 78.6%           | ~18%          | ✅ TOON good      |
-| **invoice** (medium) | 3 levels      | 52.4%           | ~12%          | ⚠️ TOON marginal |
-| **company** (deep)   | 4+ levels     | **0%** one-shot | N/A           | ❌ **Use JSON**   |
+| Dataset type         | Nesting depth | TOON accuracy   | Token savings | Recommendation |
+|----------------------|---------------|-----------------|---------------|----------------|
+| **users** (tabular)  | 0-1 levels    | **90.5%**       | **22%**       | **TOON wins**  |
+| **order** (shallow)  | 2 levels      | 78.6%           | ~18%          | TOON good      |
+| **invoice** (medium) | 3 levels      | 52.4%           | ~12%          | TOON marginal  |
+| **company** (deep)   | 4+ levels     | **0%** one-shot | N/A           | **Use JSON**   |
 
-**Key finding**: TOON excels at **tabular lakehouse data** (the primary Spark use case) but fails on deep hierarchies.
+> **Key finding**: TOON excels at **tabular lakehouse data** (the primary Spark use case) but fails on deep hierarchies.
 
 ## Features
 
@@ -185,7 +185,7 @@ largeDf.toToon(
 
 ### LLM integration [llm4s-compatible](https://github.com/llm4s/llm4s)
 
-toon4s-spark provides an LLM client abstraction that mirrors [llm4s](https://github.com/llm4s/llm4s) design patterns for
+`toon4s-spark` provides an LLM client abstraction that mirrors [llm4s](https://github.com/llm4s/llm4s) design patterns for
 forward compatibility.
 
 #### Conversation-based API
@@ -291,7 +291,7 @@ if (budget.fits(promptTokens)) {
 }
 ```
 
-## API Reference
+## API reference
 
 ### Extension methods on DataFrame
 
@@ -349,7 +349,7 @@ Methods:
 - `hasMeaningfulSavings(threshold: Double): Boolean` - Check if savings exceed threshold
 - `summary: String` - Formatted summary
 
-### Error Handling
+### Error handling
 
 All operations return `Either[SparkToonError, A]` for explicit error handling:
 
@@ -377,7 +377,7 @@ object SparkToonError {
 
 ## Configuration
 
-### Java 17+ Compatibility
+### Java 17+ compatibility
 
 For Java 17 or later, add these JVM options:
 
@@ -399,9 +399,9 @@ val spark = SparkSession.builder()
   .getOrCreate()
 ```
 
-## Advanced Features
+## Advanced features
 
-### Schema Alignment Detection
+### Schema alignment detection
 
 Validate DataFrame schema is TOON-aligned before encoding:
 
@@ -422,7 +422,7 @@ if (!alignment.aligned) {
 }
 ```
 
-### Adaptive Chunking
+### Adaptive chunking
 
 Optimize prompt tax by calculating optimal chunk size:
 
@@ -447,7 +447,7 @@ if (strategy.useToon) {
 }
 ```
 
-### Quick Health Check
+### Quick health check
 
 Combined alignment + chunking analysis:
 
@@ -465,7 +465,7 @@ if (shouldUseToon(df)) {
 }
 ```
 
-### Delta Lake Change Data Feed
+### Delta lake change data feed
 
 Stream real-time CDC events as TOON-encoded micro-batches:
 
@@ -507,7 +507,7 @@ historicalToon.foreach { chunks =>
 }
 ```
 
-### Apache Iceberg Time Travel
+### Apache Iceberg time travel
 
 Query historical Iceberg snapshots for trend analysis:
 
@@ -563,9 +563,9 @@ timeSeries.foreach { snapshots =>
 }
 ```
 
-### Production Monitoring
+### Production monitoring
 
-#### Health Assessment
+#### Health assessment
 
 Pre-flight checks before production deployment:
 
@@ -587,7 +587,7 @@ if (health.productionReady) {
 }
 ```
 
-#### Telemetry Collection
+#### Telemetry collection
 
 Lightweight metrics for monitoring dashboards:
 
@@ -603,7 +603,7 @@ statsd.gauge("toon.estimated_size_bytes", telemetry.estimatedDataSize,
   tags = Seq(s"table:${telemetry.tableName}"))
 ```
 
-#### Performance Metrics
+#### Performance metrics
 
 Measure actual encoding performance:
 
@@ -623,7 +623,7 @@ statsd.histogram("toon.encoding_time_ms", metrics.encodingTimeMs)
 statsd.histogram("toon.token_savings_pct", metrics.savingsPercent)
 ```
 
-#### Production Readiness Report
+#### Production readiness report
 
 Generate comprehensive report for stakeholders:
 
@@ -641,50 +641,50 @@ Files.write(Paths.get("toon-readiness-report.md"), report.getBytes)
 Example report output:
 
 ```markdown
-# TOON Production Readiness Report
+# TOON production readiness report
 
 **Table**: `production.events`
 **Generated**: 2025-01-15T10:30:00Z
 
-## Executive Summary
+## Executive summary
 
-✅ production.events: TOON ready (score=0.95, savings~22%)
+production.events: TOON ready (score=0.95, savings~22%)
 
-## Schema Analysis
+## Schema analysis
 
-- **Alignment Score**: 0.95 / 1.0
-- **TOON Aligned**: ✅ Yes
-- **Max Nesting Depth**: 1 levels
-- **Expected Accuracy**: 85-95% (benchmark: users case 90.5%)
-- **Recommendation**: ✅ Schema is TOON-aligned. This matches benchmark's best-performing cases (users: 90.5% accuracy).
+- **Alignment score**: 0.95 / 1.0
+- **TOON aligned**: YES
+- **Max nesting depth**: 1 levels
+- **Expected accuracy**: 85-95% (benchmark: users case 90.5%)
+- **Recommendation**: Schema is TOON-aligned. This matches benchmark's best-performing cases (users: 90.5% accuracy).
 
-## Dataset Characteristics
+## Dataset characteristics
 
 - **Row Count**: 1,250,000
 - **Column Count**: 8
 - **Estimated Size**: 12.5 MB
 - **Schema Hash**: `a3f7e2c9`
 
-## Chunking Strategy
+## Chunking strategy
 
-- **Use TOON**: ✅ Yes
+- **Use TOON**: YES
 - **Recommended Chunk Size**: 1000 rows
 - **Reasoning**: Large dataset (12.5 MB). TOON wins via cumulative syntax savings.
 - **Estimated Token Savings**: ~22%
 
-## Production Readiness
+## Production readiness
 
-✅ **READY FOR PRODUCTION**
+**READY FOR PRODUCTION**
 
 ## Recommendations
 
-1. ✅ Safe to deploy TOON encoding to production
+1. Safe to deploy TOON encoding to production
 2. Use chunk size: `1000` rows
 3. Monitor token savings to verify ~22% reduction
 4. Set up alerting if alignment score drops below 0.7
 ```
 
-## Performance Tips
+## Performance tips
 
 1. **Pre-flight validation**: Always check `shouldUseToon()` or `assessDataFrameHealth()` before encoding
 2. **Adaptive chunking**: Use `calculateOptimalChunkSize()` to optimize for your data
@@ -716,21 +716,21 @@ if (health.productionReady) {
 }
 ```
 
-## Architecture & Design
+## Architecture & design
 
-### Component Architecture
+### Component architecture
 
 ```mermaid
 graph TD
-    USER["User Code<br/>(Scala/Spark)"]
-    DFOPS["SparkToonOps<br/>(Extension Methods)"]
-    INTEROP["SparkJsonInterop<br/>(Row ↔ JsonValue)"]
-    METRICS["ToonMetrics<br/>(Token Accounting)"]
-    MONITOR["ToonMonitoring<br/>(Health & Telemetry)"]
-    ALIGN["ToonAlignmentAnalyzer<br/>(Schema Validation)"]
-    CHUNK["AdaptiveChunking<br/>(Prompt Tax Optimization)"]
-    DELTA["DeltaLakeCDC<br/>(Real-time Streaming)"]
-    ICEBERG["IcebergTimeTravel<br/>(Historical Snapshots)"]
+    USER["User code<br/>(Scala/Spark)"]
+    DFOPS["SparkToonOps<br/>(Extension methods)"]
+    INTEROP["SparkJsonInterop<br/>(Row <-> JsonValue)"]
+    METRICS["ToonMetrics<br/>(Token accounting)"]
+    MONITOR["ToonMonitoring<br/>(Health & telemetry)"]
+    ALIGN["ToonAlignmentAnalyzer<br/>(Schema validation)"]
+    CHUNK["AdaptiveChunking<br/>(Prompt tax optimization)"]
+    DELTA["DeltaLakeCDC<br/>(Real-time streaming)"]
+    ICEBERG["IcebergTimeTravel<br/>(Historical snapshots)"]
     CORE["toon4s-core<br/>(Toon.encode/decode)"]
     USER --> DFOPS
     USER --> MONITOR
@@ -775,17 +775,17 @@ sequenceDiagram
     SparkToonOps -->> User: Either[Error, Vector[String]]
 ```
 
-### Strategic Alignment with Spark Ecosystem
+### Strategic alignment with Spark ecosystem
 
 toon4s-spark is positioned at the intersection of:
 
-1. **Spark's Strength**: Tabular data, SQL results, ETL pipelines
-2. **TOON's Sweet Spot**: Tabular encoding (90.5% accuracy, 22% token savings)
-3. **2025 Lakehouse Architecture**: Delta Lake, Apache Iceberg, DuckDB
+1. **Spark's strength**: Tabular data, SQL results, ETL pipelines
+2. **TOON's sweet spot**: Tabular encoding (90.5% accuracy, 22% token savings)
+3. **2025 lake house architecture**: Delta lake, Apache Iceberg, DuckDB
 
-#### Perfect Match: Spark Produces TOON-Aligned Data
+#### Perfect match: Spark produces TOON-aligned data
 
-**Typical Spark SQL Result:**
+**Typical spark-sql result:**
 
 ```scala
 val results = spark.sql(
@@ -797,16 +797,16 @@ val results = spark.sql(
 """)
 ```
 
-**Data Characteristics:**
+**Data characteristics:**
 
 - ✅ Tabular (flat row structure)
 - ✅ Uniform schema (all rows same fields)
 - ✅ Shallow nesting (max 1-2 levels for joins)
 - ✅ Large scale (thousands to millions of rows)
 
-**Benchmark Verdict**: 90.5% accuracy, 22% token savings (users case)
+**Benchmark verdict**: 90.5% accuracy, 22% token savings (users case)
 
-#### Scaling Hypothesis Validates Spark
+#### Scaling hypothesis validates spark
 
 TOON efficiency follows a non-linear curve:
 
@@ -821,31 +821,31 @@ TOON efficiency follows a non-linear curve:
        |  /
        | /
        |/
-       +-----------------> Dataset Size
+       +-----------------> Dataset size
       Small   Medium   Large
                        ↑ Spark lives here
 ```
 
-**Break-even Analysis:**
+**Break-even analysis:**
 
 - Small dataset (< 1KB): JSON wins (prompt tax too high)
 - Medium dataset (1-10KB): TOON competitive
-- Large dataset (> 10KB): TOON wins ✅ ← **Spark's typical scale**
+- Large dataset (> 10KB): TOON wins <- **Spark's typical scale**
 
-**Spark's Reality:**
+**Spark's reality:**
 
 - Queries often return thousands to millions of rows
 - Output size: 10KB - 100MB+ per query
 - Perfect match for TOON's break-even point
 
-### Integration Strategy
+### Integration strategy
 
-#### Delta Lake Lakehouse
+#### Delta lake Lakehouse
 
-- **ACID Transactions**: Consistent TOON snapshots
-- **Change Data Feed**: Real-time TOON streaming
-- **Time Travel**: Historical TOON encoding
-- **Liquid Clustering**: Optimized for TOON chunking
+- **ACID transactions**: Consistent TOON snapshots
+- **Change data feed**: Real-time TOON streaming
+- **Time travel**: Historical TOON encoding
+- **Liquid clustering**: Optimized for TOON chunking
 
 #### Apache Iceberg
 
@@ -853,15 +853,15 @@ TOON efficiency follows a non-linear curve:
 - **Time Travel**: Millisecond-precision historical snapshots
 - **Schema Evolution**: Validated TOON alignment across versions
 
-#### Structured Streaming
+#### Structured streaming
 
-- **Micro-batches**: Uniform tabular data ✅
+- **Micro-batches**: Uniform tabular data
 - **Real-time Mode**: Millisecond latency (Databricks RT 16.4+)
-- **TOON-Aligned**: Fixed schema, uniform structure, high volume
+- **TOON-aligned**: Fixed schema, uniform structure, high volume
 
-### Design Principles
+### Design principles
 
-#### 1. Pure Functional API
+#### 1. Pure functional API
 
 All operations return `Either[SparkToonError, T]` for explicit error handling:
 
@@ -872,7 +872,7 @@ df.toToon(key = "data") match {
 }
 ```
 
-#### 2. Schema Alignment Detection
+#### 2. Schema alignment detection
 
 Pre-flight validation based on benchmark findings:
 
@@ -882,7 +882,7 @@ println(s"TOON aligned: ${alignment.aligned}")
 println(s"Expected accuracy: ${alignment.expectedAccuracy}")
 ```
 
-#### 3. Adaptive Chunking
+#### 3. Adaptive chunking
 
 Optimize prompt tax by calculating optimal chunk size:
 
@@ -891,7 +891,7 @@ val strategy = calculateOptimalChunkSize(df)
 df.toToon(maxRowsPerChunk = strategy.chunkSize)
 ```
 
-#### 4. Production Monitoring
+#### 4. Production monitoring
 
 Health checks before deployment:
 
@@ -905,33 +905,33 @@ if (health.productionReady) {
 }
 ```
 
-### Benchmark-Driven Design Decisions
+### Benchmark-driven design decisions
 
-Based on [TOON Generation Benchmark](https://github.com/vetertann/TOON-generation-benchmark):
+TOON generation benchmark:
 
-#### Decision 1: Schema Alignment Scoring
+#### Decision 1: Schema alignment scoring
 
 **Finding**: TOON fails on deep hierarchies (0% one-shot accuracy)
 **Implementation**: `ToonAlignmentAnalyzer` validates schema depth and nesting
 
-#### Decision 2: Prompt Tax Optimization
+#### Decision 2: Prompt tax optimization
 
 **Finding**: Prompt overhead exceeds savings for small datasets
 **Implementation**: `AdaptiveChunking` calculates optimal chunk size based on data size
 
-#### Decision 3: Production Safeguards
+#### Decision 3: Production safeguards
 
 **Finding**: TOON repair loops are expensive (2x+ token cost)
 **Implementation**: Pre-flight health checks prevent non-aligned data from encoding
 
-#### Decision 4: Honest Documentation
+#### Decision 4: Honest documentation
 
 **Finding**: TOON is NOT a general JSON replacement
 **Implementation**: Clear "When to Use TOON vs JSON" guidance with benchmark data
 
-### Real-World Use Cases
+### Real-world use cases
 
-#### Use Case 1: LLM-Powered Analytics (Databricks)
+#### Use case 1: LLM-powered analytics (Databricks)
 
 ```scala
 // Stream CDC events → TOON → LLM analysis
@@ -950,7 +950,7 @@ streamDeltaCDCToToon(config) { (toonChunks, batchId) =>
 }
 ```
 
-#### Use Case 2: Historical Trend Analysis (Iceberg)
+#### Use case 2: Historical trend analysis (Iceberg)
 
 ```scala
 // Compare quarterly snapshots for business trends
@@ -971,7 +971,7 @@ comparison.foreach { case (q3Data, q4Data) =>
 }
 ```
 
-#### Use Case 3: Pre-Deployment Validation
+#### Use case 3: Pre-deployment validation
 
 ```scala
 // Validate TOON readiness before production deployment
@@ -987,7 +987,7 @@ if (health.productionReady) {
 }
 ```
 
-### Error Handling Strategy
+### Error handling strategy
 
 All operations use monadic error handling with typed ADTs:
 
@@ -1030,4 +1030,4 @@ df.toToon() match {
 
 ## License
 
-MIT License - See LICENSE file for details.
+MIT License - See [LICENSE](../LICENSE) file for details.
