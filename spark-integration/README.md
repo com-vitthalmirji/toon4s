@@ -2,15 +2,49 @@
 
 [Apache Spark](https://spark.apache.org/) integration for TOON format - encode DataFrames, Datasets to token-efficient TOON format for LLM processing.
 
+## Overview
+
+toon4s-spark provides production-ready TOON encoding for Apache Spark DataFrames and Datasets. Based on the [TOON Generation Benchmark](https://github.com/vetertann/TOON-generation-benchmark), this integration delivers **22% token savings** for tabular data with intelligent safeguards for schema alignment and prompt tax optimization.
+
+### When to Use TOON vs JSON
+
+**✅ TOON Wins:**
+- Tabular data (flat or shallow nesting)
+- Large datasets (> 10KB)
+- Repeated LLM processing
+- Token cost is a concern
+
+**❌ Use JSON Instead:**
+- Deep hierarchies (3+ nesting levels)
+- Small datasets (< 1KB)
+- One-time queries
+- Schema evolution uncertainty
+
+### Benchmark Results
+
+From [TOON Generation Benchmark](https://github.com/vetertann/TOON-generation-benchmark) (Ivan Matveev, 2025):
+
+| Dataset Type | Nesting Depth | TOON Accuracy | Token Savings | Recommendation |
+|-------------|---------------|---------------|---------------|----------------|
+| **users** (tabular) | 0-1 levels | **90.5%** | **22%** | ✅ **TOON wins** |
+| **order** (shallow) | 2 levels | 78.6% | ~18% | ✅ TOON good |
+| **invoice** (medium) | 3 levels | 52.4% | ~12% | ⚠️ TOON marginal |
+| **company** (deep) | 4+ levels | **0%** one-shot | N/A | ❌ **Use JSON** |
+
+**Key Finding**: TOON excels at **tabular lakehouse data** (the primary Spark use case) but fails on deep hierarchies.
+
 ## Features
 
 - **DataFrame <-> TOON conversion**: Pure functional API with Either error handling
-- **Extension methods**: Fluent `.toToon()` and `.toonMetrics()` on DataFrames
+- **Type-safe Dataset[T] support**: Compile-time safety with Scala case classes
+- **Schema alignment detection**: Pre-flight validation based on benchmark findings
+- **Adaptive chunking**: Optimize prompt tax for dataset size
 - **Token metrics**: Compare JSON vs TOON token counts and cost savings
+- **Delta Lake CDC integration**: Real-time TOON streaming from Change Data Feed
+- **Iceberg time travel**: Historical TOON snapshots for trend analysis
+- **Production monitoring**: Health checks, telemetry, and readiness reports
 - **SQL UDFs**: Register TOON functions for use in Spark SQL queries
-- **Chunking support**: Handle large DataFrames with automatic chunking
 - **LLM client abstraction**: [llm4s](https://github.com/llm4s/llm4s)-compatible conversation-based API
-- **Type-safe**: Comprehensive Scala type safety with ADT error handling
 - **Forward compatible**: Designed to integrate seamlessly with llm4s when available
 
 ## Installation
@@ -349,28 +383,317 @@ val spark = SparkSession.builder()
   .getOrCreate()
 ```
 
-## Performance tips
+## Advanced Features
 
-1. **Chunking**: Use `maxRowsPerChunk` to control memory usage for large DataFrames
-2. **Caching**: Cache DataFrames before multiple TOON operations
-3. **Partitioning**: Repartition for parallelism before encoding
-4. **Token estimation**: Use `toonMetrics()` to verify savings before committing to TOON
+### Schema Alignment Detection
+
+Validate DataFrame schema is TOON-aligned before encoding:
+
+```scala
+import io.toonformat.toon4s.spark.ToonAlignmentAnalyzer._
+
+val df = spark.read.table("production.events")
+val alignment = analyzeSchema(df.schema)
+
+println(s"Alignment score: ${alignment.score}")
+println(s"TOON aligned: ${alignment.aligned}")
+println(s"Expected accuracy: ${alignment.expectedAccuracy}")
+println(s"Recommendation: ${alignment.recommendation}")
+
+if (!alignment.aligned) {
+  alignment.warnings.foreach(println)
+  // Consider using JSON instead
+}
+```
+
+### Adaptive Chunking
+
+Optimize prompt tax by calculating optimal chunk size:
+
+```scala
+import io.toonformat.toon4s.spark.AdaptiveChunking._
+
+val df = spark.read.table("analytics.metrics")
+val strategy = calculateOptimalChunkSize(df)
+
+println(s"Recommended chunk size: ${strategy.chunkSize} rows")
+println(s"Use TOON: ${strategy.useToon}")
+println(s"Reasoning: ${strategy.reasoning}")
+
+if (strategy.useToon) {
+  df.toToon(maxRowsPerChunk = strategy.chunkSize) match {
+    case Right(chunks) => // Process chunks
+    case Left(error) => // Handle error
+  }
+} else {
+  // Fall back to JSON
+  df.toJSON.collect()
+}
+```
+
+### Quick Health Check
+
+Combined alignment + chunking analysis:
+
+```scala
+import io.toonformat.toon4s.spark.AdaptiveChunking._
+
+val df = spark.read.table("sales.transactions")
+
+if (shouldUseToon(df)) {
+  println("✅ TOON recommended")
+  df.toToon()
+} else {
+  println("❌ Use JSON instead")
+  df.toJSON.collect()
+}
+```
+
+### Delta Lake Change Data Feed
+
+Stream real-time CDC events as TOON-encoded micro-batches:
+
+```scala
+import io.toonformat.toon4s.spark.integrations.DeltaLakeCDC._
+
+val config = DeltaCDCConfig(
+  tableName = "production.user_events",
+  checkpointLocation = "/dbfs/checkpoints/toon-cdc",
+  triggerInterval = "10 seconds"
+)
+
+val query = streamDeltaCDCToToon(config) { (toonChunks, batchId) =>
+  println(s"Batch $batchId: ${toonChunks.size} chunks")
+
+  // Send to LLM for real-time analysis
+  toonChunks.foreach { toon =>
+    llmClient.analyze(toon) match {
+      case Right(insights) => processInsights(insights)
+      case Left(error) => logger.error(s"LLM error: $error")
+    }
+  }
+}
+
+query.awaitTermination()
+```
+
+Read historical CDC for backfilling:
+
+```scala
+val historicalToon = readHistoricalCDC(
+  tableName = "production.transactions",
+  startingVersion = 100,
+  endingVersion = 200
+)
+
+historicalToon.foreach { chunks =>
+  chunks.foreach(trainLLM)
+}
+```
+
+### Apache Iceberg Time Travel
+
+Query historical Iceberg snapshots for trend analysis:
+
+```scala
+import io.toonformat.toon4s.spark.integrations.IcebergTimeTravel._
+import java.time.Instant
+
+// Read snapshot at specific timestamp
+val snapshot = readSnapshotAsOf(
+  tableName = "warehouse.sales.transactions",
+  asOfTimestamp = Instant.parse("2024-12-01T00:00:00Z")
+)
+
+snapshot.foreach { toonChunks =>
+  llmClient.analyze(s"Analyze sales on 2024-12-01: ${toonChunks.mkString}")
+}
+
+// Compare two snapshots for trend analysis
+val comparison = compareSnapshots(
+  tableName = "warehouse.customer_demographics",
+  beforeTimestamp = Instant.parse("2024-09-30T23:59:59Z"), // Q3 end
+  afterTimestamp = Instant.parse("2024-12-31T23:59:59Z")   // Q4 end
+)
+
+comparison.foreach { case (before, after) =>
+  val prompt = s"""
+    Analyze demographic changes between Q3 and Q4:
+
+    Q3 Data:
+    ${before.mkString("\n")}
+
+    Q4 Data:
+    ${after.mkString("\n")}
+
+    Summarize key trends.
+  """
+  llmClient.analyze(prompt)
+}
+
+// Generate time series for weekly trend analysis
+val timeSeries = generateSnapshotTimeSeries(
+  tableName = "sales.weekly_metrics",
+  startTime = Instant.parse("2024-10-01T00:00:00Z"),
+  endTime = Instant.parse("2024-12-31T23:59:59Z"),
+  intervalSeconds = 7 * 24 * 3600 // Weekly
+)
+
+timeSeries.foreach { snapshots =>
+  snapshots.foreach { case (timestamp, toon) =>
+    println(s"Week of $timestamp: ${toon.size} chunks")
+  }
+}
+```
+
+### Production Monitoring
+
+#### Health Assessment
+
+Pre-flight checks before production deployment:
+
+```scala
+import io.toonformat.toon4s.spark.monitoring.ToonMonitoring._
+
+val df = spark.read.table("production.critical_events")
+val health = assessDataFrameHealth(df, "production.critical_events")
+
+if (health.productionReady) {
+  println(s"✅ ${health.summary}")
+  df.toToon(maxRowsPerChunk = health.chunkStrategy.chunkSize)
+} else {
+  println(s"❌ Blocking issues:")
+  health.issues.foreach(issue => println(s"  - $issue"))
+
+  // Fall back to JSON
+  df.toJSON.collect()
+}
+```
+
+#### Telemetry Collection
+
+Lightweight metrics for monitoring dashboards:
+
+```scala
+val telemetry = collectTelemetry(df, "production.events")
+
+// Send to monitoring system (Datadog, Prometheus, etc.)
+statsd.gauge("toon.alignment_score", telemetry.alignmentScore,
+  tags = Seq(s"table:${telemetry.tableName}"))
+statsd.gauge("toon.max_depth", telemetry.maxDepth,
+  tags = Seq(s"table:${telemetry.tableName}"))
+statsd.gauge("toon.estimated_size_bytes", telemetry.estimatedDataSize,
+  tags = Seq(s"table:${telemetry.tableName}"))
+```
+
+#### Performance Metrics
+
+Measure actual encoding performance:
+
+```scala
+val metrics = measureEncodingPerformance(df)
+
+println(s"Encoding time: ${metrics.encodingTimeMs}ms")
+println(s"Token savings: ${metrics.savingsPercent}%")
+println(s"Success: ${metrics.success}")
+
+if (metrics.savingsPercent < 15.0) {
+  logger.warn(s"Low TOON savings: ${metrics.savingsPercent}% (expected 22%)")
+}
+
+// Track P99 latency
+statsd.histogram("toon.encoding_time_ms", metrics.encodingTimeMs)
+statsd.histogram("toon.token_savings_pct", metrics.savingsPercent)
+```
+
+#### Production Readiness Report
+
+Generate comprehensive report for stakeholders:
+
+```scala
+val report = generateProductionReport(df, "production.events")
+println(report)
+
+// Or save to file
+import java.nio.file.{Files, Paths}
+Files.write(Paths.get("toon-readiness-report.md"), report.getBytes)
+```
+
+Example report output:
+
+```markdown
+# TOON Production Readiness Report
+
+**Table**: `production.events`
+**Generated**: 2025-01-15T10:30:00Z
+
+## Executive Summary
+
+✅ production.events: TOON ready (score=0.95, savings~22%)
+
+## Schema Analysis
+
+- **Alignment Score**: 0.95 / 1.0
+- **TOON Aligned**: ✅ Yes
+- **Max Nesting Depth**: 1 levels
+- **Expected Accuracy**: 85-95% (benchmark: users case 90.5%)
+- **Recommendation**: ✅ Schema is TOON-aligned. This matches benchmark's best-performing cases (users: 90.5% accuracy).
+
+## Dataset Characteristics
+
+- **Row Count**: 1,250,000
+- **Column Count**: 8
+- **Estimated Size**: 12.5 MB
+- **Schema Hash**: `a3f7e2c9`
+
+## Chunking Strategy
+
+- **Use TOON**: ✅ Yes
+- **Recommended Chunk Size**: 1000 rows
+- **Reasoning**: Large dataset (12.5 MB). TOON wins via cumulative syntax savings.
+- **Estimated Token Savings**: ~22%
+
+## Production Readiness
+
+✅ **READY FOR PRODUCTION**
+
+## Recommendations
+
+1. ✅ Safe to deploy TOON encoding to production
+2. Use chunk size: `1000` rows
+3. Monitor token savings to verify ~22% reduction
+4. Set up alerting if alignment score drops below 0.7
+```
+
+## Performance Tips
+
+1. **Pre-flight validation**: Always check `shouldUseToon()` or `assessDataFrameHealth()` before encoding
+2. **Adaptive chunking**: Use `calculateOptimalChunkSize()` to optimize for your data
+3. **Caching**: Cache DataFrames before multiple TOON operations
+4. **Partitioning**: Repartition for parallelism before encoding
+5. **Monitoring**: Track alignment scores and token savings in production
 
 ```scala
 val largeDf = spark.read.parquet("data.parquet")
   .repartition(100)  // Parallelize
   .cache()           // Cache for reuse
 
-// Check if TOON provides meaningful savings
-largeDf.toonMetrics() match {
-  case Right(metrics) if metrics.hasMeaningfulSavings(threshold = 15.0) =>
-    // Proceed with TOON encoding
-    largeDf.toToon(maxRowsPerChunk = 1000)
-  case Right(metrics) =>
-    // Savings too small, use JSON
-    println(s"TOON savings only ${metrics.savingsPercent}%, using JSON")
-  case Left(error) =>
-    println(s"Error: ${error.message}")
+// Validate schema alignment
+val health = assessDataFrameHealth(largeDf, "data.parquet")
+
+if (health.productionReady) {
+  // Use recommended chunk size from health check
+  largeDf.toToon(maxRowsPerChunk = health.chunkStrategy.chunkSize) match {
+    case Right(chunks) =>
+      println(s"✅ Encoded ${chunks.size} chunks")
+      // Process chunks
+    case Left(error) =>
+      println(s"❌ Encoding failed: ${error.message}")
+  }
+} else {
+  println(s"⚠️ Schema not TOON-aligned: ${health.issues.mkString(", ")}")
+  // Fall back to JSON
+  largeDf.toJSON.collect()
 }
 ```
 
