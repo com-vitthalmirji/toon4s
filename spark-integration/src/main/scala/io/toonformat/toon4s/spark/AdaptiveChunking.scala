@@ -16,8 +16,8 @@ import org.apache.spark.sql.types._
  * }}}
  *
  * ==Solution: Adaptive chunking==
- * Calculate optimal chunk size based on dataset characteristics to amortize prompt tax over
- * larger chunks.
+ * Calculate optimal chunk size based on dataset characteristics to amortize prompt tax over larger
+ * chunks.
  *
  * ==Usage==
  * {{{
@@ -37,7 +37,6 @@ import org.apache.spark.sql.types._
  *   - Small dataset (< 1KB): JSON wins (prompt tax too high)
  *   - Medium dataset (1-10KB): TOON competitive
  *   - Large dataset (> 10KB): TOON wins (cumulative savings)
- *
  */
 object AdaptiveChunking {
 
@@ -118,7 +117,8 @@ object AdaptiveChunking {
       // Very small: JSON wins decisively
       ChunkingStrategy(
         chunkSize = Int.MaxValue, // Single chunk (but don't use TOON)
-        reasoning = s"Dataset too small (${formatBytes(totalDataSize)}). Prompt tax > token savings. Use JSON.",
+        reasoning =
+          s"Dataset too small (${formatBytes(totalDataSize)}). Prompt tax > token savings. Use JSON.",
         useToon = false,
         estimatedDataSize = totalDataSize,
       )
@@ -136,7 +136,8 @@ object AdaptiveChunking {
       val rowsPerChunk = math.max(100, TARGET_CHUNK_SIZE / avgRowSize)
       ChunkingStrategy(
         chunkSize = math.min(MAX_CHUNK_ROWS, rowsPerChunk),
-        reasoning = s"Medium dataset (${formatBytes(totalDataSize)}). Large chunks amortize prompt tax.",
+        reasoning =
+          s"Medium dataset (${formatBytes(totalDataSize)}). Large chunks amortize prompt tax.",
         useToon = true,
         estimatedDataSize = totalDataSize,
       )
@@ -185,14 +186,14 @@ object AdaptiveChunking {
    */
   private def estimateFieldSize(dataType: DataType): Int = dataType match {
   // Primitive types
-  case ByteType | BooleanType                          => 1
-  case ShortType                                       => 2
-  case IntegerType | FloatType | DateType              => 4
-  case LongType | DoubleType | TimestampType           => 8
-  case StringType                                      => 50 // Conservative average
-  case BinaryType                                      => 100 // Conservative average
-  case DecimalType()                                   => 16
-  case NullType                                        => 0
+  case ByteType | BooleanType                => 1
+  case ShortType                             => 2
+  case IntegerType | FloatType | DateType    => 4
+  case LongType | DoubleType | TimestampType => 8
+  case StringType                            => 50 // Conservative average
+  case BinaryType                            => 100 // Conservative average
+  case DecimalType()                         => 16
+  case NullType                              => 0
 
   // Complex types (recursive)
   case ArrayType(elementType, _) =>

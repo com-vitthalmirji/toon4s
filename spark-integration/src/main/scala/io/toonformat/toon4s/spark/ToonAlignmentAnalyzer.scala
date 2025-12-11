@@ -6,8 +6,8 @@ import org.apache.spark.sql.types._
  * Schema analyzer for TOON alignment detection.
  *
  * ==Design==
- * Based on TOON generation benchmark findings, this analyzer evaluates
- * DataFrame schemas to predict TOON generation success. The benchmark showed:
+ * Based on TOON generation benchmark findings, this analyzer evaluates DataFrame schemas to predict
+ * TOON generation success. The benchmark showed:
  *   - Aligned data (tabular, shallow): 90.5% accuracy, 22% token savings
  *   - Non-aligned data (deep hierarchies): 0% one-shot accuracy, massive token waste
  *
@@ -32,7 +32,6 @@ import org.apache.spark.sql.types._
  *   - **order case** (78.6% acc): 1-2 levels nesting, uniform arrays
  *   - **invoice case** (52.4% acc): 2-3 levels, arrays with totals
  *   - **company case** (0% one-shot): Deep hierarchy (4+ levels), recursive structures
- *
  */
 object ToonAlignmentAnalyzer {
 
@@ -64,8 +63,8 @@ object ToonAlignmentAnalyzer {
   /**
    * Analyze DataFrame schema for TOON alignment.
    *
-   * Evaluates schema structure against benchmark-proven patterns. Returns detailed alignment
-   * score with warnings and recommendations.
+   * Evaluates schema structure against benchmark-proven patterns. Returns detailed alignment score
+   * with warnings and recommendations.
    *
    * @param schema
    *   Spark StructType to analyze
@@ -167,10 +166,10 @@ object ToonAlignmentAnalyzer {
    */
   private def containsArrays(schema: StructType): Boolean = {
     def hasArrayType(dataType: DataType): Boolean = dataType match {
-      case ArrayType(_, _)    => true
-      case StructType(fields) => fields.exists(f => hasArrayType(f.dataType))
-      case MapType(_, v, _)   => hasArrayType(v)
-      case _                  => false
+    case ArrayType(_, _)    => true
+    case StructType(fields) => fields.exists(f => hasArrayType(f.dataType))
+    case MapType(_, v, _)   => hasArrayType(v)
+    case _                  => false
     }
 
     schema.fields.exists(f => hasArrayType(f.dataType))
@@ -205,12 +204,12 @@ object ToonAlignmentAnalyzer {
   private def detectRecursivePatterns(schema: StructType): Boolean = {
     // Look for struct-in-array-in-struct patterns (common in hierarchies)
     def hasHierarchyPattern(dataType: DataType): Boolean = dataType match {
-      case StructType(fields) =>
-        fields.exists {
-          case StructField(_, ArrayType(StructType(_), _), _, _) => true
-          case StructField(_, dt, _, _)                          => hasHierarchyPattern(dt)
-        }
-      case _ => false
+    case StructType(fields) =>
+      fields.exists {
+        case StructField(_, ArrayType(StructType(_), _), _, _) => true
+        case StructField(_, dt, _, _)                          => hasHierarchyPattern(dt)
+      }
+    case _ => false
     }
 
     hasHierarchyPattern(schema)

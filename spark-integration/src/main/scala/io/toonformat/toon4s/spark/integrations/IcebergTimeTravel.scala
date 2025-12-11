@@ -1,11 +1,11 @@
 package io.toonformat.toon4s.spark.integrations
 
-import io.toonformat.toon4s.spark.SparkToonOps._
+import java.time.{Instant, LocalDateTime, ZoneId}
+
 import io.toonformat.toon4s.spark.{AdaptiveChunking, ToonAlignmentAnalyzer}
+import io.toonformat.toon4s.spark.SparkToonOps._
 import io.toonformat.toon4s.spark.error.SparkToonError
 import org.apache.spark.sql.{DataFrame, SparkSession}
-
-import java.time.{Instant, LocalDateTime, ZoneId}
 
 /**
  * Apache Iceberg time travel integration for historical TOON snapshots.
@@ -200,8 +200,8 @@ object IcebergTimeTravel {
       .load(effectiveConfig.tableName)
 
     val filteredDF = effectiveConfig.filterPredicate match {
-      case Some(predicate) => df.where(predicate)
-      case None            => df
+    case Some(predicate) => df.where(predicate)
+    case None            => df
     }
 
     encodeWithAdaptiveChunking(filteredDF, effectiveConfig)
@@ -247,8 +247,8 @@ object IcebergTimeTravel {
       .load(config.tableName)
 
     val filteredDF = config.filterPredicate match {
-      case Some(predicate) => df.where(predicate)
-      case None            => df
+    case Some(predicate) => df.where(predicate)
+    case None            => df
     }
 
     // Analyze schema alignment
@@ -375,13 +375,14 @@ object IcebergTimeTravel {
 
     // Read each snapshot
     val results = timestamps.map { timestamp =>
-      readSnapshotAsOf(tableName, timestamp, effectiveConfig).map { toon =>
-        (timestamp, toon)
-      }
+      readSnapshotAsOf(tableName, timestamp, effectiveConfig).map(toon => (timestamp, toon))
     }
 
     // Collect results (fail fast on first error)
-    results.foldLeft[Either[SparkToonError, Vector[(Instant, Vector[String])]]](Right(Vector.empty)) {
+    results.foldLeft[Either[SparkToonError, Vector[(
+        Instant,
+        Vector[String],
+    )]]](Right(Vector.empty)) {
       case (Right(acc), Right(snapshot)) => Right(acc :+ snapshot)
       case (Left(err), _)                => Left(err)
       case (_, Left(err))                => Left(err)
@@ -391,8 +392,8 @@ object IcebergTimeTravel {
   /**
    * Validate schema consistency across time range.
    *
-   * Iceberg supports schema evolution, which can cause alignment score changes over time. Use
-   * this to detect schema changes that might affect TOON encoding quality.
+   * Iceberg supports schema evolution, which can cause alignment score changes over time. Use this
+   * to detect schema changes that might affect TOON encoding quality.
    *
    * @param tableName
    *   Iceberg table name
@@ -436,9 +437,7 @@ object IcebergTimeTravel {
 
   // ===== Private Helpers =====
 
-  /**
-   * Encode DataFrame with adaptive chunking.
-   */
+  /** Encode DataFrame with adaptive chunking. */
   private def encodeWithAdaptiveChunking(
       df: DataFrame,
       config: TimeTravelConfig,
@@ -467,9 +466,7 @@ object IcebergTimeTravel {
     ldt.format(formatter)
   }
 
-  /**
-   * Generate sequence of timestamps at regular intervals.
-   */
+  /** Generate sequence of timestamps at regular intervals. */
   private def generateTimestampSequence(
       start: Instant,
       end: Instant,

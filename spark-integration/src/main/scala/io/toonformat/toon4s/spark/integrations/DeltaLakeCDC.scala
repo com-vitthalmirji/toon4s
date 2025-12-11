@@ -1,10 +1,10 @@
 package io.toonformat.toon4s.spark.integrations
 
-import io.toonformat.toon4s.spark.SparkToonOps._
 import io.toonformat.toon4s.spark.{AdaptiveChunking, ToonAlignmentAnalyzer}
+import io.toonformat.toon4s.spark.SparkToonOps._
 import io.toonformat.toon4s.spark.error.SparkToonError
-import org.apache.spark.sql.streaming.{StreamingQuery, Trigger}
 import org.apache.spark.sql.{DataFrame, SparkSession}
+import org.apache.spark.sql.streaming.{StreamingQuery, Trigger}
 
 /**
  * Delta lake Change data feed integration for real-time TOON streaming.
@@ -181,9 +181,7 @@ object DeltaLakeCDC {
   def streamDeltaCDCToToon(
       config: DeltaCDCConfig
   )(processor: (Vector[String], Long) => Unit)(implicit spark: SparkSession): StreamingQuery = {
-    streamDeltaCDCWithMetadata(config) { metadata =>
-      processor(metadata.toonChunks, metadata.batchId)
-    }
+    streamDeltaCDCWithMetadata(config)(metadata => processor(metadata.toonChunks, metadata.batchId))
   }
 
   /**
@@ -317,23 +315,23 @@ object DeltaLakeCDC {
     val toonResult = batchDF.toToon(key = config.key, maxRowsPerChunk = chunkSize)
 
     toonResult match {
-      case Right(toonChunks) =>
-        val metadata = CDCBatchMetadata(
-          batchId = batchId,
-          cdcEvents = batchDF,
-          toonChunks = toonChunks,
-          changeTypes = changeTypes,
-          commitVersion = commitVersions,
-          alignmentScore = alignmentScore,
-        )
-        processor(metadata)
+    case Right(toonChunks) =>
+      val metadata = CDCBatchMetadata(
+        batchId = batchId,
+        cdcEvents = batchDF,
+        toonChunks = toonChunks,
+        changeTypes = changeTypes,
+        commitVersion = commitVersions,
+        alignmentScore = alignmentScore,
+      )
+      processor(metadata)
 
-      case Left(error: SparkToonError) =>
-        // Log error but don't fail stream (allow recovery)
-        batchDF.sparkSession.sparkContext.setJobDescription(
-          s"Batch $batchId TOON encoding failed: ${error.message}"
-        )
-        throw new RuntimeException(s"TOON encoding failed for batch $batchId: ${error.message}")
+    case Left(error: SparkToonError) =>
+      // Log error but don't fail stream (allow recovery)
+      batchDF.sparkSession.sparkContext.setJobDescription(
+        s"Batch $batchId TOON encoding failed: ${error.message}"
+      )
+      throw new RuntimeException(s"TOON encoding failed for batch $batchId: ${error.message}")
     }
   }
 
@@ -416,8 +414,7 @@ object DeltaLakeCDC {
    *   }}}
    */
   def validateTableAlignment(tableName: String)(implicit
-      spark: SparkSession
-  ): ToonAlignmentAnalyzer.AlignmentScore = {
+      spark: SparkSession): ToonAlignmentAnalyzer.AlignmentScore = {
     val schema = spark.read.format("delta").table(tableName).schema
     ToonAlignmentAnalyzer.analyzeSchema(schema)
   }

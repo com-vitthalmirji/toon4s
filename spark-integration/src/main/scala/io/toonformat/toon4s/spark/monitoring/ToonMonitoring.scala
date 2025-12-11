@@ -1,10 +1,10 @@
 package io.toonformat.toon4s.spark.monitoring
 
+import java.time.Instant
+
 import io.toonformat.toon4s.spark.{AdaptiveChunking, ToonAlignmentAnalyzer, ToonMetrics}
 import io.toonformat.toon4s.spark.error.SparkToonError
 import org.apache.spark.sql.{DataFrame, SparkSession}
-
-import java.time.Instant
 
 /**
  * Production monitoring utilities for TOON Spark integration.
@@ -151,8 +151,7 @@ object ToonMonitoring {
   /**
    * Assess DataFrame health for TOON encoding.
    *
-   * Comprehensive pre-flight check before production encoding.
-   * Combines:
+   * Comprehensive pre-flight check before production encoding. Combines:
    *   - Schema alignment analysis
    *   - Adaptive chunking recommendations
    *   - Production readiness assessment
@@ -321,53 +320,53 @@ object ToonMonitoring {
     val metricsResult = df.toonMetrics(key = key)
 
     metricsResult match {
-      case Right(toonMetrics) =>
-        // Attempt encoding to get chunk count
-        val chunkSize = maxRowsPerChunk.getOrElse {
-          AdaptiveChunking.calculateOptimalChunkSize(df).chunkSize
-        }
+    case Right(toonMetrics) =>
+      // Attempt encoding to get chunk count
+      val chunkSize = maxRowsPerChunk.getOrElse {
+        AdaptiveChunking.calculateOptimalChunkSize(df).chunkSize
+      }
 
-        val encodingResult = df.toToon(key = key, maxRowsPerChunk = chunkSize)
-        val endTime = System.currentTimeMillis()
+      val encodingResult = df.toToon(key = key, maxRowsPerChunk = chunkSize)
+      val endTime = System.currentTimeMillis()
 
-        encodingResult match {
-          case Right(chunks) =>
-            EncodingMetrics(
-              encodingTimeMs = endTime - startTime,
-              jsonTokenCount = toonMetrics.jsonTokenCount,
-              toonTokenCount = toonMetrics.toonTokenCount,
-              savingsPercent = toonMetrics.savingsPercent,
-              chunkCount = chunks.size,
-              avgChunkSize = if (chunks.nonEmpty) toonMetrics.rowCount / chunks.size else 0,
-              success = true,
-              errorType = None,
-            )
-
-          case Left(error) =>
-            EncodingMetrics(
-              encodingTimeMs = endTime - startTime,
-              jsonTokenCount = toonMetrics.jsonTokenCount,
-              toonTokenCount = toonMetrics.toonTokenCount,
-              savingsPercent = toonMetrics.savingsPercent,
-              chunkCount = 0,
-              avgChunkSize = 0,
-              success = false,
-              errorType = Some(error.getClass.getSimpleName),
-            )
-        }
-
-      case Left(error) =>
-        val endTime = System.currentTimeMillis()
+      encodingResult match {
+      case Right(chunks) =>
         EncodingMetrics(
           encodingTimeMs = endTime - startTime,
-          jsonTokenCount = 0,
-          toonTokenCount = 0,
-          savingsPercent = 0.0,
+          jsonTokenCount = toonMetrics.jsonTokenCount,
+          toonTokenCount = toonMetrics.toonTokenCount,
+          savingsPercent = toonMetrics.savingsPercent,
+          chunkCount = chunks.size,
+          avgChunkSize = if (chunks.nonEmpty) toonMetrics.rowCount / chunks.size else 0,
+          success = true,
+          errorType = None,
+        )
+
+      case Left(error) =>
+        EncodingMetrics(
+          encodingTimeMs = endTime - startTime,
+          jsonTokenCount = toonMetrics.jsonTokenCount,
+          toonTokenCount = toonMetrics.toonTokenCount,
+          savingsPercent = toonMetrics.savingsPercent,
           chunkCount = 0,
           avgChunkSize = 0,
           success = false,
           errorType = Some(error.getClass.getSimpleName),
         )
+      }
+
+    case Left(error) =>
+      val endTime = System.currentTimeMillis()
+      EncodingMetrics(
+        encodingTimeMs = endTime - startTime,
+        jsonTokenCount = 0,
+        toonTokenCount = 0,
+        savingsPercent = 0.0,
+        chunkCount = 0,
+        avgChunkSize = 0,
+        success = false,
+        errorType = Some(error.getClass.getSimpleName),
+      )
     }
   }
 
@@ -417,9 +416,7 @@ object ToonMonitoring {
 
     if (alignment.warnings.nonEmpty) {
       sb.append(s"### Warnings\n\n")
-      alignment.warnings.foreach { warning =>
-        sb.append(s"- $warning\n")
-      }
+      alignment.warnings.foreach(warning => sb.append(s"- $warning\n"))
       sb.append("\n")
     }
 
@@ -443,17 +440,13 @@ object ToonMonitoring {
     } else {
       sb.append(s"**NOT READY FOR PRODUCTION**\n\n")
       sb.append(s"### Blocking issues\n\n")
-      health.issues.foreach { issue =>
-        sb.append(s"- 🚫 $issue\n")
-      }
+      health.issues.foreach(issue => sb.append(s"- 🚫 $issue\n"))
       sb.append("\n")
     }
 
     if (health.warnings.nonEmpty) {
       sb.append(s"### Non-blocking warnings\n\n")
-      health.warnings.foreach { warning =>
-        sb.append(s"- $warning\n")
-      }
+      health.warnings.foreach(warning => sb.append(s"- $warning\n"))
       sb.append("\n")
     }
 
@@ -510,9 +503,7 @@ object ToonMonitoring {
     hash.map("%02x".format(_)).mkString.take(8)
   }
 
-  /**
-   * Format bytes for human-readable output.
-   */
+  /** Format bytes for human-readable output. */
   private def formatBytes(bytes: Long): String = {
     if (bytes < 1024) s"$bytes bytes"
     else if (bytes < 1024 * 1024) f"${bytes / 1024.0}%.1f KB"
