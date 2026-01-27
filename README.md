@@ -36,6 +36,7 @@ a compact, LLM-friendly data format that blends YAML-style indentation with CSV-
 - [Installation](#installation)
 - [Quick start (library)](#quick-start-library)
 - [CLI usage](#cli-usage)
+- [Web playground](#web-playground)
 - [Format crash course](#format-crash-course)
 - [Rules & guidelines](#rules--guidelines)
 - [API surface](#api-surface)
@@ -882,6 +883,45 @@ Available flags:
 | `-o, --output <file>`                     | Target file (stdout when omitted).                                            |
 
 Use `--stats` to measure token impact. Choose a tokenizer with `--tokenizer` (e.g., `o200k`).
+
+---
+
+## Web playground
+
+🎨 **Try TOON in your browser!** The interactive web playground lets you experiment with the format without any installation.
+
+### Features
+
+- ✨ **Live conversion**: Convert JSON ↔ TOON in real-time
+- 📊 **Token statistics**: See character count and savings percentage
+- 🎯 **Configurable options**: Try different delimiters (comma, tab, pipe) and indentation
+- 📖 **Example data**: Pre-loaded examples demonstrating common use cases
+- 🎨 **Modern UI**: Beautiful, responsive design
+
+### Quick Start
+
+```bash
+# Build the playground
+cd playground
+./build.sh              # Fast build (development)
+./build.bat             # Windows version
+
+# Or from project root
+sbt playground/fastLinkJS
+
+# Open in browser
+open playground/src/main/resources/index.html
+```
+
+For production deployment:
+
+```bash
+sbt playground/fullLinkJS
+```
+
+The playground is powered by [Scala.js](https://www.scala-js.org/), cross-compiling the same pure functional core used on the JVM to JavaScript. This means zero runtime dependencies and excellent performance in the browser.
+
+**See [playground/README.md](./playground/README.md) for detailed documentation.**
 
 ---
 
