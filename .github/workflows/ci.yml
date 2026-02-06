@@ -106,6 +106,32 @@ jobs:
             **/target/scala-${{ matrix.scala }}/test-reports/
           retention-days: 5
 
+  spark-compat:
+    name: Spark compatibility (${{ matrix.spark }})
+    needs: quick-checks
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        spark: ["3.5.0", "4.0.1"]
+    if: "!contains(github.event.head_commit.message, '[skip ci]') && !contains(github.event.head_commit.message, '[skip release]')"
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: sbt/setup-sbt@v1
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: sbt
+
+      - name: Run spark-integration tests
+        run: sbt "-Dsbt.log.noformat=true" "-Dtoon4s.spark.version=${{ matrix.spark }}" sparkIntegration/test
+
   scaladoc:
     name: Scaladoc
     runs-on: ubuntu-latest
@@ -271,7 +297,7 @@ jobs:
     name: All checks pass
     if: always()
     runs-on: ubuntu-latest
-    needs: [fixture-sync, quick-checks, test, scaladoc, smoke, budget, jmh]
+    needs: [fixture-sync, quick-checks, test, spark-compat, scaladoc, smoke, budget, jmh]
     steps:
       - name: Verify upstream jobs
         run: |
@@ -279,6 +305,7 @@ jobs:
             [fixture-sync]="${{ needs.fixture-sync.result }}"
             [quick-checks]="${{ needs.quick-checks.result }}"
             [test]="${{ needs.test.result }}"
+            [spark-compat]="${{ needs.spark-compat.result }}"
             [scaladoc]="${{ needs.scaladoc.result }}"
             [smoke]="${{ needs.smoke.result }}"
             [budget]="${{ needs.budget.result }}"

@@ -6,6 +6,11 @@ lazy val Scala3Latest = "3.3.3"
 
 lazy val Scala213Latest = "2.13.14"
 
+lazy val SparkSqlDefaultVersion = "3.5.0"
+
+lazy val SparkSqlVersion =
+  sys.props.getOrElse("toon4s.spark.version", SparkSqlDefaultVersion)
+
 ThisBuild / organization := "com.vitthalmirji"
 
 ThisBuild / scalaVersion := Scala3Latest
@@ -159,7 +164,7 @@ lazy val sparkIntegration = (project in file("spark-integration"))
     // Override scalaVersion to Scala 2.13 (Spark doesn't support Scala 3)
     scalaVersion := Scala213Latest,
     libraryDependencies ++= Seq(
-      "org.apache.spark" %% "spark-sql" % "3.5.0" % Provided,
+      "org.apache.spark" %% "spark-sql" % SparkSqlVersion % Provided,
       "org.scalameta"    %% "munit"     % "1.2.1" % Test,
     ),
     scalacOptions ++= commonScalacOptions,
