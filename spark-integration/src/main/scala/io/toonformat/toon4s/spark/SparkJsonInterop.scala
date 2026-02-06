@@ -157,9 +157,17 @@ object SparkJsonInterop {
     JString(value.asInstanceOf[java.sql.Date].toString)
 
   case TimestampType =>
-    // Use ISO-8601 format for timestamps
-    val timestamp = value.asInstanceOf[java.sql.Timestamp]
-    JString(timestamp.toInstant.toString)
+    JString(value.asInstanceOf[java.sql.Timestamp].toInstant.toString)
+
+  case TimestampNTZType =>
+    value match {
+    case localDateTime: java.time.LocalDateTime =>
+      JString(localDateTime.toString)
+    case timestamp: java.sql.Timestamp =>
+      JString(timestamp.toLocalDateTime.toString)
+    case other =>
+      JString(other.toString)
+    }
 
   // ========== Binary Types ==========
 
@@ -297,7 +305,10 @@ object SparkJsonInterop {
       java.sql.Date.valueOf(s)
 
     case (JString(s), TimestampType) =>
-      java.sql.Timestamp.valueOf(s)
+      parseTimestamp(s)
+
+    case (JString(s), TimestampNTZType) =>
+      parseTimestampNtz(s)
 
     // ========== Binary Conversions ==========
     case (JString(s), BinaryType) =>
@@ -325,6 +336,22 @@ object SparkJsonInterop {
     case (JBool(b), _)   => b
     case _               => null
     }
+  }
+
+  private def parseTimestamp(raw: String): java.sql.Timestamp = {
+    val trimmed = raw.trim
+    Try(java.sql.Timestamp.from(java.time.Instant.parse(trimmed)))
+      .orElse(Try(java.sql.Timestamp.valueOf(trimmed)))
+      .orElse(Try(java.sql.Timestamp.valueOf(trimmed.replace("T", " ").stripSuffix("Z"))))
+      .get
+  }
+
+  private def parseTimestampNtz(raw: String): java.time.LocalDateTime = {
+    val trimmed = raw.trim
+    Try(java.time.LocalDateTime.parse(trimmed))
+      .orElse(Try(java.time.LocalDateTime.parse(trimmed.replace(" ", "T"))))
+      .orElse(Try(parseTimestamp(trimmed).toLocalDateTime))
+      .get
   }
 
   /**

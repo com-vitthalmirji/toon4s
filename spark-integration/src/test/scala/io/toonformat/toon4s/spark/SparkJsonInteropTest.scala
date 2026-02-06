@@ -205,4 +205,53 @@ class SparkJsonInteropTest extends FunSuite {
     assertEquals(reconstructedRow.getDouble(2), 95.5, 0.0001)
   }
 
+  test("rowToJsonValue: encode timestamp as ISO-8601") {
+    val schema = StructType(Seq(
+      StructField("event_time", TimestampType)
+    ))
+
+    val timestamp = java.sql.Timestamp.valueOf("2026-02-06 12:34:56")
+    val row = Row(timestamp)
+
+    val json = SparkJsonInterop.rowToJsonValue(row, schema)
+    json match {
+    case JObj(fields) =>
+      fields("event_time") match {
+      case JString(value) =>
+        val parsed = java.time.Instant.parse(value)
+        assertEquals(parsed, timestamp.toInstant)
+      case other =>
+        fail(s"Expected JString timestamp, got $other")
+      }
+    case other =>
+      fail(s"Expected JObj, got $other")
+    }
+  }
+
+  test("jsonValueToRow: decode ISO-8601 timestamp string") {
+    val schema = StructType(Seq(
+      StructField("event_time", TimestampType)
+    ))
+
+    val timestamp = java.sql.Timestamp.valueOf("2026-02-06 12:34:56")
+    val json = JObj(VectorMap("event_time" -> JString(timestamp.toInstant.toString)))
+
+    val row = SparkJsonInterop.jsonValueToRow(json, schema)
+    assertEquals(row.getAs[java.sql.Timestamp](0).toInstant, timestamp.toInstant)
+  }
+
+  test("round-trip: timestamp_ntz uses LocalDateTime") {
+    val schema = StructType(Seq(
+      StructField("event_time_ntz", TimestampNTZType)
+    ))
+
+    val localDateTime = java.time.LocalDateTime.of(2026, 2, 6, 12, 34, 56, 123000000)
+    val row = Row(localDateTime)
+
+    val json = SparkJsonInterop.rowToJsonValue(row, schema)
+    val reconstructed = SparkJsonInterop.jsonValueToRow(json, schema)
+
+    assertEquals(reconstructed.getAs[java.time.LocalDateTime](0), localDateTime)
+  }
+
 }

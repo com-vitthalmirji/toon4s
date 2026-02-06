@@ -45,6 +45,7 @@ TOON generation benchmark:
 - **Schema alignment detection**: Pre-flight validation based on benchmark findings
 - **Adaptive chunking**: Optimize prompt tax for dataset size
 - **Token metrics**: Compare JSON vs TOON token counts and cost savings
+- **Temporal interoperability**: Round-trip support for `DateType`, `TimestampType`, and `TimestampNTZType`
 - **Delta Lake CDC integration**: Real-time TOON streaming from Change Data Feed
 - **Iceberg time travel**: Historical TOON snapshots for trend analysis
 - **Production monitoring**: Health checks, telemetry, and readiness reports
