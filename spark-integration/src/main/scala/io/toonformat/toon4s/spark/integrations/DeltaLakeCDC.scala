@@ -243,7 +243,7 @@ object DeltaLakeCDC {
       .trigger(Trigger.ProcessingTime(config.triggerInterval))
       .option("checkpointLocation", config.checkpointLocation)
       .foreachBatch { (batchDF: DataFrame, batchId: Long) =>
-        if (batchDF.count() > 0) {
+        if (batchDF.head(1).nonEmpty) {
           processCDCBatch(batchDF, batchId, config, alignmentScore.score, processor)
         }
       }
