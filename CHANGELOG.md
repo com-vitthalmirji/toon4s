@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.6.4] - 2026-02-06
+
+
+### Chores
+- sync with main [skip ci] ([`3761b0a`](https://github.com/com-vitthalmirji/toon4s/commit/3761b0ab4ed52aa115d4a574dfa9b529bb7435d1)) by @github-actions[bot]
+- Spark compatibility matrix ([`51ddbf5`](https://github.com/com-vitthalmirji/toon4s/commit/51ddbf5ca205ffd556486b4beb63433543403ca0)) [#60](https://github.com/com-vitthalmirji/toon4s/pull/60) by @vim89
+
+
+
+### Documentation
+- update CHANGELOG.md for main [skip ci] ([`36f2362`](https://github.com/com-vitthalmirji/toon4s/commit/36f2362ca3127eafe8b4903324d3b1d01b74b3e4)) by @github-actions[bot]
+
+
 ## [0.6.3] - 2026-02-06
 
 
