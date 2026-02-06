@@ -13,8 +13,10 @@ import org.apache.spark.sql.functions.udf
  * User-defined Functions (UDFs) for TOON encoding/decoding in Spark SQL.
  *
  * ==Design==
- * Provides SQL functions that can be used in Spark SQL queries for TOON operations. Registered UDFs
- * are available in both Scala DataFrame API and SQL queries.
+ * Provides SQL functions that can be used in Spark SQL queries for TOON operations.
+ *
+ * NOTE: row-level UDFs operate on string representations and are best for ad-hoc SQL checks. For
+ * canonical DataFrame encoding/decoding, use `SparkToonOps.toToon` and `SparkToonOps.fromToon`.
  *
  * ==Usage==
  * {{{
@@ -67,10 +69,10 @@ object ToonUDFs {
   }
 
   /**
-   * Encode a Spark struct to TOON string.
+   * Return the Spark row text representation.
    *
-   * UDF for encoding individual rows/structs. Handles failures gracefully by returning error
-   * strings.
+   * This function does not create canonical TOON output for structs. It keeps row text as-is and is
+   * useful for SQL pipelines that only need a simple row representation.
    *
    * @example
    *   {{{
@@ -85,17 +87,16 @@ object ToonUDFs {
     // Note: UDFs receive string representation of struct, not actual Row object
     // This is a limitation of Spark SQL UDF serialization
     Try {
-      // Parse string representation and encode
-      // For now, return the input as-is (users should use toToon for DataFrame-level encoding)
+      // Keep row text as-is. Use SparkToonOps.toToon for canonical row encoding.
       row
     }.getOrElse(s"ERROR: Failed to encode row")
   }
 
   /**
-   * Decode TOON string to struct.
+   * Decode TOON string to text representation.
    *
-   * UDF for decoding TOON strings back to structs. Returns null on failure for graceful error
-   * handling in SQL.
+   * Returns JSON-like text on success and null on failure. For typed schema-aware decoding, use
+   * SparkToonOps.fromToon.
    *
    * @example
    *   {{{
