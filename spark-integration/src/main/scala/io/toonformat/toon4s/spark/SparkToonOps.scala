@@ -120,7 +120,20 @@ object SparkToonOps {
         key: String = "data",
         options: EncodeOptions = EncodeOptions(),
     ): Either[SparkToonError, ToonMetrics] = {
-      calculateMetricsStreaming(df, key, options)
+      toonMetrics(key, maxRowsPerChunk = 1000, options = options)
+    }
+
+    /**
+     * Compute token metrics comparing JSON vs TOON using caller-provided chunk size.
+     *
+     * Keeps metric chunk boundaries aligned with production encoding behavior.
+     */
+    def toonMetrics(
+        key: String,
+        maxRowsPerChunk: Int,
+        options: EncodeOptions,
+    ): Either[SparkToonError, ToonMetrics] = {
+      calculateMetricsStreaming(df, key, maxRowsPerChunk, options)
     }
 
     /**
@@ -305,95 +318,100 @@ object SparkToonOps {
   private def calculateMetricsStreaming(
       df: DataFrame,
       key: String,
+      maxRowsPerChunk: Int,
       options: EncodeOptions,
   ): Either[SparkToonError, ToonMetrics] = {
-    val chunkSize = 1000
-    val schema = df.schema
+    if (maxRowsPerChunk <= 0) {
+      Left(SparkToonError.ConversionError("maxRowsPerChunk must be greater than 0"))
+    } else {
+      val chunkSize = maxRowsPerChunk
+      val schema = df.schema
 
-    val iteratorResult = Try(df.toLocalIterator().asScala).toEither.left.map { ex =>
-      SparkToonError.CollectionError(
-        s"Failed to iterate DataFrame rows: ${ex.getMessage}",
-        Some(ex),
-      )
-    }
+      val iteratorResult = Try(df.toLocalIterator().asScala).toEither.left.map { ex =>
+        SparkToonError.CollectionError(
+          s"Failed to iterate DataFrame rows: ${ex.getMessage}",
+          Some(ex),
+        )
+      }
 
-    iteratorResult.flatMap { rowIterator =>
-      val chunkRows = scala.collection.mutable.ArrayBuffer.empty[JsonValue]
-      var sawAnyRow = false
-      var maybeError: Option[SparkToonError] = None
-      var jsonTokenCount = 0
-      var toonTokenCount = 0
-      var rowCount = 0
+      iteratorResult.flatMap { rowIterator =>
+        val chunkRows = scala.collection.mutable.ArrayBuffer.empty[JsonValue]
+        var sawAnyRow = false
+        var maybeError: Option[SparkToonError] = None
+        var jsonTokenCount = 0
+        var toonTokenCount = 0
+        var rowCount = 0
 
-      def flushMetricsChunkIfNeeded(force: Boolean): Unit = {
-        val shouldFlush = chunkRows.nonEmpty && (force || chunkRows.size >= chunkSize)
-        if (maybeError.isEmpty && shouldFlush) {
-          val wrappedChunk = JObj(VectorMap(key -> JArray(chunkRows.toVector)))
-          val jsonBaseline = encodeAsJson(wrappedChunk)
-          encodeSafe(wrappedChunk, options) match {
-          case Right(toonEncoded) =>
-            val chunkMetrics = ToonMetrics.fromEncodedStrings(
-              jsonEncoded = jsonBaseline,
-              toonEncoded = toonEncoded,
-              rowCount = chunkRows.size,
-              columnCount = schema.fields.length,
-            )
-            jsonTokenCount += chunkMetrics.jsonTokenCount
-            toonTokenCount += chunkMetrics.toonTokenCount
-            rowCount += chunkRows.size
-            chunkRows.clear()
+        def flushMetricsChunkIfNeeded(force: Boolean): Unit = {
+          val shouldFlush = chunkRows.nonEmpty && (force || chunkRows.size >= chunkSize)
+          if (maybeError.isEmpty && shouldFlush) {
+            val wrappedChunk = JObj(VectorMap(key -> JArray(chunkRows.toVector)))
+            val jsonBaseline = encodeAsJson(wrappedChunk)
+            encodeSafe(wrappedChunk, options) match {
+            case Right(toonEncoded) =>
+              val chunkMetrics = ToonMetrics.fromEncodedStrings(
+                jsonEncoded = jsonBaseline,
+                toonEncoded = toonEncoded,
+                rowCount = chunkRows.size,
+                columnCount = schema.fields.length,
+              )
+              jsonTokenCount += chunkMetrics.jsonTokenCount
+              toonTokenCount += chunkMetrics.toonTokenCount
+              rowCount += chunkRows.size
+              chunkRows.clear()
+            case Left(err) =>
+              maybeError = Some(err)
+            }
+          }
+        }
+
+        var continue = true
+        while (continue && maybeError.isEmpty) {
+          nextRowSafe(rowIterator) match {
+          case Right(Some(row)) =>
+            sawAnyRow = true
+            SparkJsonInterop.rowToJsonValueSafe(row, schema) match {
+            case Right(jsonRow) =>
+              chunkRows += jsonRow
+              flushMetricsChunkIfNeeded(force = false)
+            case Left(err) =>
+              maybeError = Some(err)
+            }
+          case Right(None) =>
+            continue = false
           case Left(err) =>
             maybeError = Some(err)
           }
         }
-      }
 
-      var continue = true
-      while (continue && maybeError.isEmpty) {
-        nextRowSafe(rowIterator) match {
-        case Right(Some(row)) =>
-          sawAnyRow = true
-          SparkJsonInterop.rowToJsonValueSafe(row, schema) match {
-          case Right(jsonRow) =>
-            chunkRows += jsonRow
-            flushMetricsChunkIfNeeded(force = false)
-          case Left(err) =>
-            maybeError = Some(err)
-          }
-        case Right(None) =>
-          continue = false
-        case Left(err) =>
-          maybeError = Some(err)
-        }
-      }
-
-      maybeError match {
-      case Some(err) =>
-        Left(err)
-      case None =>
-        if (!sawAnyRow) {
-          val wrappedChunk = JObj(VectorMap(key -> JArray(Vector.empty)))
-          val jsonBaseline = encodeAsJson(wrappedChunk)
-          encodeSafe(wrappedChunk, options).map { toonEncoded =>
-            ToonMetrics.fromEncodedStrings(
-              jsonEncoded = jsonBaseline,
-              toonEncoded = toonEncoded,
-              rowCount = 0,
-              columnCount = schema.fields.length,
-            )
-          }
-        } else {
-          flushMetricsChunkIfNeeded(force = true)
-          maybeError match {
-          case Some(err) =>
-            Left(err)
-          case None =>
-            Right(ToonMetrics(
-              jsonTokenCount = jsonTokenCount,
-              toonTokenCount = toonTokenCount,
-              rowCount = rowCount,
-              columnCount = schema.fields.length,
-            ))
+        maybeError match {
+        case Some(err) =>
+          Left(err)
+        case None =>
+          if (!sawAnyRow) {
+            val wrappedChunk = JObj(VectorMap(key -> JArray(Vector.empty)))
+            val jsonBaseline = encodeAsJson(wrappedChunk)
+            encodeSafe(wrappedChunk, options).map { toonEncoded =>
+              ToonMetrics.fromEncodedStrings(
+                jsonEncoded = jsonBaseline,
+                toonEncoded = toonEncoded,
+                rowCount = 0,
+                columnCount = schema.fields.length,
+              )
+            }
+          } else {
+            flushMetricsChunkIfNeeded(force = true)
+            maybeError match {
+            case Some(err) =>
+              Left(err)
+            case None =>
+              Right(ToonMetrics(
+                jsonTokenCount = jsonTokenCount,
+                toonTokenCount = toonTokenCount,
+                rowCount = rowCount,
+                columnCount = schema.fields.length,
+              ))
+            }
           }
         }
       }

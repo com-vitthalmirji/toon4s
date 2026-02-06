@@ -64,6 +64,22 @@ class SparkDatasetOpsTest extends FunSuite {
     }
   }
 
+  test("Dataset[T] toonMetrics supports caller chunk size") {
+    val spark = sparkInstance
+    import spark.implicits._
+    import io.toonformat.toon4s.spark.SparkDatasetOps._
+    import io.toonformat.toon4s.EncodeOptions
+
+    val dataset = (1 to 20).map(i => UserRecord(i, s"user$i", 20 + i)).toDS()
+    val metricsResult = dataset.toonMetrics("users", maxRowsPerChunk = 4, EncodeOptions())
+
+    assert(metricsResult.isRight)
+    metricsResult.foreach { metrics =>
+      assertEquals(metrics.rowCount, 20)
+      assertEquals(metrics.columnCount, 3)
+    }
+  }
+
 }
 
 final case class UserRecord(id: Int, name: String, age: Int)
