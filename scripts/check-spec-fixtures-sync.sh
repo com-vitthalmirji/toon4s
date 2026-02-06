@@ -4,7 +4,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SPEC_REPO_URL="${SPEC_REPO_URL:-https://github.com/toon-format/spec.git}"
-SPEC_REF="${SPEC_REF:-v3.0.1}"
+SPEC_REF="${SPEC_REF:-f9af6faa7d4fb1f82bda6b847f7a46065bb4d35f}"
 TMP_DIR="$(mktemp -d)"
 
 cleanup() {

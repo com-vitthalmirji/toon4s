@@ -23,7 +23,7 @@ jobs:
 
       - name: Verify conformance fixtures match spec
         env:
-          SPEC_REF: v3.0.1
+          SPEC_REF: f9af6faa7d4fb1f82bda6b847f7a46065bb4d35f
         run: |
           chmod +x scripts/check-spec-fixtures-sync.sh
           ./scripts/check-spec-fixtures-sync.sh
@@ -276,6 +276,7 @@ jobs:
       - name: Verify upstream jobs
         run: |
           declare -A results=(
+            [fixture-sync]="${{ needs.fixture-sync.result }}"
             [quick-checks]="${{ needs.quick-checks.result }}"
             [test]="${{ needs.test.result }}"
             [scaladoc]="${{ needs.scaladoc.result }}"
