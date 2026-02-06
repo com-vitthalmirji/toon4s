@@ -254,4 +254,35 @@ class SparkJsonInteropTest extends FunSuite {
     assertEquals(reconstructed.getAs[java.time.LocalDateTime](0), localDateTime)
   }
 
+  test("jsonValueToRowSafe: fail on invalid integer coercion") {
+    val schema = StructType(Seq(StructField("id", IntegerType)))
+    val json = JObj(VectorMap("id" -> JString("not-a-number")))
+
+    val result = SparkJsonInterop.jsonValueToRowSafe(json, schema)
+    assert(result.isLeft)
+  }
+
+  test("jsonValueToRowSafe: fail on invalid boolean coercion") {
+    val schema = StructType(Seq(StructField("active", BooleanType)))
+    val json = JObj(VectorMap("active" -> JString("sometimes")))
+
+    val result = SparkJsonInterop.jsonValueToRowSafe(json, schema)
+    assert(result.isLeft)
+  }
+
+  test("jsonValueToRow: decode map keys using schema key type") {
+    val schema = StructType(Seq(
+      StructField("scores", MapType(IntegerType, StringType, valueContainsNull = false))
+    ))
+
+    val json = JObj(VectorMap(
+      "scores" -> JObj(VectorMap("1" -> JString("low"), "2" -> JString("high")))
+    ))
+
+    val row = SparkJsonInterop.jsonValueToRow(json, schema)
+    val scores = row.getMap[Int, String](0)
+    assertEquals(scores.get(1), Some("low"))
+    assertEquals(scores.get(2), Some("high"))
+  }
+
 }
