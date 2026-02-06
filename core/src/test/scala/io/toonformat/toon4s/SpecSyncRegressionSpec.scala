@@ -7,6 +7,8 @@ import munit.FunSuite
 
 class SpecSyncRegressionSpec extends FunSuite {
 
+  private def normalizeEol(value: String): String = value.replace("\r\n", "\n")
+
   test("decode accepts zero exponent forms as numbers") {
     val input =
       """value: 0e1
@@ -75,7 +77,7 @@ class SpecSyncRegressionSpec extends FunSuite {
         |      - [2]: 3,4
         |    name: grid""".stripMargin
 
-    assertEquals(Toon.encode(input), Right(expected))
+    assertEquals(Toon.encode(input).map(normalizeEol), Right(normalizeEol(expected)))
   }
 
   test("encode writes empty object list item as bare hyphen") {
@@ -93,7 +95,7 @@ class SpecSyncRegressionSpec extends FunSuite {
         |  - second
         |  -""".stripMargin
 
-    assertEquals(Toon.encode(input), Right(expected))
+    assertEquals(Toon.encode(input).map(normalizeEol), Right(normalizeEol(expected)))
   }
 
 }
