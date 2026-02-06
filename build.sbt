@@ -1,6 +1,9 @@
 import sbt._
 import sbt.Keys._
 import sbtdynver.DynVerPlugin.autoImport._
+import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
+import org.portablescala.sbtplatformdeps.PlatformDepsPlugin.autoImport._
+import sbtcrossproject.CrossPlugin.autoImport._
 
 lazy val Scala3Latest = "3.3.3"
 
@@ -73,20 +76,21 @@ val commonScalacOptions = Seq(
 // The publishTo setting is automatically configured by sbt-ci-release for both snapshots and releases
 
 lazy val root = (project in file("."))
-  .aggregate(core, cli, jmh, sparkIntegration)
+  .aggregate(coreJVM, coreJS, cli, jmh, sparkIntegration, playground)
   .settings(
     name := "toon4s",
     publish / skip := true,
   )
 
-lazy val core = (project in file("core"))
-  .enablePlugins(MimaPlugin)
+lazy val core = crossProject(JVMPlatform, JSPlatform)
+  .crossType(CrossType.Pure)
+  .in(file("core"))
   .settings(
     name := "toon4s-core",
     libraryDependencies ++= Seq(
-      "org.scalameta"  %% "munit"            % "1.2.1"  % Test,
-      "org.scalacheck" %% "scalacheck"       % "1.19.0" % Test,
-      "org.scalameta"  %% "munit-scalacheck" % "1.2.0"  % Test,
+      "org.scalameta"  %%% "munit"            % "1.2.1"  % Test,
+      "org.scalacheck" %%% "scalacheck"       % "1.19.0" % Test,
+      "org.scalameta"  %%% "munit-scalacheck" % "1.2.0"  % Test,
     ),
     scalacOptions ++= commonScalacOptions,
     // ScalaDoc configuration
@@ -108,20 +112,27 @@ lazy val core = (project in file("core"))
           version.value,
         )
     },
-    // MiMa configuration for binary compatibility checking
-    // Check against previous published versions to ensure no breaking changes
+  )
+  .jvmSettings(
+    // MiMa configuration for binary compatibility checking (JVM only)
     mimaPreviousArtifacts := Set(
       // Uncomment when first version is published:
       // organization.value %% moduleName.value % "0.1.0"
     ),
-    // Exclude known binary incompatible changes (add as needed)
     mimaBinaryIssueFilters := Seq(
       // Example: ProblemFilters.exclude[Problem]("io.toonformat.toon4s.InternalClass")
     ),
   )
+  .jsSettings(
+    // Scala.js specific settings
+    libraryDependencies += "io.github.cquiroz" %%% "scala-java-time" % "2.6.0",
+  )
+
+lazy val coreJVM = core.jvm.enablePlugins(MimaPlugin)
+lazy val coreJS = core.js
 
 lazy val cli = (project in file("cli"))
-  .dependsOn(core)
+  .dependsOn(coreJVM)
   .enablePlugins(JavaAppPackaging)
   .settings(
     name := "toon4s-cli",
@@ -137,7 +148,7 @@ lazy val cli = (project in file("cli"))
   )
 
 lazy val jmh = (project in file("benchmarks-jmh"))
-  .dependsOn(core)
+  .dependsOn(coreJVM)
   .enablePlugins(JmhPlugin)
   .settings(
     name := "toon4s-jmh",
@@ -157,7 +168,7 @@ addCommandAlias(
 )
 
 lazy val sparkIntegration = (project in file("spark-integration"))
-  .dependsOn(core)
+  .dependsOn(coreJVM)
   .enablePlugins(MimaPlugin)
   .settings(
     name := "toon4s-spark",
@@ -209,4 +220,21 @@ lazy val sparkIntegration = (project in file("spark-integration"))
     mimaBinaryIssueFilters := Seq(
       // Example: ProblemFilters.exclude[Problem]("io.toonformat.toon4s.spark.InternalClass")
     ),
+  )
+
+lazy val playground = (project in file("playground"))
+  .dependsOn(coreJS)
+  .enablePlugins(ScalaJSPlugin)
+  .settings(
+    name := "toon4s-playground",
+    scalaVersion := Scala3Latest,
+    scalaJSUseMainModuleInitializer := true,
+    libraryDependencies ++= Seq(
+      "org.scala-js" %%% "scalajs-dom" % "2.8.0"
+    ),
+    scalacOptions ++= commonScalacOptions,
+    publish / skip := true,
+    // Output directory for compiled JS
+    Compile / fastLinkJS / scalaJSLinkerOutputDirectory := target.value / "scala-js",
+    Compile / fullLinkJS / scalaJSLinkerOutputDirectory := target.value / "scala-js-opt",
   )

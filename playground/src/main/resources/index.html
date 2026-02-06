@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>toon4s Playground - Interactive TOON Format Converter</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="header-content">
+                <h1>🎨 toon4s Playground</h1>
+                <p class="tagline">Interactive Token-Oriented Object Notation (TOON) Converter</p>
+            </div>
+            <div class="header-links">
+                <a href="https://github.com/vim89/toon4s" target="_blank" class="btn btn-secondary">
+                    <span class="icon">📘</span> Documentation
+                </a>
+                <a href="https://github.com/vim89/toon4s" target="_blank" class="btn btn-secondary">
+                    <span class="icon">⭐</span> GitHub
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <main class="container">
+        <!-- Info Section -->
+        <section class="info-section">
+            <div class="info-card">
+                <h2>💡 What is TOON?</h2>
+                <p>
+                    TOON (Token-Oriented Object Notation) is a compact, LLM-friendly data format that 
+                    <strong>saves 30-60% on token costs</strong> compared to JSON while maintaining full compatibility.
+                </p>
+                <p>
+                    It combines YAML-style indentation with CSV-like tabular efficiency to create a format 
+                    that's both human-readable and optimized for AI applications.
+                </p>
+            </div>
+        </section>
+
+        <!-- Examples Section -->
+        <section class="examples-section">
+            <h3>📋 Quick Examples</h3>
+            <div class="example-buttons">
+                <button id="loadExample1" class="btn btn-example">
+                    <span class="icon">👥</span> Users Array
+                </button>
+                <button id="loadExample2" class="btn btn-example">
+                    <span class="icon">🛒</span> Orders with Items
+                </button>
+                <button id="loadExample3" class="btn btn-example">
+                    <span class="icon">📦</span> Product Details
+                </button>
+            </div>
+        </section>
+
+        <!-- Error Message -->
+        <div id="errorMessage" class="error-message" style="display: none;"></div>
+
+        <!-- Converter Section -->
+        <section class="converter-section">
+            <!-- JSON to TOON -->
+            <div class="converter-panel">
+                <div class="panel-header">
+                    <h3>JSON Input</h3>
+                    <button id="clearJson" class="btn btn-small btn-secondary">Clear</button>
+                </div>
+                <textarea 
+                    id="jsonInput" 
+                    class="code-input" 
+                    placeholder="Paste your JSON here..."
+                    spellcheck="false"></textarea>
+                <div class="panel-controls">
+                    <div class="control-group">
+                        <label for="delimiter">Delimiter:</label>
+                        <select id="delimiter" class="select-input">
+                            <option value="comma">Comma (,)</option>
+                            <option value="tab">Tab (\t)</option>
+                            <option value="pipe">Pipe (|)</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label for="indent">Indent:</label>
+                        <select id="indent" class="select-input">
+                            <option value="2" selected>2 spaces</option>
+                            <option value="4">4 spaces</option>
+                            <option value="8">8 spaces</option>
+                        </select>
+                    </div>
+                    <button id="convertToToon" class="btn btn-primary">
+                        Convert to TOON →
+                    </button>
+                </div>
+                <div class="panel-footer">
+                    <h4>TOON Output</h4>
+                </div>
+                <textarea 
+                    id="toonOutput" 
+                    class="code-output" 
+                    placeholder="TOON output will appear here..."
+                    readonly
+                    spellcheck="false"></textarea>
+            </div>
+
+            <!-- TOON to JSON -->
+            <div class="converter-panel">
+                <div class="panel-header">
+                    <h3>TOON Input</h3>
+                    <button id="clearToon" class="btn btn-small btn-secondary">Clear</button>
+                </div>
+                <textarea 
+                    id="toonInput" 
+                    class="code-input" 
+                    placeholder="Paste your TOON here..."
+                    spellcheck="false"></textarea>
+                <div class="panel-controls">
+                    <button id="convertToJson" class="btn btn-primary">
+                        Convert to JSON →
+                    </button>
+                </div>
+                <div class="panel-footer">
+                    <h4>JSON Output</h4>
+                </div>
+                <textarea 
+                    id="jsonOutput" 
+                    class="code-output" 
+                    placeholder="JSON output will appear here..."
+                    readonly
+                    spellcheck="false"></textarea>
+            </div>
+        </section>
+
+        <!-- Statistics Section -->
+        <section id="statsSection" class="stats-section" style="display: none;">
+            <h3>📊 Token Savings</h3>
+            <div class="stats-cards">
+                <div class="stat-card">
+                    <div class="stat-label">JSON Size</div>
+                    <div class="stat-value" id="statsJsonSize">-</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">TOON Size</div>
+                    <div class="stat-value" id="statsToonSize">-</div>
+                </div>
+                <div class="stat-card stat-card-highlight">
+                    <div class="stat-label">Savings</div>
+                    <div class="stat-value savings-positive" id="statsSavings">-</div>
+                </div>
+            </div>
+            <p class="stats-note">
+                💡 <strong>Note:</strong> Actual token savings depend on your data structure and the LLM tokenizer. 
+                Tabular data with uniform structures typically saves 30-60% tokens.
+            </p>
+        </section>
+
+        <!-- Features Section -->
+        <section class="features-section">
+            <h3>✨ Key Features</h3>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">🎯</div>
+                    <h4>Token Efficient</h4>
+                    <p>Save 30-60% on LLM token costs with compact tabular format</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🔄</div>
+                    <h4>JSON Compatible</h4>
+                    <p>Lossless conversion to and from JSON format</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📖</div>
+                    <h4>Human Readable</h4>
+                    <p>YAML-style indentation makes it easy to read and edit</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">⚡</div>
+                    <h4>Pure Functional</h4>
+                    <p>Built with pure functional programming in Scala</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🔒</div>
+                    <h4>Type Safe</h4>
+                    <p>Compile-time guarantees with Scala's type system</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🚀</div>
+                    <h4>High Performance</h4>
+                    <p>~600-874 ops/ms throughput with zero dependencies</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Usage Guide -->
+        <section class="guide-section">
+            <h3>📚 Quick Start Guide</h3>
+            <div class="guide-content">
+                <div class="guide-step">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <h4>Try the Examples</h4>
+                        <p>Click one of the example buttons above to load sample data and see TOON in action.</p>
+                    </div>
+                </div>
+                <div class="guide-step">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <h4>Convert Your Data</h4>
+                        <p>Paste your JSON data in the left panel and click "Convert to TOON" to see the compact format.</p>
+                    </div>
+                </div>
+                <div class="guide-step">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <h4>Experiment with Options</h4>
+                        <p>Try different delimiters (comma, tab, pipe) and indentation to optimize for your use case.</p>
+                    </div>
+                </div>
+                <div class="guide-step">
+                    <div class="step-number">4</div>
+                    <div class="step-content">
+                        <h4>Check the Savings</h4>
+                        <p>Review the statistics to see how much you're saving on tokens compared to JSON.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>
+                Built with <a href="https://www.scala-js.org/" target="_blank">Scala.js</a> | 
+                <a href="https://github.com/vim89/toon4s" target="_blank">toon4s</a> by Vitthal Mirji | 
+                <a href="https://github.com/toon-format/spec" target="_blank">TOON Spec</a>
+            </p>
+            <p class="footer-note">
+                Save 30-60% on LLM token costs with TOON format
+            </p>
+        </div>
+    </footer>
+
+    <!-- Load the compiled Scala.js application -->
+    <script type="text/javascript" src="../../../target/scala-js/main.js"></script>
+</body>
+</html>
