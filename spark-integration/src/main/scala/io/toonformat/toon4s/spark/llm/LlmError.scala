@@ -296,9 +296,22 @@ object LlmClientHelpers {
   def retry[A](
       maxAttempts: Int,
       baseDelayMillis: Long = 1000,
+      sleepMillis: Long => Unit = millis => Thread.sleep(millis),
   )(operation: => Either[LlmError, A]): Either[LlmError, A] = {
 
-    @scala.annotation.tailrec
+    def sleepSafely(delayMillis: Long): Either[LlmError, Unit] = {
+      try {
+        if (delayMillis > 0) sleepMillis(delayMillis)
+        Right(())
+      } catch {
+        case _: InterruptedException =>
+          Thread.currentThread().interrupt()
+          Left(LlmError.TimeoutError("Retry wait interrupted"))
+        case ex: Throwable =>
+          Left(LlmError.UnknownError(s"Retry wait failed: ${ex.getMessage}", Some(ex)))
+      }
+    }
+
     def attempt(attemptsLeft: Int, lastError: Option[LlmError]): Either[LlmError, A] = {
       if (attemptsLeft <= 0) {
         Left(lastError.getOrElse(LlmError.UnknownError("Retry exhausted with no error")))
@@ -306,16 +319,15 @@ object LlmClientHelpers {
         operation match {
         case Right(value) => Right(value)
 
-        case Left(error: LlmError.RateLimitError) =>
+        case Left(error: LlmError.RateLimitError) if attemptsLeft > 1 =>
           // Honor retry-after for rate limits
-          error.retryAfterSeconds.foreach(secs => Thread.sleep(secs * 1000L))
-          attempt(attemptsLeft - 1, Some(error))
+          val delayMillis = error.retryAfterSeconds.map(_ * 1000L).getOrElse(0L)
+          sleepSafely(delayMillis).flatMap(_ => attempt(attemptsLeft - 1, Some(error)))
 
-        case Left(error) if LlmError.isRecoverable(error) =>
+        case Left(error) if LlmError.isRecoverable(error) && attemptsLeft > 1 =>
           // Retry recoverable errors with exponential backoff
           val delay = baseDelayMillis * (maxAttempts - attemptsLeft + 1)
-          Thread.sleep(delay)
-          attempt(attemptsLeft - 1, Some(error))
+          sleepSafely(delay).flatMap(_ => attempt(attemptsLeft - 1, Some(error)))
 
         case Left(error) =>
           // Don't retry non-recoverable errors
