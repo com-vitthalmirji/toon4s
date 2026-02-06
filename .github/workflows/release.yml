@@ -246,9 +246,10 @@ jobs:
             ```scala
             libraryDependencies ++= Seq(
               "com.vitthalmirji" %% "toon4s-spark" % "${{steps.version.outputs.version}}",
-              "org.apache.spark" %% "spark-sql" % "3.5.0" % provided
+              "org.apache.spark" %% "spark-sql" % "<your-spark-version>" % provided
             )
             ```
+            Tested in CI with Spark 3.5.0 and 4.0.1.
 
             **Maven (Scala 3)**:
             ```xml
