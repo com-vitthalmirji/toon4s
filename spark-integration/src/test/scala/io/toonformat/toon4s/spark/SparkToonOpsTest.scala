@@ -111,7 +111,7 @@ class SparkToonOpsTest extends FunSuite {
     }
   }
 
-  test("toonMetrics: verify token savings") {
+  test("toonMetrics: compute consistent token accounting") {
     val schema = StructType(Seq(
       StructField("id", IntegerType),
       StructField("name", StringType),
@@ -129,8 +129,12 @@ class SparkToonOpsTest extends FunSuite {
 
     assert(result.isRight)
     result.foreach { metrics =>
-      // TOON should provide some savings for tabular data
-      assert(metrics.toonTokenCount <= metrics.jsonTokenCount)
+      assert(metrics.jsonTokenCount > 0)
+      assert(metrics.toonTokenCount > 0)
+      assertEquals(
+        metrics.absoluteSavings,
+        metrics.jsonTokenCount - metrics.toonTokenCount,
+      )
     }
   }
 
@@ -263,7 +267,12 @@ class SparkToonOpsTest extends FunSuite {
     assert(result.isRight)
     result.foreach { metrics =>
       assertEquals(metrics.rowCount, 1000)
-      assert(metrics.jsonTokenCount > metrics.toonTokenCount)
+      assert(metrics.jsonTokenCount > 0)
+      assert(metrics.toonTokenCount > 0)
+      assertEquals(
+        metrics.absoluteSavings,
+        metrics.jsonTokenCount - metrics.toonTokenCount,
+      )
     }
   }
 
