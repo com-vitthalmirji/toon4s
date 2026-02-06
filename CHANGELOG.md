@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.6.3] - 2026-02-06
+
+
+### Bug fixes
+- spark P1 runtime cleanup ([`b2d528a`](https://github.com/com-vitthalmirji/toon4s/commit/b2d528a766bc521609203cb1c93f3f579e927261)) [#59](https://github.com/com-vitthalmirji/toon4s/pull/59) by @vim89
+
+
+
+### Chores
+- sync with main [skip ci] ([`cc275cd`](https://github.com/com-vitthalmirji/toon4s/commit/cc275cd92ebf3e7de6dfd5f49b2a4cf35a8c71a8)) by @github-actions[bot]
+
+
+
+### Documentation
+- update CHANGELOG.md for main [skip ci] ([`44a7306`](https://github.com/com-vitthalmirji/toon4s/commit/44a7306ab3f0ed0611a06e24dd2daa68c0ff599a)) by @github-actions[bot]
+
+
 ## [0.6.2] - 2026-02-06
 
 
