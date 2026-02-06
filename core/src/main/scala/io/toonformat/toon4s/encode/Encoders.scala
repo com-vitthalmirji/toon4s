@@ -438,7 +438,7 @@ object Encoders {
             options.delimiter,
           )
           writer.pushListItem(depth, header)
-          arr.foreach(elem => encodeListItem(elem, writer, depth + 1, options, headAllow))
+          arr.foreach(elem => encodeListItem(elem, writer, depth + 2, options, headAllow))
         }
       case JArray(arr) =>
         val header = formatHeader(
@@ -448,7 +448,7 @@ object Encoders {
           options.delimiter,
         )
         writer.pushListItem(depth, header)
-        arr.foreach(elem => encodeListItem(elem, writer, depth + 1, options, headAllow))
+        arr.foreach(elem => encodeListItem(elem, writer, depth + 2, options, headAllow))
       case JObj(next) =>
         writer.pushListItem(depth, s"${encodeKey(firstKey)}:")
         encodeObject(next, writer, depth + 2, options, headAllow)
