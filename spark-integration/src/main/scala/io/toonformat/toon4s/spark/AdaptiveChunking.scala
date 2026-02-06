@@ -124,8 +124,11 @@ object AdaptiveChunking {
       )
     } else if (totalDataSize < SMALL_THRESHOLD) {
       // Small: JSON likely better
+      val safeChunkRows =
+        if (totalRows >= Int.MaxValue.toLong) Int.MaxValue
+        else totalRows.toInt
       ChunkingStrategy(
-        chunkSize = math.max(100, totalRows.toInt),
+        chunkSize = math.max(100, safeChunkRows),
         reasoning =
           s"Small dataset (${formatBytes(totalDataSize)}). TOON may not be worth prompt tax. Consider JSON.",
         useToon = false,
