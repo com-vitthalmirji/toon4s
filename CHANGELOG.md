@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.7.0] - 2026-02-06
+
+
+### Bug fixes
+- remove unused collect helper ([`cd90d05`](https://github.com/com-vitthalmirji/toon4s/commit/cd90d05becab5fe4085b169e5b7c033a32345c95)) by @vim89
+- keep token metrics unbiased ([`707c430`](https://github.com/com-vitthalmirji/toon4s/commit/707c43044e7bdd477817f422dcf41354546fd5cf)) by @vim89
+- always unpersist cached CDC batch ([`952b6f3`](https://github.com/com-vitthalmirji/toon4s/commit/952b6f37a970859c5af421a5466394869b500714)) by @vim89
+- format DeltaLake CDC tests ([`ab36e2e`](https://github.com/com-vitthalmirji/toon4s/commit/ab36e2e9d6135da2321b81001cb37b38dc2bc793)) by @vim89
+
+
+
+### Chores
+- sync with main [skip ci] ([`8132de6`](https://github.com/com-vitthalmirji/toon4s/commit/8132de6a16b0aacc53a5f68b432c018ddd6c5804)) by @github-actions[bot]
+
+
+
+### Documentation
+- update CHANGELOG.md for main [skip ci] ([`b8ffc1c`](https://github.com/com-vitthalmirji/toon4s/commit/b8ffc1c153368f036c2ae3e9ad5af55b28994000)) by @github-actions[bot]
+
+
+
+### Features
+- strengthen spark temporal interop and streaming safety ([`14e100d`](https://github.com/com-vitthalmirji/toon4s/commit/14e100d88ee0016720e683004623b91ba8cad249)) [#61](https://github.com/com-vitthalmirji/toon4s/pull/61) by @vim89
+
+
 ## [0.6.4] - 2026-02-06
 
 
