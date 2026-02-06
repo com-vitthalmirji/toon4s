@@ -2,7 +2,7 @@ package io.toonformat.toon4s.spark
 
 import scala.collection.immutable.VectorMap
 import scala.jdk.CollectionConverters._
-import scala.util.{Failure, Success, Try}
+import scala.util.Try
 
 import io.toonformat.toon4s.{DecodeOptions, EncodeOptions, Toon}
 import io.toonformat.toon4s.JsonValue
@@ -120,28 +120,7 @@ object SparkToonOps {
         key: String = "data",
         options: EncodeOptions = EncodeOptions(),
     ): Either[SparkToonError, ToonMetrics] = {
-
-      val rowsResult = collectSafe(df)
-
-      rowsResult.flatMap { rows =>
-        val schema = df.schema
-
-        convertRowsToJsonArray(rows, schema).flatMap { jsonArray =>
-          val wrapped = JObj(VectorMap(key -> jsonArray))
-
-          // Encode as TOON and JSON baseline (for token comparison).
-          val jsonBaseline = encodeAsJson(wrapped)
-
-          encodeSafe(wrapped, options).map { toonStr =>
-            ToonMetrics.fromEncodedStrings(
-              jsonEncoded = jsonBaseline,
-              toonEncoded = toonStr,
-              rowCount = rows.length,
-              columnCount = schema.fields.length,
-            )
-          }
-        }
-      }
+      calculateMetricsStreaming(df, key, options)
     }
 
     /**
@@ -280,13 +259,20 @@ object SparkToonOps {
           }
         }
 
-        while (rowIterator.hasNext && maybeError.isEmpty) {
-          val row = rowIterator.next()
-          sawAnyRow = true
-          SparkJsonInterop.rowToJsonValueSafe(row, schema) match {
-          case Right(jsonRow) =>
-            chunkRows += jsonRow
-            flushChunkIfNeeded(force = false)
+        var continue = true
+        while (continue && maybeError.isEmpty) {
+          nextRowSafe(rowIterator) match {
+          case Right(Some(row)) =>
+            sawAnyRow = true
+            SparkJsonInterop.rowToJsonValueSafe(row, schema) match {
+            case Right(jsonRow) =>
+              chunkRows += jsonRow
+              flushChunkIfNeeded(force = false)
+            case Left(err) =>
+              maybeError = Some(err)
+            }
+          case Right(None) =>
+            continue = false
           case Left(err) =>
             maybeError = Some(err)
           }
@@ -308,6 +294,124 @@ object SparkToonOps {
           }
         }
       }
+    }
+  }
+
+  /**
+   * Stream DataFrame rows and compute JSON/TOON metrics incrementally.
+   *
+   * Uses chunk-local encoding and aggregates counts to avoid building a single huge payload.
+   */
+  private def calculateMetricsStreaming(
+      df: DataFrame,
+      key: String,
+      options: EncodeOptions,
+  ): Either[SparkToonError, ToonMetrics] = {
+    val chunkSize = 1000
+    val schema = df.schema
+
+    val iteratorResult = Try(df.toLocalIterator().asScala).toEither.left.map { ex =>
+      SparkToonError.CollectionError(
+        s"Failed to iterate DataFrame rows: ${ex.getMessage}",
+        Some(ex),
+      )
+    }
+
+    iteratorResult.flatMap { rowIterator =>
+      val chunkRows = scala.collection.mutable.ArrayBuffer.empty[JsonValue]
+      var sawAnyRow = false
+      var maybeError: Option[SparkToonError] = None
+      var jsonTokenCount = 0
+      var toonTokenCount = 0
+      var rowCount = 0
+
+      def flushMetricsChunkIfNeeded(force: Boolean): Unit = {
+        val shouldFlush = chunkRows.nonEmpty && (force || chunkRows.size >= chunkSize)
+        if (maybeError.isEmpty && shouldFlush) {
+          val wrappedChunk = JObj(VectorMap(key -> JArray(chunkRows.toVector)))
+          val jsonBaseline = encodeAsJson(wrappedChunk)
+          encodeSafe(wrappedChunk, options) match {
+          case Right(toonEncoded) =>
+            val chunkMetrics = ToonMetrics.fromEncodedStrings(
+              jsonEncoded = jsonBaseline,
+              toonEncoded = toonEncoded,
+              rowCount = chunkRows.size,
+              columnCount = schema.fields.length,
+            )
+            jsonTokenCount += chunkMetrics.jsonTokenCount
+            toonTokenCount += chunkMetrics.toonTokenCount
+            rowCount += chunkRows.size
+            chunkRows.clear()
+          case Left(err) =>
+            maybeError = Some(err)
+          }
+        }
+      }
+
+      var continue = true
+      while (continue && maybeError.isEmpty) {
+        nextRowSafe(rowIterator) match {
+        case Right(Some(row)) =>
+          sawAnyRow = true
+          SparkJsonInterop.rowToJsonValueSafe(row, schema) match {
+          case Right(jsonRow) =>
+            chunkRows += jsonRow
+            flushMetricsChunkIfNeeded(force = false)
+          case Left(err) =>
+            maybeError = Some(err)
+          }
+        case Right(None) =>
+          continue = false
+        case Left(err) =>
+          maybeError = Some(err)
+        }
+      }
+
+      maybeError match {
+      case Some(err) =>
+        Left(err)
+      case None =>
+        if (!sawAnyRow) {
+          val wrappedChunk = JObj(VectorMap(key -> JArray(Vector.empty)))
+          val jsonBaseline = encodeAsJson(wrappedChunk)
+          encodeSafe(wrappedChunk, options).map { toonEncoded =>
+            ToonMetrics.fromEncodedStrings(
+              jsonEncoded = jsonBaseline,
+              toonEncoded = toonEncoded,
+              rowCount = 0,
+              columnCount = schema.fields.length,
+            )
+          }
+        } else {
+          flushMetricsChunkIfNeeded(force = true)
+          maybeError match {
+          case Some(err) =>
+            Left(err)
+          case None =>
+            Right(ToonMetrics(
+              jsonTokenCount = jsonTokenCount,
+              toonTokenCount = toonTokenCount,
+              rowCount = rowCount,
+              columnCount = schema.fields.length,
+            ))
+          }
+        }
+      }
+    }
+  }
+
+  /** Safely fetch next row from iterator, including `hasNext` failures. */
+  private def nextRowSafe(
+      rowIterator: Iterator[Row]
+  ): Either[SparkToonError, Option[Row]] = {
+    Try {
+      if (rowIterator.hasNext) Some(rowIterator.next())
+      else None
+    }.toEither.left.map { ex =>
+      SparkToonError.CollectionError(
+        s"Failed while reading DataFrame rows: ${ex.getMessage}",
+        Some(ex),
+      )
     }
   }
 

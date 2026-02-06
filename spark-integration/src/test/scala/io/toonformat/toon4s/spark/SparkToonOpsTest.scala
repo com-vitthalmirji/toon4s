@@ -133,6 +133,19 @@ class SparkToonOpsTest extends FunSuite {
     }
   }
 
+  test("toonMetrics: handle empty DataFrame") {
+    val df = spark.emptyDataFrame
+    val result = df.toonMetrics()
+
+    assert(result.isRight)
+    result.foreach { metrics =>
+      assertEquals(metrics.rowCount, 0)
+      assertEquals(metrics.columnCount, 0)
+      assert(metrics.jsonTokenCount >= 0)
+      assert(metrics.toonTokenCount >= 0)
+    }
+  }
+
   test("fromToon: decode TOON to DataFrame") {
     val schema = StructType(Seq(
       StructField("id", IntegerType),
