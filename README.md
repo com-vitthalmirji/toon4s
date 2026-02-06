@@ -808,7 +808,7 @@ See also: [Token benchmarks](./SCALA-TOON-SPECIFICATION.md#token-benchmarks)
 
 ```scala
 // build.sbt
-libraryDependencies += "com.vitthalmirji" %% "toon4s-core" % "0.1.0"
+libraryDependencies += "com.vitthalmirji" %% "toon4s-core" % "<toon4s-version>"
 ```
 
 Prefer CLI only? Ship the staged script (diagram below):
@@ -1186,8 +1186,9 @@ GitHub actions runs:
 
 1. **Quick checks**: scalafmt + `+compile` on Ubuntu.
 2. **Matrix tests**: Linux/macOS/Windows × Scala 2.13 & 3.3, with test-report artifacts when a shard fails.
-3. **Smoke**: CLI round trip script on Ubuntu.
-4. **All checks pass** “gate” job.
+3. **Spark compatibility**: `sparkIntegration/test` on Spark 3.5.0 and 4.0.1 (runs in parallel).
+4. **Smoke**: CLI round trip script on Ubuntu.
+5. **All checks pass** “gate” job.
 
 ### Performance (JMH)
 
