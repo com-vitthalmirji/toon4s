@@ -1,5 +1,7 @@
 package io.toonformat.toon4s.spark.llm
 
+import scala.util.Try
+
 /**
  * LLM error types aligned with llm4s error hierarchy.
  *
@@ -300,15 +302,14 @@ object LlmClientHelpers {
   )(operation: => Either[LlmError, A]): Either[LlmError, A] = {
 
     def sleepSafely(delayMillis: Long): Either[LlmError, Unit] = {
-      try {
+      Try {
         if (delayMillis > 0) sleepMillis(delayMillis)
-        Right(())
-      } catch {
+      }.toEither.left.map {
         case _: InterruptedException =>
           Thread.currentThread().interrupt()
-          Left(LlmError.TimeoutError("Retry wait interrupted"))
-        case ex: Throwable =>
-          Left(LlmError.UnknownError(s"Retry wait failed: ${ex.getMessage}", Some(ex)))
+          LlmError.TimeoutError("Retry wait interrupted")
+        case ex =>
+          LlmError.UnknownError(s"Retry wait failed: ${ex.getMessage}", Some(ex))
       }
     }
 
