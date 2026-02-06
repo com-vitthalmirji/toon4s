@@ -95,4 +95,5 @@ class SpecSyncRegressionSpec extends FunSuite {
 
     assertEquals(Toon.encode(input), Right(expected))
   }
+
 }
