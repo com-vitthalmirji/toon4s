@@ -22,7 +22,7 @@ ThisBuild / organizationName := "com-vitthalmirji"
 
 ThisBuild / developers := List(
   Developer(
-    id = "vitthalmirji",
+    id = "com-vitthalmirji",
     name = "Vitthal Mirji",
     email = "vitthalmirji@gmail.com",
     url = url("https://vitthalmirji.com/"),
