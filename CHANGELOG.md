@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.6.2] - 2026-02-06
+
+
+### Bug fixes
+- spark P0 compatibility fixes ([`46cd513`](https://github.com/com-vitthalmirji/toon4s/commit/46cd5137be4a554e5ab1def9694e032b4f18cb99)) [#58](https://github.com/com-vitthalmirji/toon4s/pull/58) by @vim89
+
+
+
+### Documentation
+- update CHANGELOG.md for main [skip ci] ([`55ab5e1`](https://github.com/com-vitthalmirji/toon4s/commit/55ab5e18cfcd984e2c1b31bebf55e2dc425675c4)) by @github-actions[bot]
+
+
 ## [0.6.1] - 2026-02-06
 
 
