@@ -216,20 +216,6 @@ object SparkToonOps {
   // ========== Private Helper Functions ==========
 
   /**
-   * Safely collect DataFrame rows.
-   *
-   * Wraps collect() with Try to handle driver OOM errors.
-   */
-  private def collectSafe(df: DataFrame): Either[SparkToonError, Array[Row]] = {
-    Try(df.collect()).toEither.left.map { ex =>
-      SparkToonError.CollectionError(
-        s"Failed to collect DataFrame rows: ${ex.getMessage}",
-        Some(ex),
-      )
-    }
-  }
-
-  /**
    * Stream DataFrame rows and encode incrementally into TOON chunks.
    *
    * Uses `toLocalIterator` to avoid materializing the full dataset in driver memory.
