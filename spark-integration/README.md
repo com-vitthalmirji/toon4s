@@ -57,17 +57,19 @@ TOON generation benchmark:
 Add to your `build.sbt`:
 
 ```scala
-libraryDependencies += "com.vitthalmirji" %% "toon4s-spark" % "0.5.0"
+libraryDependencies += "com.vitthalmirji" %% "toon4s-spark" % "<toon4s-version>"
 ```
 
 For spark applications, use `provided` scope since Spark is typically provided by the cluster:
 
 ```scala
 libraryDependencies ++= Seq(
-  "com.vitthalmirji" %% "toon4s-spark" % "0.5.0",
-  "org.apache.spark" %% "spark-sql" % "3.5.0" % Provided
+  "com.vitthalmirji" %% "toon4s-spark" % "<toon4s-version>",
+  "org.apache.spark" %% "spark-sql" % "<your-spark-version>" % Provided
 )
 ```
+
+Compatibility note: CI validates Spark `3.5.0` and `4.0.1`.
 
 ## Quick start
 
@@ -1022,7 +1024,7 @@ df.toToon() match {
 ## Requirements
 
 - Scala 2.13
-- Apache Spark 3.5.0+
+- Apache Spark 3.5.x or 4.0.x
 - Java 11+ (Java 17+ recommended)
 
 ## License
