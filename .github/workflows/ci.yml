@@ -12,9 +12,26 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  fixture-sync:
+    name: Spec fixture sync
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    if: "!contains(github.event.head_commit.message, '[skip ci]') && !contains(github.event.head_commit.message, '[skip release]')"
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Verify conformance fixtures match spec
+        env:
+          SPEC_REF: v3.0.1
+        run: |
+          chmod +x scripts/check-spec-fixtures-sync.sh
+          ./scripts/check-spec-fixtures-sync.sh
+
   quick-checks:
     name: Quick checks
     runs-on: ubuntu-latest
+    needs: fixture-sync
     permissions:
       contents: read
     if: "!contains(github.event.head_commit.message, '[skip ci]') && !contains(github.event.head_commit.message, '[skip release]')"
@@ -254,7 +271,7 @@ jobs:
     name: All checks pass
     if: always()
     runs-on: ubuntu-latest
-    needs: [quick-checks, test, scaladoc, smoke, budget, jmh]
+    needs: [fixture-sync, quick-checks, test, scaladoc, smoke, budget, jmh]
     steps:
       - name: Verify upstream jobs
         run: |
