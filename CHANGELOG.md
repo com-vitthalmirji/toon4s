@@ -1,5 +1,45 @@
 # Changelog
 
+## [0.6.0] - 2026-02-06
+
+
+### Bug fixes
+- align decode with latest spec fixtures ([`312c154`](https://github.com/vim89/toon4s/commit/312c154f9a612632e68522af223946a60862ea13)) by @vim89
+- align encode layout with latest fixtures ([`39805de`](https://github.com/vim89/toon4s/commit/39805de91a21283d463be532d74808010e532b35)) by @vim89
+- align decode with latest spec fixtures ([`ee01463`](https://github.com/vim89/toon4s/commit/ee014632ff59d9da3d48393f5f618f0339fa86c9)) by @vim89
+- align encode layout with latest fixtures ([`2245742`](https://github.com/vim89/toon4s/commit/2245742539a49519b56893a513303c64f5393111)) by @vim89
+- align encode layout with latest fixtures ([`0113d09`](https://github.com/vim89/toon4s/commit/0113d09c6db326870be2c6907fad8029cfc549e4)) by @vim89
+
+
+
+### Continuous Integration
+- add spec fixture sync guard ([`d29fd28`](https://github.com/vim89/toon4s/commit/d29fd2800d69410a64f8e2274e72040c5b8ab448)) by @vim89
+- pin spec sync ref and gate status ([`c41e11d`](https://github.com/vim89/toon4s/commit/c41e11d18e6854195f301f19424661998fcd1448)) by @vim89
+- pin spec sync ref and gate status ([`ef0cecd`](https://github.com/vim89/toon4s/commit/ef0cecd45b5030d057106cfc081384276ff2922a)) by @vim89
+
+
+
+### Documentation
+- update CHANGELOG.md for main [skip ci] ([`bab5cde`](https://github.com/vim89/toon4s/commit/bab5cde5d3d1232c9db5d33259cb68e44baeb699)) by @github-actions[bot]
+- fix toon4s-spark version [skip ci] [skip release] ([`0979165`](https://github.com/vim89/toon4s/commit/09791659d8bffa9e81935db7bde5e736b5672228)) by @vim89
+- align spec docs to v3.0.x ([`e2f25d0`](https://github.com/vim89/toon4s/commit/e2f25d092bac67cf903628911af60345151a2e20)) by @vim89
+
+
+
+### Tests
+- sync conformance fixtures from spec ([`ab09f91`](https://github.com/vim89/toon4s/commit/ab09f91d8584ca40e48675548433f5982cd425bb)) by @vim89
+- fix sync conformance fixtures from spec ([`db1b6dd`](https://github.com/vim89/toon4s/commit/db1b6dd51df7ea50dc44a818d66619494a7e5ec0)) [#50](https://github.com/vim89/toon4s/pull/50) by @vim89
+- add spec sync regression cases ([`d6b735a`](https://github.com/vim89/toon4s/commit/d6b735ad412dab5a5c207deab58b96d65ace1261)) by @vim89
+- format spec sync regression spec ([`a8ae7d5`](https://github.com/vim89/toon4s/commit/a8ae7d55e2a5cf71873f12b82744ff5dcad76356)) by @vim89
+- normalize eol in regression spec ([`cb50d80`](https://github.com/vim89/toon4s/commit/cb50d80a6ff32eebcb6fa78fb7388fd637d1a8c1)) by @vim89
+- format spec sync regression spec ([`c53cbe0`](https://github.com/vim89/toon4s/commit/c53cbe068248d1a19d76ebfa53a4c20303c059df)) by @vim89
+- normalize eol in regression spec ([`6e61916`](https://github.com/vim89/toon4s/commit/6e6191641185c163027a5f1d5225e7d3deb84d06)) by @vim89
+- format spec sync regression spec ([`1c6c824`](https://github.com/vim89/toon4s/commit/1c6c82429b3339bdc1aa1bf031c760d3041fe6ab)) by @vim89
+- normalize eol in regression spec ([`7352abb`](https://github.com/vim89/toon4s/commit/7352abbd1d5fb27c4fd96a1fddd79ee0caf506fe)) by @vim89
+- format spec sync regression spec ([`e1c0613`](https://github.com/vim89/toon4s/commit/e1c061399d40d1368d56c32c0ce0d24a33737956)) by @vim89
+- normalize eol in regression spec ([`b5ecbb7`](https://github.com/vim89/toon4s/commit/b5ecbb7c3b1ac9c13a2df641cf3e5848273d2f0c)) by @vim89
+
+
 ## [0.5.0] - 2025-12-11
 
 
