@@ -186,7 +186,8 @@ object Decoders {
   ): Vector[JsonValue] = {
     validateArrayLength(header.length, options)
     val buffer = ArrayBuffer.empty[JsonValue]
-    val itemDepth = baseDepth + 1
+    val declaredDepth = baseDepth + 1
+    val itemDepth = cursor.peek.map(_.depth).filter(_ > baseDepth).getOrElse(declaredDepth)
     var startLine: Option[Int] = None
     var endLine: Option[Int] = None
     var continue = true
