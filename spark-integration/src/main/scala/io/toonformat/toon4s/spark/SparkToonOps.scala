@@ -87,18 +87,7 @@ object SparkToonOps {
         maxRowsPerChunk: Int = 1000,
         options: EncodeOptions = EncodeOptions(),
     ): Either[SparkToonError, Vector[String]] = {
-
-      // Step 1: Collect rows (driver memory consideration)
-      val rowsResult = collectSafe(df)
-
-      // Step 2: Convert to JsonValue
-      rowsResult.flatMap { rows =>
-        val schema = df.schema
-        convertRowsToJsonArray(rows, schema).flatMap { jsonArray =>
-          // Step 3: Chunk and encode
-          encodeChunks(jsonArray, key, maxRowsPerChunk, options)
-        }
-      }
+      encodeToChunksStreaming(df, key, maxRowsPerChunk, options)
     }
 
     /**
@@ -245,6 +234,80 @@ object SparkToonOps {
         s"Failed to collect DataFrame rows: ${ex.getMessage}",
         Some(ex),
       )
+    }
+  }
+
+  /**
+   * Stream DataFrame rows and encode incrementally into TOON chunks.
+   *
+   * Uses `toLocalIterator` to avoid materializing the full dataset in driver memory.
+   */
+  private def encodeToChunksStreaming(
+      df: DataFrame,
+      key: String,
+      maxRowsPerChunk: Int,
+      options: EncodeOptions,
+  ): Either[SparkToonError, Vector[String]] = {
+
+    if (maxRowsPerChunk <= 0) {
+      Left(SparkToonError.ConversionError("maxRowsPerChunk must be greater than 0"))
+    } else {
+      val schema = df.schema
+      val iteratorResult = Try(df.toLocalIterator().asScala).toEither.left.map { ex =>
+        SparkToonError.CollectionError(
+          s"Failed to iterate DataFrame rows: ${ex.getMessage}",
+          Some(ex),
+        )
+      }
+
+      iteratorResult.flatMap { rowIterator =>
+        val chunkRows = scala.collection.mutable.ArrayBuffer.empty[JsonValue]
+        val encodedChunks = Vector.newBuilder[String]
+        var sawAnyRow = false
+        var maybeError: Option[SparkToonError] = None
+
+        def flushChunkIfNeeded(force: Boolean): Unit = {
+          val shouldFlush = chunkRows.nonEmpty && (force || chunkRows.size >= maxRowsPerChunk)
+          if (maybeError.isEmpty && shouldFlush) {
+            val wrappedChunk = JObj(VectorMap(key -> JArray(chunkRows.toVector)))
+            encodeSafe(wrappedChunk, options) match {
+            case Right(encoded) =>
+              encodedChunks += encoded
+              chunkRows.clear()
+            case Left(err) =>
+              maybeError = Some(err)
+            }
+          }
+        }
+
+        while (rowIterator.hasNext && maybeError.isEmpty) {
+          val row = rowIterator.next()
+          sawAnyRow = true
+          SparkJsonInterop.rowToJsonValueSafe(row, schema) match {
+          case Right(jsonRow) =>
+            chunkRows += jsonRow
+            flushChunkIfNeeded(force = false)
+          case Left(err) =>
+            maybeError = Some(err)
+          }
+        }
+
+        maybeError match {
+        case Some(err) =>
+          Left(err)
+        case None =>
+          if (!sawAnyRow) {
+            val wrappedChunk = JObj(VectorMap(key -> JArray(Vector.empty)))
+            encodeSafe(wrappedChunk, options).map(encoded => Vector(encoded))
+          } else {
+            flushChunkIfNeeded(force = true)
+            maybeError match {
+            case Some(err) => Left(err)
+            case None      => Right(encodedChunks.result())
+            }
+          }
+        }
+      }
     }
   }
 

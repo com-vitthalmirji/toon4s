@@ -77,6 +77,16 @@ class SparkToonOpsTest extends FunSuite {
     }
   }
 
+  test("toToon: reject non-positive chunk size") {
+    val schema = StructType(Seq(
+      StructField("id", IntegerType)
+    ))
+    val df = spark.createDataFrame(Seq(Row(1)).asJava, schema)
+
+    val result = df.toToon(maxRowsPerChunk = 0)
+    assert(result.isLeft)
+  }
+
   test("toonMetrics: compute token metrics") {
     val schema = StructType(Seq(
       StructField("id", IntegerType),
