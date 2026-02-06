@@ -145,7 +145,7 @@ object PrimitiveParser {
     if (token.isEmpty) false
     else {
       val unsigned = if (token.head == '-' || token.head == '+') token.tail else token
-      val hasLeadingZero = unsigned.length > 1 && unsigned.head == '0' && unsigned(1) != '.'
+      val hasLeadingZero = unsigned.length > 1 && unsigned.head == '0' && unsigned(1).isDigit
       unsigned.nonEmpty && !hasLeadingZero && NumericPattern.matches(token)
     }
   }
