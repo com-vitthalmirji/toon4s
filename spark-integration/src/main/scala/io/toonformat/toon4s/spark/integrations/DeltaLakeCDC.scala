@@ -277,31 +277,28 @@ object DeltaLakeCDC {
       alignmentScore: Double,
       processor: CDCBatchMetadata => Unit,
   ): Unit = {
-    import batchDF.sparkSession.implicits._
-    val cachedBatch = batchDF.persist(StorageLevel.MEMORY_AND_DISK)
-
-    val batchResult = for {
-      changeTypes <- collectChangeTypes(cachedBatch)
-      result <- {
-        if (changeTypes.isEmpty) Right(None)
-        else {
-          for {
-            commitVersions <- collectCommitVersions(cachedBatch)
-            chunkSize = resolveChunkSize(cachedBatch, config, batchId)
-            toonChunks <- cachedBatch.toToon(key = config.key, maxRowsPerChunk = chunkSize)
-          } yield Some(CDCBatchMetadata(
-            batchId = batchId,
-            cdcEvents = batchDF,
-            toonChunks = toonChunks,
-            changeTypes = changeTypes,
-            commitVersion = commitVersions,
-            alignmentScore = alignmentScore,
-          ))
+    val batchResult = withCachedBatch(batchDF) { cachedBatch =>
+      for {
+        changeTypes <- collectChangeTypes(cachedBatch)
+        result <- {
+          if (changeTypes.isEmpty) Right(None)
+          else {
+            for {
+              commitVersions <- collectCommitVersions(cachedBatch)
+              chunkSize <- resolveChunkSize(cachedBatch, config, batchId)
+              toonChunks <- cachedBatch.toToon(key = config.key, maxRowsPerChunk = chunkSize)
+            } yield Some(CDCBatchMetadata(
+              batchId = batchId,
+              cdcEvents = cachedBatch,
+              toonChunks = toonChunks,
+              changeTypes = changeTypes,
+              commitVersion = commitVersions,
+              alignmentScore = alignmentScore,
+            ))
+          }
         }
-      }
-    } yield result
-
-    cachedBatch.unpersist()
+      } yield result
+    }
 
     batchResult match {
     case Right(Some(metadata)) =>
@@ -315,6 +312,22 @@ object DeltaLakeCDC {
       )
       throw new RuntimeException(s"TOON encoding failed for batch $batchId: ${error.message}")
     }
+  }
+
+  private[integrations] def withCachedBatch[A](
+      batchDF: DataFrame
+  )(
+      use: DataFrame => Either[SparkToonError, A]
+  ): Either[SparkToonError, A] = {
+    val cachedBatch = batchDF.persist(StorageLevel.MEMORY_AND_DISK)
+    val useResult = Try(use(cachedBatch)).toEither.left.map { ex =>
+      SparkToonError.CollectionError(
+        s"Unexpected error while processing cached CDC batch: ${ex.getMessage}",
+        Some(ex),
+      )
+    }
+    cachedBatch.unpersist()
+    useResult.flatMap(result => result)
   }
 
   private def collectChangeTypes(batchDF: DataFrame): Either[SparkToonError, Map[String, Long]] = {
@@ -364,17 +377,28 @@ object DeltaLakeCDC {
       batchDF: DataFrame,
       config: DeltaCDCConfig,
       batchId: Long,
-  ): Int = {
-    config.maxRowsPerChunk.getOrElse {
-      val strategy = AdaptiveChunking.calculateOptimalChunkSize(batchDF)
-      if (!strategy.useToon) {
-        // Schema not TOON-friendly, but user explicitly requested TOON streaming
-        // Use small chunks to minimize damage
-        batchDF.sparkSession.sparkContext.setJobDescription(
-          s"Batch $batchId: ${strategy.reasoning}"
+  ): Either[SparkToonError, Int] = {
+    config.maxRowsPerChunk match {
+    case Some(chunkSize) if chunkSize > 0 =>
+      Right(chunkSize)
+    case Some(_) =>
+      Left(SparkToonError.ConversionError("maxRowsPerChunk must be greater than 0"))
+    case None =>
+      Try(AdaptiveChunking.calculateOptimalChunkSize(batchDF)).toEither.left.map { ex =>
+        SparkToonError.CollectionError(
+          s"Failed to calculate adaptive CDC chunk size: ${ex.getMessage}",
+          Some(ex),
         )
+      }.map { strategy =>
+        if (!strategy.useToon) {
+          // Schema not TOON-friendly, but user explicitly requested TOON streaming
+          // Use small chunks to minimize damage
+          batchDF.sparkSession.sparkContext.setJobDescription(
+            s"Batch $batchId: ${strategy.reasoning}"
+          )
+        }
+        strategy.chunkSize
       }
-      strategy.chunkSize
     }
   }
 
