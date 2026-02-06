@@ -199,8 +199,11 @@ final class LineWriter(indentSize: Int) extends EncodeLineWriter {
   def pushListItem(depth: Int, line: String): Unit = {
     if (!first) builder.append('\n') else first = false
     pad(depth)
-    builder.append("- ")
-    builder.append(line)
+    if (line.isEmpty) builder.append('-')
+    else {
+      builder.append("- ")
+      builder.append(line)
+    }
   }
 
   /**
@@ -267,8 +270,11 @@ final class StreamLineWriter(indentSize: Int, out: Writer) extends StreamingEnco
   def pushListItem(depth: Int, line: String): Unit = {
     if (!first) out.write('\n') else first = false
     pad(depth)
-    out.write("- ")
-    out.write(line)
+    if (line.isEmpty) out.write('-')
+    else {
+      out.write("- ")
+      out.write(line)
+    }
   }
 
   // ========================================================================
