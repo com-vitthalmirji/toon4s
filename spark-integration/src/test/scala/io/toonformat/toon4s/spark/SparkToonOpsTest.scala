@@ -2,6 +2,7 @@ package io.toonformat.toon4s.spark
 
 import scala.jdk.CollectionConverters._
 
+import io.toonformat.toon4s.EncodeOptions
 import io.toonformat.toon4s.spark.SparkToonOps._
 import munit.FunSuite
 import org.apache.spark.sql.{Row, SparkSession}
@@ -77,6 +78,16 @@ class SparkToonOpsTest extends FunSuite {
     }
   }
 
+  test("toToon: reject non-positive chunk size") {
+    val schema = StructType(Seq(
+      StructField("id", IntegerType)
+    ))
+    val df = spark.createDataFrame(Seq(Row(1)).asJava, schema)
+
+    val result = df.toToon(maxRowsPerChunk = 0)
+    assert(result.isLeft)
+  }
+
   test("toonMetrics: compute token metrics") {
     val schema = StructType(Seq(
       StructField("id", IntegerType),
@@ -100,7 +111,7 @@ class SparkToonOpsTest extends FunSuite {
     }
   }
 
-  test("toonMetrics: verify token savings") {
+  test("toonMetrics: compute consistent token accounting") {
     val schema = StructType(Seq(
       StructField("id", IntegerType),
       StructField("name", StringType),
@@ -118,8 +129,49 @@ class SparkToonOpsTest extends FunSuite {
 
     assert(result.isRight)
     result.foreach { metrics =>
-      // TOON should provide some savings for tabular data
-      assert(metrics.toonTokenCount <= metrics.jsonTokenCount)
+      assert(metrics.jsonTokenCount > 0)
+      assert(metrics.toonTokenCount > 0)
+      assertEquals(
+        metrics.absoluteSavings,
+        metrics.jsonTokenCount - metrics.toonTokenCount,
+      )
+    }
+  }
+
+  test("toonMetrics: support caller-provided chunk size") {
+    val schema = StructType(Seq(
+      StructField("id", IntegerType),
+      StructField("name", StringType),
+    ))
+    val data = (1 to 25).map(i => Row(i, s"user$i"))
+    val df = spark.createDataFrame(data.asJava, schema)
+
+    val result = df.toonMetrics("data", maxRowsPerChunk = 3, EncodeOptions())
+    assert(result.isRight)
+    result.foreach { metrics =>
+      assertEquals(metrics.rowCount, 25)
+      assertEquals(metrics.columnCount, 2)
+    }
+  }
+
+  test("toonMetrics: reject non-positive chunk size") {
+    val schema = StructType(Seq(StructField("id", IntegerType)))
+    val df = spark.createDataFrame(Seq(Row(1)).asJava, schema)
+
+    val result = df.toonMetrics("data", maxRowsPerChunk = 0, EncodeOptions())
+    assert(result.isLeft)
+  }
+
+  test("toonMetrics: handle empty DataFrame") {
+    val df = spark.emptyDataFrame
+    val result = df.toonMetrics()
+
+    assert(result.isRight)
+    result.foreach { metrics =>
+      assertEquals(metrics.rowCount, 0)
+      assertEquals(metrics.columnCount, 0)
+      assert(metrics.jsonTokenCount >= 0)
+      assert(metrics.toonTokenCount >= 0)
     }
   }
 
@@ -215,7 +267,12 @@ class SparkToonOpsTest extends FunSuite {
     assert(result.isRight)
     result.foreach { metrics =>
       assertEquals(metrics.rowCount, 1000)
-      assert(metrics.jsonTokenCount > metrics.toonTokenCount)
+      assert(metrics.jsonTokenCount > 0)
+      assert(metrics.toonTokenCount > 0)
+      assertEquals(
+        metrics.absoluteSavings,
+        metrics.jsonTokenCount - metrics.toonTokenCount,
+      )
     }
   }
 

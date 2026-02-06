@@ -1,10 +1,14 @@
 package io.toonformat.toon4s.spark.integrations
 
+import scala.util.Try
+
 import io.toonformat.toon4s.spark.{AdaptiveChunking, ToonAlignmentAnalyzer}
 import io.toonformat.toon4s.spark.SparkToonOps._
 import io.toonformat.toon4s.spark.error.SparkToonError
 import org.apache.spark.sql.{DataFrame, SparkSession}
+import org.apache.spark.sql.functions.{max, min}
 import org.apache.spark.sql.streaming.{StreamingQuery, Trigger}
+import org.apache.spark.storage.StorageLevel
 
 /**
  * Delta lake Change data feed integration for real-time TOON streaming.
@@ -212,8 +216,6 @@ object DeltaLakeCDC {
   def streamDeltaCDCWithMetadata(
       config: DeltaCDCConfig
   )(processor: CDCBatchMetadata => Unit)(implicit spark: SparkSession): StreamingQuery = {
-    import spark.implicits._
-
     // Build CDC stream reader
     var reader = spark.readStream
       .format("delta")
@@ -243,9 +245,7 @@ object DeltaLakeCDC {
       .trigger(Trigger.ProcessingTime(config.triggerInterval))
       .option("checkpointLocation", config.checkpointLocation)
       .foreachBatch { (batchDF: DataFrame, batchId: Long) =>
-        if (batchDF.head(1).nonEmpty) {
-          processCDCBatch(batchDF, batchId, config, alignmentScore.score, processor)
-        }
+        processCDCBatch(batchDF, batchId, config, alignmentScore.score, processor)
       }
       .start()
   }
@@ -277,60 +277,128 @@ object DeltaLakeCDC {
       alignmentScore: Double,
       processor: CDCBatchMetadata => Unit,
   ): Unit = {
-    import batchDF.sparkSession.implicits._
-
-    // Analyze change types
-    val changeTypes = batchDF
-      .groupBy("_change_type")
-      .count()
-      .as[(String, Long)]
-      .collect()
-      .toMap
-
-    // Get commit version range
-    val commitVersions = batchDF
-      .select("_commit_version")
-      .agg(
-        org.apache.spark.sql.functions.min("_commit_version"),
-        org.apache.spark.sql.functions.max("_commit_version"),
-      )
-      .as[(Long, Long)]
-      .head()
-
-    // Determine chunk size (adaptive or configured)
-    val chunkSize = config.maxRowsPerChunk.getOrElse {
-      val strategy = AdaptiveChunking.calculateOptimalChunkSize(batchDF)
-      if (!strategy.useToon) {
-        // Schema not TOON-friendly, but user explicitly requested TOON streaming
-        // Use small chunks to minimize damage
-        batchDF.sparkSession.sparkContext.setJobDescription(
-          s"Batch $batchId: ${strategy.reasoning}"
-        )
-      }
-      strategy.chunkSize
+    val batchResult = withCachedBatch(batchDF) { cachedBatch =>
+      for {
+        changeTypes <- collectChangeTypes(cachedBatch)
+        result <- {
+          if (changeTypes.isEmpty) Right(None)
+          else {
+            for {
+              commitVersions <- collectCommitVersions(cachedBatch)
+              chunkSize <- resolveChunkSize(cachedBatch, config, batchId)
+              toonChunks <- cachedBatch.toToon(key = config.key, maxRowsPerChunk = chunkSize)
+            } yield Some(CDCBatchMetadata(
+              batchId = batchId,
+              cdcEvents = cachedBatch,
+              toonChunks = toonChunks,
+              changeTypes = changeTypes,
+              commitVersion = commitVersions,
+              alignmentScore = alignmentScore,
+            ))
+          }
+        }
+      } yield result
     }
 
-    // Encode to TOON
-    val toonResult = batchDF.toToon(key = config.key, maxRowsPerChunk = chunkSize)
-
-    toonResult match {
-    case Right(toonChunks) =>
-      val metadata = CDCBatchMetadata(
-        batchId = batchId,
-        cdcEvents = batchDF,
-        toonChunks = toonChunks,
-        changeTypes = changeTypes,
-        commitVersion = commitVersions,
-        alignmentScore = alignmentScore,
-      )
+    batchResult match {
+    case Right(Some(metadata)) =>
       processor(metadata)
-
+    case Right(None) =>
+      ()
     case Left(error: SparkToonError) =>
       // Fail the batch so streaming checkpoint/retry semantics can recover safely.
       batchDF.sparkSession.sparkContext.setJobDescription(
         s"Batch $batchId TOON encoding failed: ${error.message}"
       )
       throw new RuntimeException(s"TOON encoding failed for batch $batchId: ${error.message}")
+    }
+  }
+
+  private[integrations] def withCachedBatch[A](
+      batchDF: DataFrame
+  )(
+      use: DataFrame => Either[SparkToonError, A]
+  ): Either[SparkToonError, A] = {
+    val cachedBatch = batchDF.persist(StorageLevel.MEMORY_AND_DISK)
+    val useResult = Try(use(cachedBatch)).toEither.left.map { ex =>
+      SparkToonError.CollectionError(
+        s"Unexpected error while processing cached CDC batch: ${ex.getMessage}",
+        Some(ex),
+      )
+    }
+    cachedBatch.unpersist()
+    useResult.flatMap(result => result)
+  }
+
+  private def collectChangeTypes(batchDF: DataFrame): Either[SparkToonError, Map[String, Long]] = {
+    Try {
+      import batchDF.sparkSession.implicits._
+      batchDF
+        .groupBy("_change_type")
+        .count()
+        .as[(String, Long)]
+        .collect()
+        .toMap
+    }.toEither.left.map { ex =>
+      SparkToonError.CollectionError(
+        s"Failed to collect CDC change types: ${ex.getMessage}",
+        Some(ex),
+      )
+    }
+  }
+
+  private def collectCommitVersions(batchDF: DataFrame): Either[SparkToonError, (Long, Long)] = {
+    val commitRangeResult = Try {
+      import batchDF.sparkSession.implicits._
+      batchDF
+        .select("_commit_version")
+        .agg(
+          min("_commit_version"),
+          max("_commit_version"),
+        )
+        .as[(Long, Long)]
+        .collect()
+        .headOption
+    }.toEither.left.map { ex =>
+      SparkToonError.CollectionError(
+        s"Failed to collect CDC commit version range: ${ex.getMessage}",
+        Some(ex),
+      )
+    }
+
+    commitRangeResult.flatMap {
+      case Some(range) => Right(range)
+      case None        =>
+        Left(SparkToonError.CollectionError("CDC commit version range is empty"))
+    }
+  }
+
+  private def resolveChunkSize(
+      batchDF: DataFrame,
+      config: DeltaCDCConfig,
+      batchId: Long,
+  ): Either[SparkToonError, Int] = {
+    config.maxRowsPerChunk match {
+    case Some(chunkSize) if chunkSize > 0 =>
+      Right(chunkSize)
+    case Some(_) =>
+      Left(SparkToonError.ConversionError("maxRowsPerChunk must be greater than 0"))
+    case None =>
+      Try(AdaptiveChunking.calculateOptimalChunkSize(batchDF)).toEither.left.map { ex =>
+        SparkToonError.CollectionError(
+          s"Failed to calculate adaptive CDC chunk size: ${ex.getMessage}",
+          Some(ex),
+        )
+      }.map { strategy =>
+        if (!strategy.useToon) {
+          // Schema not TOON-friendly, but user explicitly requested TOON streaming
+          // Use small chunks to minimize damage
+          batchDF.sparkSession.sparkContext.setJobDescription(
+            s"Batch $batchId: ${strategy.reasoning}"
+          )
+        }
+        strategy.chunkSize
+      }
     }
   }
 

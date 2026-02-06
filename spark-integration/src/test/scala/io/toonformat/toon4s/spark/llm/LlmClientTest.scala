@@ -181,6 +181,24 @@ class LlmClientTest extends FunSuite {
     assertEquals(attempts, 1)
   }
 
+  test("LlmClientHelpers: does not sleep on last attempt") {
+    var attempts = 0
+    var sleepCalls = 0
+
+    val result = LlmClientHelpers.retry(
+      maxAttempts = 1,
+      baseDelayMillis = 1,
+      sleepMillis = _ => sleepCalls += 1,
+    ) {
+      attempts += 1
+      Left(LlmError.TimeoutError("timeout"))
+    }
+
+    assert(result.isLeft)
+    assertEquals(attempts, 1)
+    assertEquals(sleepCalls, 0)
+  }
+
   test("TokenBudget: fits check") {
     val budget = TokenBudget(available = 1000, total = 2000, reserved = 500)
 

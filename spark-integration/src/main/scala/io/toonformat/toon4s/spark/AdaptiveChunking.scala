@@ -104,7 +104,8 @@ object AdaptiveChunking {
    *   ChunkingStrategy with recommendations
    */
   def calculateOptimalChunkSize(totalRows: Long, avgRowSize: Int): ChunkingStrategy = {
-    val totalDataSize = totalRows * avgRowSize
+    val safeAvgRowSize = math.max(1, avgRowSize)
+    val totalDataSize = safeMultiply(totalRows, safeAvgRowSize)
 
     // Benchmark break-even points
     val VERY_SMALL_THRESHOLD = 512 // < 512 bytes: JSON definitely wins
@@ -124,8 +125,11 @@ object AdaptiveChunking {
       )
     } else if (totalDataSize < SMALL_THRESHOLD) {
       // Small: JSON likely better
+      val safeChunkRows =
+        if (totalRows >= Int.MaxValue.toLong) Int.MaxValue
+        else totalRows.toInt
       ChunkingStrategy(
-        chunkSize = math.max(100, totalRows.toInt),
+        chunkSize = math.max(100, safeChunkRows),
         reasoning =
           s"Small dataset (${formatBytes(totalDataSize)}). TOON may not be worth prompt tax. Consider JSON.",
         useToon = false,
@@ -133,7 +137,7 @@ object AdaptiveChunking {
       )
     } else if (totalDataSize < MEDIUM_THRESHOLD) {
       // Medium: TOON competitive, use large chunks to amortize tax
-      val rowsPerChunk = math.max(100, TARGET_CHUNK_SIZE / avgRowSize)
+      val rowsPerChunk = math.max(100, TARGET_CHUNK_SIZE / safeAvgRowSize)
       ChunkingStrategy(
         chunkSize = math.min(MAX_CHUNK_ROWS, rowsPerChunk),
         reasoning =
@@ -143,7 +147,7 @@ object AdaptiveChunking {
       )
     } else {
       // Large: TOON wins, use standard chunking
-      val rowsPerChunk = TARGET_CHUNK_SIZE / avgRowSize
+      val rowsPerChunk = TARGET_CHUNK_SIZE / safeAvgRowSize
       val optimalChunkSize = math.min(MAX_CHUNK_ROWS, math.max(100, rowsPerChunk))
 
       ChunkingStrategy(
@@ -208,6 +212,14 @@ object AdaptiveChunking {
     5 * (estimateFieldSize(keyType) + estimateFieldSize(valueType))
 
   case _ => 50 // Unknown type, conservative estimate
+  }
+
+  /** Safe Long multiplication with saturation on overflow. */
+  private def safeMultiply(a: Long, b: Int): Long = {
+    val result = BigInt(a) * BigInt(b)
+    if (result > BigInt(Long.MaxValue)) Long.MaxValue
+    else if (result < BigInt(Long.MinValue)) Long.MinValue
+    else result.toLong
   }
 
   /**

@@ -157,9 +157,17 @@ object SparkJsonInterop {
     JString(value.asInstanceOf[java.sql.Date].toString)
 
   case TimestampType =>
-    // Use ISO-8601 format for timestamps
-    val timestamp = value.asInstanceOf[java.sql.Timestamp]
-    JString(timestamp.toInstant.toString)
+    JString(value.asInstanceOf[java.sql.Timestamp].toInstant.toString)
+
+  case TimestampNTZType =>
+    value match {
+    case localDateTime: java.time.LocalDateTime =>
+      JString(localDateTime.toString)
+    case timestamp: java.sql.Timestamp =>
+      JString(timestamp.toLocalDateTime.toString)
+    case other =>
+      JString(other.toString)
+    }
 
   // ========== Binary Types ==========
 
@@ -289,7 +297,7 @@ object SparkJsonInterop {
     case (JObj(fields), MapType(keyType, valueType, _)) =>
       fields.map {
         case (k, v) =>
-          k -> jsonValueToTypedValue(v, valueType)
+          convertMapKey(k, keyType) -> jsonValueToTypedValue(v, valueType)
       }.toMap
 
     // ========== Temporal Type Conversions ==========
@@ -297,7 +305,10 @@ object SparkJsonInterop {
       java.sql.Date.valueOf(s)
 
     case (JString(s), TimestampType) =>
-      java.sql.Timestamp.valueOf(s)
+      parseTimestamp(s)
+
+    case (JString(s), TimestampNTZType) =>
+      parseTimestampNtz(s)
 
     // ========== Binary Conversions ==========
     case (JString(s), BinaryType) =>
@@ -305,18 +316,20 @@ object SparkJsonInterop {
 
     // ========== Type Coercion ==========
     case (JString(s), IntegerType) =>
-      Try(s.toInt).getOrElse(0)
+      parseInt(s)
 
     case (JString(s), LongType) =>
-      Try(s.toLong).getOrElse(0L)
+      parseLong(s)
 
     case (JString(s), DoubleType) =>
-      Try(s.toDouble).getOrElse(0.0)
+      parseDouble(s)
 
     case (JString(s), BooleanType) =>
       s.toLowerCase match {
       case "true" | "1" | "yes" => true
-      case _                    => false
+      case "false" | "0" | "no" => false
+      case _                    =>
+        throw new IllegalArgumentException(s"Invalid boolean value '$s'")
       }
 
     // ========== Fallback ==========
@@ -325,6 +338,71 @@ object SparkJsonInterop {
     case (JBool(b), _)   => b
     case _               => null
     }
+  }
+
+  private def parseTimestamp(raw: String): java.sql.Timestamp = {
+    val trimmed = raw.trim
+    Try(java.sql.Timestamp.from(java.time.Instant.parse(trimmed)))
+      .orElse(Try(java.sql.Timestamp.valueOf(trimmed)))
+      .orElse(Try(java.sql.Timestamp.valueOf(trimmed.replace("T", " ").stripSuffix("Z"))))
+      .get
+  }
+
+  private def parseTimestampNtz(raw: String): java.time.LocalDateTime = {
+    val trimmed = raw.trim
+    Try(java.time.LocalDateTime.parse(trimmed))
+      .orElse(Try(java.time.LocalDateTime.parse(trimmed.replace(" ", "T"))))
+      .orElse(Try(java.time.OffsetDateTime.parse(trimmed).toLocalDateTime))
+      .orElse(
+        Try(java.time.Instant.parse(trimmed).atOffset(java.time.ZoneOffset.UTC).toLocalDateTime)
+      )
+      .get
+  }
+
+  private def parseInt(raw: String): Int =
+    Try(raw.trim.toInt).getOrElse {
+      throw new IllegalArgumentException(s"Invalid integer value '$raw'")
+    }
+
+  private def parseLong(raw: String): Long =
+    Try(raw.trim.toLong).getOrElse {
+      throw new IllegalArgumentException(s"Invalid long value '$raw'")
+    }
+
+  private def parseDouble(raw: String): Double =
+    Try(raw.trim.toDouble).getOrElse {
+      throw new IllegalArgumentException(s"Invalid double value '$raw'")
+    }
+
+  private def convertMapKey(raw: String, keyType: DataType): Any = keyType match {
+  case StringType  => raw
+  case IntegerType => parseInt(raw)
+  case LongType    => parseLong(raw)
+  case DoubleType  => parseDouble(raw)
+  case FloatType   => parseDouble(raw).toFloat
+  case ShortType   => parseInt(raw).toShort
+  case ByteType    => parseInt(raw).toByte
+  case BooleanType =>
+    raw.toLowerCase match {
+    case "true" | "1" | "yes" => true
+    case "false" | "0" | "no" => false
+    case _                    =>
+      throw new IllegalArgumentException(s"Invalid boolean map key '$raw'")
+    }
+  case DecimalType() =>
+    Try(BigDecimal(raw.trim).underlying()).getOrElse {
+      throw new IllegalArgumentException(s"Invalid decimal map key '$raw'")
+    }
+  case DateType =>
+    Try(java.sql.Date.valueOf(raw.trim)).getOrElse {
+      throw new IllegalArgumentException(s"Invalid date map key '$raw'")
+    }
+  case TimestampType    => parseTimestamp(raw)
+  case TimestampNTZType => parseTimestampNtz(raw)
+  case other            =>
+    throw new IllegalArgumentException(
+      s"Unsupported MapType key type for decoding: ${other.simpleString}"
+    )
   }
 
   /**

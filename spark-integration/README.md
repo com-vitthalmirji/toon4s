@@ -44,7 +44,10 @@ TOON generation benchmark:
 - **Type-safe `Dataset[T]` support**: Compile-time safety with Scala case classes
 - **Schema alignment detection**: Pre-flight validation based on benchmark findings
 - **Adaptive chunking**: Optimize prompt tax for dataset size
+- **Streaming chunk encoding**: `toToon` iterates rows with `toLocalIterator` to reduce driver memory pressure
 - **Token metrics**: Compare JSON vs TOON token counts and cost savings
+- **Temporal interoperability**: Round-trip support for `DateType`, `TimestampType`, and `TimestampNTZType`
+- **Strict decode coercion**: Invalid numeric/boolean strings fail with typed conversion errors
 - **Delta Lake CDC integration**: Real-time TOON streaming from Change Data Feed
 - **Iceberg time travel**: Historical TOON snapshots for trend analysis
 - **Production monitoring**: Health checks, telemetry, and readiness reports
@@ -294,6 +297,11 @@ if (budget.fits(promptTokens)) {
 }
 ```
 
+#### Retry helper behavior
+
+`LlmClientHelpers.retry` only waits when another retry attempt is still available. If wait is interrupted, it
+returns a typed error and preserves thread interruption.
+
 ## API reference
 
 ### Extension methods on DataFrame
@@ -303,8 +311,11 @@ if (budget.fits(promptTokens)) {
 Encode DataFrame to TOON format with chunking support.
 
 - `key`: Top-level key for TOON document (default: "data")
-- `maxRowsPerChunk`: Maximum rows per chunk (default: 1000)
+- `maxRowsPerChunk`: Maximum rows per chunk, must be `> 0` (default: 1000)
 - `options`: TOON encoding options (default: EncodeOptions())
+
+Implementation note: encoding is streamed with `toLocalIterator` and emitted as TOON chunks, so it does not
+materialize all rows at once on the driver.
 
 **`toonMetrics(key: String, options: EncodeOptions): Either[SparkToonError, ToonMetrics]`**
 
@@ -373,6 +384,13 @@ object SparkToonError {
   case class UnsupportedDataType(dataType: String, cause: Option[Throwable] = None)
 }
 ```
+
+Decode behavior notes:
+
+- String to numeric decode (`Int`, `Long`, `Double`) is strict; invalid values return `Left(ConversionError)`.
+- String to boolean accepts only `true/false`, `1/0`, `yes/no` (case-insensitive).
+- `MapType` decode converts map keys using the declared Spark key type.
+- `TimestampNTZType` decode keeps local date-time semantics for ISO local, offset, and instant inputs.
 
 ## Configuration
 
@@ -765,7 +783,7 @@ sequenceDiagram
     ToonAlignmentAnalyzer -->> SparkToonOps: AlignmentScore(0.95)
     SparkToonOps ->> AdaptiveChunking: calculateOptimalChunkSize(df)
     AdaptiveChunking -->> SparkToonOps: ChunkStrategy(1000 rows)
-    SparkToonOps ->> SparkToonOps: collect() rows
+    SparkToonOps ->> SparkToonOps: stream rows (toLocalIterator)
     SparkToonOps ->> SparkJsonInterop: rowToJsonValue(row, schema)
     SparkJsonInterop -->> SparkToonOps: JArray[JObj]
     SparkToonOps ->> SparkToonOps: chunk by maxRows

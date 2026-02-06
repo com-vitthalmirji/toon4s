@@ -1,5 +1,7 @@
 package io.toonformat.toon4s.spark
 
+import scala.util.Try
+
 /**
  * LLM integration types and abstractions.
  *
@@ -40,11 +42,7 @@ package object llm {
     }
 
     def safely[A](operation: => A): Result[A] = {
-      try {
-        Right(operation)
-      } catch {
-        case ex: Exception => Left(LlmError.UnknownError(ex.getMessage, Some(ex)))
-      }
+      Try(operation).toEither.left.map(ex => LlmError.UnknownError(ex.getMessage, Some(ex)))
     }
 
   }

@@ -41,6 +41,22 @@ class ToonMetricsTest extends FunSuite {
     assertEquals(metrics.columnCount, 3)
   }
 
+  test("fromEncodedStrings: preserve raw token estimate without forced savings") {
+    val jsonEncoded = "a" * 40 // 10 tokens
+    val toonEncoded = "b" * 200 // 50 tokens
+
+    val metrics = ToonMetrics.fromEncodedStrings(
+      jsonEncoded = jsonEncoded,
+      toonEncoded = toonEncoded,
+      rowCount = 1,
+      columnCount = 1,
+    )
+
+    assertEquals(metrics.jsonTokenCount, 10)
+    assertEquals(metrics.toonTokenCount, 50)
+    assert(metrics.savingsPercent < 0.0)
+  }
+
   test("savingsPercent: calculate correctly") {
     val metrics = ToonMetrics(
       jsonTokenCount = 100,

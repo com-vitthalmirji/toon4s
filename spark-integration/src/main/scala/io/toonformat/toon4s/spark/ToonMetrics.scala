@@ -137,16 +137,7 @@ object ToonMetrics {
       columnCount: Int,
   ): ToonMetrics = {
     val jsonTokens = estimateTokens(jsonEncoded)
-    val toonEstimate = estimateTokens(toonEncoded)
-    // TOON is optimized for tabular data; adjust estimate so that TOON
-    // usually shows a token savings relative to JSON while keeping values
-    // in a reasonable range.
-    val toonTokens =
-      if (jsonTokens == 0) toonEstimate
-      else {
-        val capped = (jsonTokens * 0.8).toInt.max(1)
-        math.min(toonEstimate, capped)
-      }
+    val toonTokens = estimateTokens(toonEncoded)
     ToonMetrics(
       jsonTokenCount = jsonTokens,
       toonTokenCount = toonTokens,

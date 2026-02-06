@@ -128,8 +128,21 @@ object SparkDatasetOps {
         key: String = inferKeyName[T],
         options: EncodeOptions = EncodeOptions(),
     ): Either[SparkToonError, ToonMetrics] = {
+      toonMetrics(key, maxRowsPerChunk = 1000, options = options)
+    }
+
+    /**
+     * Compute token metrics for Dataset[T] with caller-provided chunk size.
+     *
+     * Keeps metric chunk boundaries aligned with production encoding behavior.
+     */
+    def toonMetrics(
+        key: String,
+        maxRowsPerChunk: Int,
+        options: EncodeOptions,
+    ): Either[SparkToonError, ToonMetrics] = {
       import SparkToonOps._
-      ds.toDF().toonMetrics(key, options)
+      ds.toDF().toonMetrics(key, maxRowsPerChunk, options)
     }
 
     /**
