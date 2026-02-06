@@ -151,9 +151,8 @@ object DeltaLakeCDC {
    *      d. Invoke user callback with metadata
    *
    * ==Error handling==
-   * If TOON encoding fails for a batch:
-   *   - Non-recoverable errors: Stream fails (e.g., invalid schema)
-   *   - Recoverable errors: Logged, batch skipped
+   * If TOON encoding fails for a batch, this method fails the micro-batch. Structured Streaming
+   * retry semantics then decide whether the query can recover.
    *
    * @param config
    *   CDC streaming configuration
@@ -327,7 +326,7 @@ object DeltaLakeCDC {
       processor(metadata)
 
     case Left(error: SparkToonError) =>
-      // Log error but don't fail stream (allow recovery)
+      // Fail the batch so streaming checkpoint/retry semantics can recover safely.
       batchDF.sparkSession.sparkContext.setJobDescription(
         s"Batch $batchId TOON encoding failed: ${error.message}"
       )

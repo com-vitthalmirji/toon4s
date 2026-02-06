@@ -1,6 +1,6 @@
 package io.toonformat.toon4s.spark.integrations
 
-import java.time.{Instant, LocalDateTime, ZoneId}
+import java.time.Instant
 
 import io.toonformat.toon4s.spark.{AdaptiveChunking, ToonAlignmentAnalyzer}
 import io.toonformat.toon4s.spark.SparkToonOps._
@@ -238,12 +238,11 @@ object IcebergTimeTravel {
       asOfTimestamp: Instant,
       config: TimeTravelConfig,
   )(implicit spark: SparkSession): Either[SparkToonError, SnapshotMetadata] = {
-    // Format timestamp for Iceberg (ISO-8601)
-    val timestampStr = formatInstantForIceberg(asOfTimestamp)
+    val asOfTimestampMillis = asOfTimestampOptionValue(asOfTimestamp)
 
     val df = spark.read
       .format("iceberg")
-      .option("as-of-timestamp", timestampStr)
+      .option("as-of-timestamp", asOfTimestampMillis)
       .load(config.tableName)
 
     val filteredDF = config.filterPredicate match {
@@ -424,10 +423,10 @@ object IcebergTimeTravel {
       timestamps: Vector[Instant],
   )(implicit spark: SparkSession): Map[Instant, ToonAlignmentAnalyzer.AlignmentScore] = {
     timestamps.map { timestamp =>
-      val timestampStr = formatInstantForIceberg(timestamp)
+      val asOfTimestampMillis = asOfTimestampOptionValue(timestamp)
       val df = spark.read
         .format("iceberg")
-        .option("as-of-timestamp", timestampStr)
+        .option("as-of-timestamp", asOfTimestampMillis)
         .load(tableName)
 
       val alignment = ToonAlignmentAnalyzer.analyzeSchema(df.schema)
@@ -436,6 +435,9 @@ object IcebergTimeTravel {
   }
 
   // ===== Private Helpers =====
+
+  private[integrations] def asOfTimestampOptionValue(instant: Instant): String =
+    instant.toEpochMilli.toString
 
   /** Encode DataFrame with adaptive chunking. */
   private def encodeWithAdaptiveChunking(
@@ -453,17 +455,6 @@ object IcebergTimeTravel {
     }
 
     df.toToon(key = config.key, maxRowsPerChunk = chunkSize)
-  }
-
-  /**
-   * Format Instant for Iceberg time travel syntax.
-   *
-   * Iceberg expects: "yyyy-MM-dd HH:mm:ss.SSS"
-   */
-  private def formatInstantForIceberg(instant: Instant): String = {
-    val ldt = LocalDateTime.ofInstant(instant, ZoneId.of("UTC"))
-    val formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS")
-    ldt.format(formatter)
   }
 
   /** Generate sequence of timestamps at regular intervals. */

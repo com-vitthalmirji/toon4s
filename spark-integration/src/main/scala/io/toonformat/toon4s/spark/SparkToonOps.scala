@@ -1,6 +1,7 @@
 package io.toonformat.toon4s.spark
 
 import scala.collection.immutable.VectorMap
+import scala.jdk.CollectionConverters._
 import scala.util.{Failure, Success, Try}
 
 import io.toonformat.toon4s.{DecodeOptions, EncodeOptions, Toon}
@@ -218,17 +219,15 @@ object SparkToonOps {
     val decodedResults = toonDocuments.map(toon => decodeSafe(toon, options))
 
     // Step 2: Sequence Either values (short-circuit on first error)
-    sequence(decodedResults).flatMap { jsonValues =>
-      // Step 3: Extract rows from decoded JSON (robust to nested wrappers)
-      val rows = extractRows(jsonValues)
+    sequence(decodedResults).flatMap {
+      jsonValues =>
+        // Step 3: Extract rows from decoded JSON (robust to nested wrappers)
+        val rows = extractRows(jsonValues)
 
       // Step 4: Convert to Spark Rows
       convertToSparkRows(rows, schema).map { sparkRows =>
-        // Step 5: Create DataFrame
-        spark.createDataFrame(
-          spark.sparkContext.parallelize(sparkRows),
-          schema,
-        )
+        // Step 5: Create DataFrame without RDD APIs (Spark Connect compatible)
+        spark.createDataFrame(sparkRows.asJava, schema)
       }
     }
   }
