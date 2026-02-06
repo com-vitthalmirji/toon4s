@@ -14,25 +14,26 @@ ThisBuild / crossScalaVersions := Seq(Scala3Latest, Scala213Latest)
 
 ThisBuild / description := "Scala implementation of the Token-Oriented Object Notation (TOON) format."
 
-ThisBuild / homepage := Some(url("https://github.com/vim89/toon4s"))
+ThisBuild / homepage := Some(url("https://github.com/com-vitthalmirji/toon4s"))
 
 ThisBuild / licenses := List("MIT" -> url("https://opensource.org/licenses/MIT"))
 
-ThisBuild / organizationName := "vim89"
+ThisBuild / organizationName := "com-vitthalmirji"
 
 ThisBuild / developers := List(
   Developer(
-    id = "vim89",
+    id = "vitthalmirji",
     name = "Vitthal Mirji",
     email = "vitthalmirji@gmail.com",
-    url = url("https://github.com/vim89"),
+    url = url("https://vitthalmirji.com/"),
   )
 )
 
 ThisBuild / scmInfo := Some(
   ScmInfo(
-    browseUrl = url("https://github.com/vim89/toon4s"),
-    connection = "scm:git:https://github.com/vim89/toon4s.git",
+    browseUrl = url("https://github.com/com-vitthalmirji/toon4s"),
+    connection = "scm:git:https://github.com/com-vitthalmirji/toon4s.git",
+    devConnection = Some("scm:git:git@github.com:com-vitthalmirji/toon4s.git"),
   )
 )
 
@@ -91,7 +92,7 @@ lazy val core = (project in file("core"))
           "toon4s-core",
           "-project-version",
           version.value,
-          "-social-links:github::https://github.com/vim89/toon4s",
+          "-social-links:github::https://github.com/com-vitthalmirji/toon4s",
         )
       else
         Seq(

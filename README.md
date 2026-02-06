@@ -2,8 +2,8 @@
 
 # toon4s: Token-Oriented Object Notation for JVM
 
-[![CI](https://github.com/vim89/toon4s/actions/workflows/ci.yml/badge.svg)](https://github.com/vim89/toon4s/actions/workflows/ci.yml)
-[![Release](https://github.com/vim89/toon4s/actions/workflows/release.yml/badge.svg)](https://github.com/vim89/toon4s/actions/workflows/release.yml)
+[![CI](https://github.com/com-vitthalmirji/toon4s/actions/workflows/ci.yml/badge.svg)](https://github.com/com-vitthalmirji/toon4s/actions/workflows/ci.yml)
+[![Release](https://github.com/com-vitthalmirji/toon4s/actions/workflows/release.yml/badge.svg)](https://github.com/com-vitthalmirji/toon4s/actions/workflows/release.yml)
 [![Scala](https://img.shields.io/badge/Scala-2.13%20%7C%203.3-red)](https://www.scala-lang.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 
