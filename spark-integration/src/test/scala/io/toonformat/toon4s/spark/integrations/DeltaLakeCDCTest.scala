@@ -39,9 +39,7 @@ class DeltaLakeCDCTest extends FunSuite {
   test("withCachedBatch: unpersist when processing throws") {
     val df = spark.range(0, 5).toDF("id")
 
-    val result = DeltaLakeCDC.withCachedBatch(df) { _ =>
-      throw new IllegalStateException("boom")
-    }
+    val result = DeltaLakeCDC.withCachedBatch(df)(_ => throw new IllegalStateException("boom"))
 
     assert(result.isLeft)
     result.left.foreach(err =>
