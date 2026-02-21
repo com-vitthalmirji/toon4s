@@ -71,6 +71,3 @@ Exit criteria:
 - Third party description text finalized
 - Maintainer and support contact data finalized
 - Adoption checklist completed for one real user workload
-
-P3 evidence:
-- maintained in private maintainer docs outside this repository
