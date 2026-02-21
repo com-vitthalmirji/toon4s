@@ -11,8 +11,7 @@ import org.apache.spark.sql.types.{DataType, StructType}
 /**
  * Spark SQL extensions provider that auto-registers TOON SQL UDFs.
  *
- * Usage:
- *   spark.sql.extensions=io.toonformat.toon4s.spark.extensions.ToonSparkSessionExtensions
+ * Usage: spark.sql.extensions=io.toonformat.toon4s.spark.extensions.ToonSparkSessionExtensions
  */
 class ToonSparkSessionExtensions extends SparkSessionExtensionsProvider {
 
@@ -20,7 +19,8 @@ class ToonSparkSessionExtensions extends SparkSessionExtensionsProvider {
     extensions.injectParser {
       (session: SparkSession, parser: ParserInterface) =>
         new ParserInterface {
-          private def ensureUdfsRegistered(): Unit = ToonSparkSessionExtensions.ensureRegistered(session)
+          private def ensureUdfsRegistered(): Unit =
+            ToonSparkSessionExtensions.ensureRegistered(session)
 
           override def parsePlan(sqlText: String): LogicalPlan = {
             ensureUdfsRegistered()
@@ -52,9 +52,11 @@ class ToonSparkSessionExtensions extends SparkSessionExtensionsProvider {
         }
     }
   }
+
 }
 
 private object ToonSparkSessionExtensions {
+
   private val registeredSessions = scala.collection.mutable.Set.empty[Int]
 
   def ensureRegistered(session: SparkSession): Unit = synchronized {
@@ -64,4 +66,5 @@ private object ToonSparkSessionExtensions {
       registeredSessions += sessionId
     }
   }
+
 }

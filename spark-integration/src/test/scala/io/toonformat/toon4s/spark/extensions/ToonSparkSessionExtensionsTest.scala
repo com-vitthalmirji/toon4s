@@ -37,4 +37,5 @@ class ToonSparkSessionExtensionsTest extends FunSuite {
       spark.stop()
     }
   }
+
 }

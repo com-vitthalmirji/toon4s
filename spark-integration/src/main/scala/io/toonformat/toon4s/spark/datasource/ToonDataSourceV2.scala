@@ -12,26 +12,39 @@ import io.toonformat.toon4s.JsonValue.{JArray, JObj}
 import io.toonformat.toon4s.spark.SparkJsonInterop
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileStatus, FileSystem, Path}
+import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.catalyst.CatalystTypeConverters
 import org.apache.spark.sql.catalyst.InternalRow
-import org.apache.spark.sql.connector.catalog.{SupportsRead, SupportsWrite, Table, TableCapability, TableProvider}
+import org.apache.spark.sql.connector.catalog.{
+  SupportsRead,
+  SupportsWrite,
+  Table,
+  TableCapability,
+  TableProvider,
+}
 import org.apache.spark.sql.connector.catalog.TableCapability.{BATCH_READ, BATCH_WRITE, TRUNCATE}
 import org.apache.spark.sql.connector.expressions.Transform
-import org.apache.spark.sql.connector.read.{Batch, InputPartition, PartitionReader, PartitionReaderFactory, Scan, ScanBuilder}
+import org.apache.spark.sql.connector.read.{
+  Batch,
+  InputPartition,
+  PartitionReader,
+  PartitionReaderFactory,
+  Scan,
+  ScanBuilder,
+}
 import org.apache.spark.sql.connector.write._
+import org.apache.spark.sql.internal.connector.SimpleTableProvider
 import org.apache.spark.sql.sources.DataSourceRegister
 import org.apache.spark.sql.types.{StringType, StructField, StructType}
-import org.apache.spark.sql.internal.connector.SimpleTableProvider
 import org.apache.spark.sql.util.CaseInsensitiveStringMap
-import org.apache.spark.sql.SparkSession
-import org.apache.spark.util.SerializableConfiguration
 import org.apache.spark.unsafe.types.UTF8String
+import org.apache.spark.util.SerializableConfiguration
 
 /**
  * Third-party TOON DataSource V2.
  *
- * Read path: one TOON document per row in a single `toon` string column.
- * Write path: one TOON document per task file, produced from input rows.
+ * Read path: one TOON document per row in a single `toon` string column. Write path: one TOON
+ * document per task file, produced from input rows.
  */
 class ToonDataSourceV2 extends SimpleTableProvider with DataSourceRegister {
 
@@ -57,20 +70,29 @@ class ToonDataSourceV2 extends SimpleTableProvider with DataSourceRegister {
 }
 
 private[datasource] object ToonDataSourceV2 {
+
   val ToonColumnName = "toon"
+
   val KeyOption = "key"
+
   val PathOption = "path"
+
   val DefaultTopLevelKey = "data"
-  val ReadSchema: StructType = StructType(Seq(StructField(ToonColumnName, StringType, nullable = false)))
+
+  val ReadSchema: StructType =
+    StructType(Seq(StructField(ToonColumnName, StringType, nullable = false)))
+
   val WriterFilePrefix = "part-"
+
 }
 
-private[datasource] final class ToonTable(
+final private[datasource] class ToonTable(
     options: CaseInsensitiveStringMap,
     userSchema: Option[StructType],
 ) extends Table
     with SupportsRead
     with SupportsWrite {
+
   import ToonDataSourceV2._
 
   override def name(): String = "toon"
@@ -85,12 +107,14 @@ private[datasource] final class ToonTable(
 
   override def newWriteBuilder(info: LogicalWriteInfo): WriteBuilder =
     new ToonWriteBuilder(options, info)
+
 }
 
-private[datasource] final class ToonScanBuilder(options: CaseInsensitiveStringMap)
+final private[datasource] class ToonScanBuilder(options: CaseInsensitiveStringMap)
     extends ScanBuilder
     with Scan
     with Batch {
+
   import ToonDataSourceV2._
 
   override def build(): Scan = this
@@ -112,13 +136,14 @@ private[datasource] final class ToonScanBuilder(options: CaseInsensitiveStringMa
 
   private def requirePath(map: CaseInsensitiveStringMap): Path = {
     Option(map.get(PathOption)) match {
-      case Some(v) if v.nonEmpty => new Path(v)
-      case _ =>
-        throw new IllegalArgumentException(s"Option '$PathOption' is required for format(\"toon\")")
+    case Some(v) if v.nonEmpty => new Path(v)
+    case _                     =>
+      throw new IllegalArgumentException(s"Option '$PathOption' is required for format(\"toon\")")
     }
   }
 
-  private def activeHadoopConf(): Configuration = SparkSession.active.sparkContext.hadoopConfiguration
+  private def activeHadoopConf(): Configuration =
+    SparkSession.active.sparkContext.hadoopConfiguration
 
   private def listVisibleFiles(fs: FileSystem, root: Path): Seq[Path] = {
     if (!fs.exists(root)) {
@@ -142,12 +167,14 @@ private[datasource] final class ToonScanBuilder(options: CaseInsensitiveStringMa
     val name = status.getPath.getName
     name.startsWith("_") || name.startsWith(".")
   }
+
 }
 
-private[datasource] final case class ToonInputPartition(path: String) extends InputPartition
+final private[datasource] case class ToonInputPartition(path: String) extends InputPartition
 
-private[datasource] final class ToonPartitionReaderFactory(conf: SerializableConfiguration)
+final private[datasource] class ToonPartitionReaderFactory(conf: SerializableConfiguration)
     extends PartitionReaderFactory {
+
   import ToonDataSourceV2._
 
   override def createReader(partition: InputPartition): PartitionReader[InternalRow] = {
@@ -188,9 +215,10 @@ private[datasource] final class ToonPartitionReaderFactory(conf: SerializableCon
       }
     }
   }
+
 }
 
-private[datasource] final class ToonWriteBuilder(
+final private[datasource] class ToonWriteBuilder(
     sourceOptions: CaseInsensitiveStringMap,
     info: LogicalWriteInfo,
 ) extends WriteBuilder
@@ -231,16 +259,17 @@ private[datasource] final class ToonWriteBuilder(
 
   private def requirePath(map: CaseInsensitiveStringMap): Path = {
     Option(map.get(ToonDataSourceV2.PathOption)) match {
-      case Some(v) if v.nonEmpty => new Path(v)
-      case _                     =>
-        throw new IllegalArgumentException(
-          s"Option '${ToonDataSourceV2.PathOption}' is required for format(\"toon\")"
-        )
+    case Some(v) if v.nonEmpty => new Path(v)
+    case _                     =>
+      throw new IllegalArgumentException(
+        s"Option '${ToonDataSourceV2.PathOption}' is required for format(\"toon\")"
+      )
     }
   }
+
 }
 
-private[datasource] final class ToonBatchWrite(
+final private[datasource] class ToonBatchWrite(
     queryId: String,
     outputPath: String,
     key: String,
@@ -282,9 +311,10 @@ private[datasource] final class ToonBatchWrite(
     val fs = tempPath.getFileSystem(conf)
     fs.delete(tempPath, true)
   }
+
 }
 
-private[datasource] final class ToonDataWriterFactory(
+final private[datasource] class ToonDataWriterFactory(
     outputPath: String,
     queryId: String,
     key: String,
@@ -294,19 +324,23 @@ private[datasource] final class ToonDataWriterFactory(
 
   override def createWriter(partitionId: Int, taskId: Long): DataWriter[InternalRow] = {
     val jobPath = new Path(new Path(outputPath, "_temporary"), queryId)
-    val filePath = new Path(jobPath, s"${ToonDataSourceV2.WriterFilePrefix}$partitionId-$taskId.toon")
+    val filePath =
+      new Path(jobPath, s"${ToonDataSourceV2.WriterFilePrefix}$partitionId-$taskId.toon")
     val fs = filePath.getFileSystem(conf.value)
     new ToonDataWriter(fs, filePath, key, schema)
   }
+
 }
 
-private[datasource] final class ToonDataWriter(
+final private[datasource] class ToonDataWriter(
     fs: FileSystem,
     file: Path,
     key: String,
     schema: StructType,
 ) extends DataWriter[InternalRow] {
+
   private val scalaConverter = CatalystTypeConverters.createToScalaConverter(schema)
+
   private val rows = scala.collection.mutable.ArrayBuffer.empty[JsonValue]
 
   override def write(record: InternalRow): Unit = {
@@ -328,4 +362,5 @@ private[datasource] final class ToonDataWriter(
   }
 
   override def close(): Unit = {}
+
 }
