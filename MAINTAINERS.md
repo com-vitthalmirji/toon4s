@@ -4,7 +4,7 @@ This project is maintained under `com-vitthalmirji`.
 
 ## Current maintainers
 
-- Primary maintainer: @vitthalmirji
+- Primary maintainer: [@vim89](https://github.com/vim89)
 
 ## Maintainer responsibilities
 
