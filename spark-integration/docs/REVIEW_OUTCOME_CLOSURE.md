@@ -51,9 +51,10 @@ Evidence: `core/src/test/scala/io/toonformat/toon4s/ParserFuzzSpec.scala`.
 
 ## Strategic items from review plan
 
-- Independent benchmark reproduction: protocol added in `BENCHMARK_REPRODUCIBILITY.md`.
-- Spark website submission pack: `SPARK_WEBSITE_SUBMISSION.md`.
-- Upstream proposal prep: `UPSTREAM_PROPOSAL_PREP.md`.
+- Independent benchmark reproduction: protocol added in `BENCHMARK_REPRODUCIBILITY.md`, tracked by issue `#64`.
+- Spark website submission pack: `SPARK_WEBSITE_SUBMISSION.md`, tracked by issue `#65`.
+- Upstream proposal prep: `UPSTREAM_PROPOSAL_PREP.md`, tracked by issue `#66`.
+- Maintainer growth plan: tracked by issue `#67`.
 - Outreach package: `OUTREACH_ASSETS.md`.
 
 ## Final note
