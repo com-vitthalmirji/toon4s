@@ -48,3 +48,5 @@ Record:
 
 - Do not update public benchmark claims without rerunning benchmarks.
 - Keep command lines and environment details with results.
+
+Trademark notice: Apache Spark and Spark are trademarks of The Apache Software Foundation.

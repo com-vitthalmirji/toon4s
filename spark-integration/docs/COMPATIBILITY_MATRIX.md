@@ -29,3 +29,5 @@
 - CI validates runtime compatibility on Spark 4.0.1.
 - Windows DataSource V2 write tests depend on Hadoop `winutils` and are guarded in tests.
 - Spark integration is intentionally Scala 2.13 because Spark runtime APIs are Scala 2 based.
+
+Trademark notice: Apache Spark and Spark are trademarks of The Apache Software Foundation.

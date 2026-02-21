@@ -1,6 +1,6 @@
 # API stability policy
 
-This policy defines what stays stable in patch releases of toon4s-spark.
+This policy defines what stays stable in patch releases of toon4s for Apache Spark.
 
 ## Stable in patch releases
 
@@ -34,3 +34,5 @@ This policy defines what stays stable in patch releases of toon4s-spark.
 
 - Windows write path tests for DataSource V2 require Hadoop `winutils`.
 - CI skips those two write path tests on Windows until a managed `winutils` path is available.
+
+Trademark notice: Apache Spark and Spark are trademarks of The Apache Software Foundation.

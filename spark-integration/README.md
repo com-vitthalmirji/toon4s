@@ -1,11 +1,11 @@
-# toon4s-spark for Apache Spark
+# toon4s for Apache Spark
 
 TOON encoding for [Apache Spark](https://spark.apache.org/) DataFrames and Datasets, optimized for LLM workloads and
 tabular analytics.
 
 ## Overview
 
-toon4s-spark provides production-ready TOON encoding for Apache Spark DataFrames and Datasets. Based on
+The spark-integration module provides production-ready TOON encoding for Apache Spark DataFrames and Datasets. Based on
 the [TOON Generation Benchmark](https://github.com/vetertann/TOON-generation-benchmark), this integration delivers **22%
 token savings** for tabular data with intelligent safeguards for schema alignment and prompt tax optimization.
 
@@ -75,6 +75,8 @@ libraryDependencies ++= Seq(
   "org.apache.spark" %% "spark-sql" % "<your-spark-version>" % Provided
 )
 ```
+
+Artifact note: the published artifact ID is `toon4s-spark`.
 
 Compatibility note: CI validates Spark `3.5.0` and `4.0.1`.
 
@@ -269,7 +271,7 @@ largeDf.toToon(
 
 ### LLM integration [llm4s-compatible](https://github.com/llm4s/llm4s)
 
-`toon4s-spark` provides an LLM client abstraction that mirrors [llm4s](https://github.com/llm4s/llm4s) design patterns
+This module provides an LLM client abstraction that mirrors [llm4s](https://github.com/llm4s/llm4s) design patterns
 for
 forward compatibility.
 
@@ -873,7 +875,7 @@ sequenceDiagram
 
 ### Strategic alignment with Spark ecosystem
 
-toon4s-spark is positioned at the intersection of:
+toon4s for Apache Spark is positioned at the intersection of:
 
 1. **Spark's strength**: Tabular data, SQL results, ETL pipelines
 2. **TOON's sweet spot**: Tabular encoding (90.5% accuracy, 22% token savings)
