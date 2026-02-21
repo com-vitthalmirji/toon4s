@@ -87,7 +87,10 @@ class SparkToonOpsTest extends SparkTestSuite {
     ))
     val data = (1 to 12).map(i => Row(i, s"user$i"))
     val df = spark.createDataFrame(data.asJava, schema).repartition(3)
-    val outputPath = Files.createTempDirectory("toon-write-test").toAbsolutePath.toString
+    val tempDir = Files.createTempDirectory("toon-write-test")
+    val outputPath =
+      if (System.getProperty("os.name", "").toLowerCase.contains("win")) tempDir.toUri.toString
+      else tempDir.toAbsolutePath.toString
 
     val writeResult = df.writeToon(
       outputPath = outputPath,
