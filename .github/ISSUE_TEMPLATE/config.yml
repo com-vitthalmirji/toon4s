@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: TOON specification
+    url: https://toonformat.dev/
+    about: Check the format specification and benchmark context before filing parser issues.
