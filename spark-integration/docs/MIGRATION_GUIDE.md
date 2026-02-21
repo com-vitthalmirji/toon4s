@@ -70,6 +70,7 @@ spark.conf.set(
 Current migration path has no required breaking API changes.
 
 Behavior changes to note:
+
 - `toonMetrics` should use the same chunk size as `toToon` for aligned estimates.
 - Data source write tests are guarded on Windows CI because `winutils` is missing.
 

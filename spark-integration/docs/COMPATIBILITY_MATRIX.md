@@ -2,10 +2,10 @@
 
 ## Tested version pairs
 
-| Spark | Scala module | JDK | CI status |
-|---|---|
-| 3.5.0 | spark-integration on Scala 2.13 | 21 | Tested |
-| 4.0.1 | spark-integration on Scala 2.13 | 21 | Tested |
+| Spark | Scala module                    | JDK | CI status |
+|-------|---------------------------------|-----|-----------|
+| 3.5.0 | spark-integration on Scala 2.13 | 21  | Tested    |
+| 4.0.1 | spark-integration on Scala 2.13 | 21  | Tested    |
 
 ## Support window policy
 
@@ -15,13 +15,13 @@
 
 ## Platform and matrix coverage
 
-| Area | Status |
-|---|---|
-| Spark integration module Scala | 2.13 |
-| Root project Scala | 2.13 and 3.3.3 |
-| CI operating systems | Linux, macOS, Windows |
-| CI JDK | 21 |
-| Spark compatibility checks | 3.5.0 and 4.0.1 |
+| Area                           | Status                |
+|--------------------------------|-----------------------|
+| Spark integration module Scala | 2.13                  |
+| Root project Scala             | 2.13 and 3.3.3        |
+| CI operating systems           | Linux, macOS, Windows |
+| CI JDK                         | 21                    |
+| Spark compatibility checks     | 3.5.0 and 4.0.1       |
 
 ## Notes
 
