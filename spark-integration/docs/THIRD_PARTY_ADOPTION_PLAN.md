@@ -73,8 +73,4 @@ Exit criteria:
 - Adoption checklist completed for one real user workload
 
 P3 evidence:
-
-- `SPARK_THIRD_PARTY_LISTING_PAYLOAD.md`
-- `OPERATOR_ROLLOUT_RUNBOOK.md`
-- `RELEASE_PLAYBOOK.md`
-- `ADOPTION_CHECKLIST.md`
+- maintained in private maintainer docs outside this repository

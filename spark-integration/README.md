@@ -108,10 +108,6 @@ Detailed docs:
 - `spark-integration/docs/BENCHMARK_WORKFLOW.md`
 - `spark-integration/docs/BENCHMARK_REPORT_TEMPLATE.md`
 - `spark-integration/docs/CLAIMS_TRACEABILITY.md`
-- `spark-integration/docs/SPARK_THIRD_PARTY_LISTING_PAYLOAD.md`
-- `spark-integration/docs/OPERATOR_ROLLOUT_RUNBOOK.md`
-- `spark-integration/docs/RELEASE_PLAYBOOK.md`
-- `spark-integration/docs/ADOPTION_CHECKLIST.md`
 
 ## Quick start
 
