@@ -32,13 +32,14 @@ class ParserFuzzSpec extends ScalaCheckSuite {
   property("streaming tabular path does not throw on fuzz input") {
     forAll(genFuzzInput) { input =>
       val runResult = scala.util.Try {
-        Streaming.foreachTabular(new StringReader(input)) { (_, _, _) =>
-          ()
-        }
+        Streaming.foreachTabular(new StringReader(input))((_, _, _) => ())
       }
       val onlyDomainFailure =
         runResult.failed.toOption.exists(_.isInstanceOf[error.DecodeError])
-      assert(runResult.isSuccess || onlyDomainFailure, clues(input.take(120), runResult.failed.toOption.map(_.toString)))
+      assert(
+        runResult.isSuccess || onlyDomainFailure,
+        clues(input.take(120), runResult.failed.toOption.map(_.toString)),
+      )
     }
   }
 
@@ -52,7 +53,10 @@ class ParserFuzzSpec extends ScalaCheckSuite {
       }
       val onlyDomainFailure =
         runResult.failed.toOption.exists(_.isInstanceOf[error.DecodeError])
-      assert(runResult.isSuccess || onlyDomainFailure, clues(input.take(120), runResult.failed.toOption.map(_.toString)))
+      assert(
+        runResult.isSuccess || onlyDomainFailure,
+        clues(input.take(120), runResult.failed.toOption.map(_.toString)),
+      )
     }
   }
 

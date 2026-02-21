@@ -1,9 +1,9 @@
 package io.toonformat.toon4s.spark.llm
 
 /**
- * Compatibility LLM client abstraction.
+ * Legacy compatibility LLM client abstraction.
  *
- * This is kept for local tests and migration-only flows. For production Spark pipelines, use
+ * This type is kept for migration tests only. New production paths should use
  * `writeToLlmPartitions` with llm4s clients through `LlmPartitionWriterFactory`.
  */
 trait LlmClient {

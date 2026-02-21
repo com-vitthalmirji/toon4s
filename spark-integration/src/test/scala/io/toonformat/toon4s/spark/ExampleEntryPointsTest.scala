@@ -17,4 +17,5 @@ class ExampleEntryPointsTest extends FunSuite {
       )
     }
   }
+
 }

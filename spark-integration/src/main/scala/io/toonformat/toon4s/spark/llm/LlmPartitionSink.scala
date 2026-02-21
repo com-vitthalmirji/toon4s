@@ -24,39 +24,59 @@ final case class LlmChunkRequest(
 sealed trait LlmSendStatus
 
 object LlmSendStatus {
+
   case object Sent extends LlmSendStatus
+
   case object Duplicate extends LlmSendStatus
+
 }
 
 trait IdempotencyStore extends Serializable {
+
   def isSent(key: String): Either[LLMError, Boolean]
+
   def markSent(key: String): Either[LLMError, Unit]
+
 }
 
 object IdempotencyStore {
+
   object Noop extends IdempotencyStore {
+
     def isSent(key: String): Either[LLMError, Boolean] = Right(false)
+
     def markSent(key: String): Either[LLMError, Unit] = Right(())
+
   }
 
   final class InMemory extends IdempotencyStore {
+
     private val sentKeys = new ConcurrentHashMap[String, java.lang.Boolean]()
+
     def isSent(key: String): Either[LLMError, Boolean] =
       Right(sentKeys.containsKey(key))
+
     def markSent(key: String): Either[LLMError, Unit] = {
       sentKeys.put(key, java.lang.Boolean.TRUE)
       Right(())
     }
+
   }
+
 }
 
 trait LlmPartitionWriter extends Serializable {
+
   def send(request: LlmChunkRequest): Either[LLMError, LlmSendStatus]
+
   def close(): Unit = ()
+
 }
 
 trait LlmPartitionWriterFactory extends Serializable {
+
   def create(): LlmPartitionWriter
+
 }
 
 object LlmPartitionWriterFactory {
@@ -73,13 +93,15 @@ object LlmPartitionWriterFactory {
         new LlmPartitionWriter {
           def send(request: LlmChunkRequest): Either[LLMError, LlmSendStatus] = {
             idempotencyStore.isSent(request.idempotencyKey).flatMap {
-              case true => Right(LlmSendStatus.Duplicate)
+              case true  => Right(LlmSendStatus.Duplicate)
               case false =>
                 Llm4sConversation
                   .create(
                     List(
                       Llm4sSystemMessage(systemPrompt),
-                      Llm4sUserMessage(s"idempotency_key=${request.idempotencyKey}\n${request.toonChunk}"),
+                      Llm4sUserMessage(
+                        s"idempotency_key=${request.idempotencyKey}\n${request.toonChunk}"
+                      ),
                     )
                   )
                   .flatMap(conv => client.complete(conv, completionOptions))
@@ -91,6 +113,7 @@ object LlmPartitionWriterFactory {
         }
       }
     }
+
 }
 
 final case class LlmPartitionWriteOptions(
@@ -112,11 +135,14 @@ final case class LlmPartitionWriteMetrics(
 )
 
 object LlmPartitionWriteMetrics {
+
   val empty: LlmPartitionWriteMetrics =
     LlmPartitionWriteMetrics(0L, 0L, 0L, 0L, 0L, 0L, 0L, None)
+
 }
 
 private[spark] object LlmPartitionIdempotency {
+
   def build(
       prefix: String,
       key: String,
@@ -132,9 +158,11 @@ private[spark] object LlmPartitionIdempotency {
     val digest = MessageDigest.getInstance("SHA-256")
     digest.digest(value.getBytes("UTF-8")).map("%02x".format(_)).mkString
   }
+
 }
 
 private[spark] object LlmRetry {
+
   def withRetries[A](
       maxRetries: Int,
       backoffMs: Long,
@@ -142,7 +170,7 @@ private[spark] object LlmRetry {
     @annotation.tailrec
     def loop(attempt: Int): Either[LLMError, A] = {
       operation match {
-      case right @ Right(_) => right
+      case right @ Right(_)                  => right
       case Left(err) if attempt < maxRetries =>
         val sleepMillis = math.max(0L, backoffMs) * (attempt.toLong + 1L)
         Try(Thread.sleep(sleepMillis))
@@ -152,4 +180,5 @@ private[spark] object LlmRetry {
     }
     loop(0)
   }
+
 }

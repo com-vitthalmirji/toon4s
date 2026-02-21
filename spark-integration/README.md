@@ -12,6 +12,17 @@ token savings** for tabular data with intelligent safeguards for schema alignmen
 This is an external third-party integration maintained in this repository:
 https://github.com/com-vitthalmirji/toon4s
 
+### Pipeline fit
+
+```text
+Lakehouse tables or streams
+  -> Spark SQL or DataFrame transform
+  -> toon4s-spark encoding (toToonDataset or writeToon)
+  -> TOON chunks
+  -> LLM endpoint call (writeToLlmPartitions)
+  -> response validation (ToonLlmResponseValidator)
+```
+
 ### When to use TOON vs JSON
 
 **TOON wins:**
@@ -56,8 +67,8 @@ TOON generation benchmark:
 - **Iceberg time travel**: Historical TOON snapshots for trend analysis
 - **Production monitoring**: Health checks, telemetry, and readiness reports
 - **SQL UDFs**: Register TOON functions for use in Spark SQL queries
-- **LLM client abstraction**: [llm4s](https://github.com/llm4s/llm4s) compatible conversation-based API
-- **Forward compatible**: Designed to integrate seamlessly with llm4s when available
+- **Executor-side LLM sink**: `writeToLlmPartitions` with [llm4s](https://github.com/llm4s/llm4s) clients
+- **Idempotent send path**: per-partition writer factory with retry and idempotency key support
 
 ## Installation
 

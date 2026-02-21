@@ -11,7 +11,8 @@ import scala.util.Try
  *   - llm4s client types (`org.llm4s.*`)
  *
  * Compatibility path:
- *   - The standalone `LlmClient`/`Message`/`Completion` helpers stay for local tests and migration.
+ *   - The standalone `LlmClient`/`Message`/`Completion` helpers are legacy.
+ *   - Use them only for migration tests. Do not use them in new production code.
  */
 package object llm {
 

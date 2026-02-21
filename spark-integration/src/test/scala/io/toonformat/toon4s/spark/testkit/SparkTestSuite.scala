@@ -16,9 +16,9 @@ trait SparkTestSuite extends FunSuite {
     "spark.sql.shuffle.partitions" -> "1",
   )
 
-  protected final def spark: SparkSession = sparkSession
+  final protected def spark: SparkSession = sparkSession
 
-  protected final implicit def sparkImplicit: SparkSession = sparkSession
+  implicit final protected def sparkImplicit: SparkSession = sparkSession
 
   override def beforeAll(): Unit = {
     SparkSession.clearActiveSession()
