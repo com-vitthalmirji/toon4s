@@ -337,7 +337,7 @@ object DeltaLakeCDC {
     }
   }
 
-  private def collectChangeTypes(
+  private[integrations] def collectChangeTypes(
       batchDF: DataFrame,
       maxCollectedChangeTypes: Int,
   ): Either[SparkToonError, Map[String, Long]] = {
@@ -366,7 +366,9 @@ object DeltaLakeCDC {
     }
   }
 
-  private def collectCommitVersions(batchDF: DataFrame): Either[SparkToonError, (Long, Long)] = {
+  private[integrations] def collectCommitVersions(
+      batchDF: DataFrame
+  ): Either[SparkToonError, (Long, Long)] = {
     val commitRangeResult = Try {
       import batchDF.sparkSession.implicits._
       batchDF
@@ -392,7 +394,7 @@ object DeltaLakeCDC {
     }
   }
 
-  private def resolveChunkSize(
+  private[integrations] def resolveChunkSize(
       batchDF: DataFrame,
       config: DeltaCDCConfig,
       batchId: Long,
