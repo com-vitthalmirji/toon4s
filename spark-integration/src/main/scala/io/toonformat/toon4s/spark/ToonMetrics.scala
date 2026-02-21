@@ -31,9 +31,9 @@ package io.toonformat.toon4s.spark
  *   Number of columns in DataFrame
  */
 final case class ToonMetrics(
-    jsonTokenCount: Long,
-    toonTokenCount: Long,
-    rowCount: Long,
+    jsonTokenCount: Int,
+    toonTokenCount: Int,
+    rowCount: Int,
     columnCount: Int,
 ) {
 
@@ -51,7 +51,7 @@ final case class ToonMetrics(
    *
    * Positive value indicates TOON uses fewer tokens.
    */
-  def absoluteSavings: Long = jsonTokenCount - toonTokenCount
+  def absoluteSavings: Int = jsonTokenCount - toonTokenCount
 
   /**
    * Compression ratio (TOON / JSON).
@@ -175,12 +175,12 @@ object ToonMetrics {
   def fromEncodedStrings(
       jsonEncoded: String,
       toonEncoded: String,
-      rowCount: Long,
+      rowCount: Int,
       columnCount: Int,
       tokenEstimator: TokenEstimator = defaultTokenEstimator,
   ): ToonMetrics = {
-    val jsonTokens = estimateTokens(jsonEncoded, tokenEstimator).toLong
-    val toonTokens = estimateTokens(toonEncoded, tokenEstimator).toLong
+    val jsonTokens = estimateTokens(jsonEncoded, tokenEstimator)
+    val toonTokens = estimateTokens(toonEncoded, tokenEstimator)
     ToonMetrics(
       jsonTokenCount = jsonTokens,
       toonTokenCount = toonTokens,
@@ -189,11 +189,25 @@ object ToonMetrics {
     )
   }
 
+  def fromEncodedStrings(
+      jsonEncoded: String,
+      toonEncoded: String,
+      rowCount: Int,
+      columnCount: Int,
+  ): ToonMetrics =
+    fromEncodedStrings(
+      jsonEncoded = jsonEncoded,
+      toonEncoded = toonEncoded,
+      rowCount = rowCount,
+      columnCount = columnCount,
+      tokenEstimator = defaultTokenEstimator,
+    )
+
   /** Zero metrics (no data). */
   val empty: ToonMetrics = ToonMetrics(
-    jsonTokenCount = 0L,
-    toonTokenCount = 0L,
-    rowCount = 0L,
+    jsonTokenCount = 0,
+    toonTokenCount = 0,
+    rowCount = 0,
     columnCount = 0,
   )
 

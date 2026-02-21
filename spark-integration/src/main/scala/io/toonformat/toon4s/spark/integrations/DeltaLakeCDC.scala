@@ -116,7 +116,6 @@ object DeltaLakeCDC {
       triggerInterval: String = "10 seconds",
       key: String = "cdc_events",
       maxRowsPerChunk: Option[Int] = None,
-      maxCollectedChangeTypes: Int = DefaultMaxCollectedChangeTypes,
   )
 
   /**
@@ -285,7 +284,7 @@ object DeltaLakeCDC {
   ): Unit = {
     val batchResult = withCachedBatch(batchDF) { cachedBatch =>
       for {
-        changeTypes <- collectChangeTypes(cachedBatch, config.maxCollectedChangeTypes)
+        changeTypes <- collectChangeTypes(cachedBatch, DefaultMaxCollectedChangeTypes)
         result <- {
           if (changeTypes.isEmpty) Right(None)
           else {

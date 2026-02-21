@@ -379,7 +379,7 @@ class SparkToonOpsTest extends SparkTestSuite {
     val result = df.toonMetrics("data", maxRowsPerChunk = 3, EncodeOptions())
     assert(result.isRight)
     result.foreach { metrics =>
-      assertEquals(metrics.rowCount, 25L)
+      assertEquals(metrics.rowCount, 25)
       assertEquals(metrics.columnCount, 2)
     }
   }
@@ -402,7 +402,7 @@ class SparkToonOpsTest extends SparkTestSuite {
 
     assert(result.isRight)
     result.foreach { metrics =>
-      assertEquals(metrics.rowCount, 11L)
+      assertEquals(metrics.rowCount, 11)
       assertEquals(metrics.columnCount, 2)
       assert(metrics.jsonTokenCount > 0)
       assert(metrics.toonTokenCount > 0)
@@ -471,7 +471,7 @@ class SparkToonOpsTest extends SparkTestSuite {
 
     assert(result.isRight)
     result.foreach { metrics =>
-      assertEquals(metrics.rowCount, 0L)
+      assertEquals(metrics.rowCount, 0)
       assertEquals(metrics.columnCount, 0)
       assert(metrics.jsonTokenCount >= 0)
       assert(metrics.toonTokenCount >= 0)
@@ -618,7 +618,7 @@ class SparkToonOpsTest extends SparkTestSuite {
 
     assert(result.isRight)
     result.foreach { metrics =>
-      assertEquals(metrics.rowCount, 1000L)
+      assertEquals(metrics.rowCount, 1000)
       assert(metrics.jsonTokenCount > 0)
       assert(metrics.toonTokenCount > 0)
       assertEquals(

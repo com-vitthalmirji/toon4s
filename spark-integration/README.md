@@ -58,7 +58,7 @@ TOON generation benchmark:
 - **Type-safe `Dataset[T]` support**: Compile-time safety with Scala case classes
 - **Schema alignment detection**: Pre-flight validation based on benchmark findings
 - **Adaptive chunking**: Optimize prompt tax for dataset size
-- **Streaming chunk encoding**: `toToon` iterates rows with `toLocalIterator` to reduce driver memory pressure
+- **Distributed chunk encoding**: `toToonDataset` and `writeToon` encode in executor partitions; `toToon` is a bounded convenience API
 - **DataSource V2 connector**: `format("toon")` for batch write/read of TOON documents
 - **Token metrics**: Compare JSON vs TOON token counts and cost savings
 - **Temporal interoperability**: Round-trip support for `DateType`, `TimestampType`, and `TimestampNTZType`
@@ -506,14 +506,14 @@ if (!check.valid) logger.warn(check.issues.map(_.message).mkString("; "))
 ### ToonMetrics
 
 ```scala
-case class ToonMetrics(jsonTokenCount: Long, toonTokenCount: Long,
-                       savingsPercent: Double, rowCount: Long,
+case class ToonMetrics(jsonTokenCount: Int, toonTokenCount: Int,
+                       savingsPercent: Double, rowCount: Int,
                        columnCount: Int)
 ```
 
 Methods:
 
-- `absoluteSavings: Long` - Token count difference
+- `absoluteSavings: Int` - Token count difference
 - `compressionRatio: Double` - TOON/JSON ratio
 - `estimatedCostSavings(costPer1kTokens: Double): Double` - Cost savings estimate
 - `hasMeaningfulSavings(threshold: Double): Boolean` - Check if savings exceed threshold

@@ -44,7 +44,7 @@ class SparkDatasetOpsTest extends SparkTestSuite {
 
     assert(metricsResult.isRight)
     metricsResult.foreach { metrics =>
-      assertEquals(metrics.rowCount, 3L)
+      assertEquals(metrics.rowCount, 3)
       assertEquals(metrics.columnCount, 3)
       assert(metrics.jsonTokenCount > 0)
     }
@@ -61,7 +61,7 @@ class SparkDatasetOpsTest extends SparkTestSuite {
 
     assert(metricsResult.isRight)
     metricsResult.foreach { metrics =>
-      assertEquals(metrics.rowCount, 20L)
+      assertEquals(metrics.rowCount, 20)
       assertEquals(metrics.columnCount, 3)
     }
   }
@@ -87,7 +87,7 @@ class SparkDatasetOpsTest extends SparkTestSuite {
 
     assert(metricsResult.isRight)
     metricsResult.foreach { metrics =>
-      assertEquals(metrics.rowCount, 9L)
+      assertEquals(metrics.rowCount, 9)
       assertEquals(metrics.columnCount, 3)
     }
   }
