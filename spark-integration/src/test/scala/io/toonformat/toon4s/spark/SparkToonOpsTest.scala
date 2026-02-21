@@ -21,6 +21,8 @@ import org.llm4s.error.{LLMError, NetworkError, TimeoutError, ValidationError}
 
 class SparkToonOpsTest extends SparkTestSuite {
 
+  private val isWindows = System.getProperty("os.name", "").toLowerCase.contains("win")
+
   test("toToon: encode simple DataFrame") {
     val schema = StructType(Seq(
       StructField("id", IntegerType),
@@ -81,6 +83,7 @@ class SparkToonOpsTest extends SparkTestSuite {
   }
 
   test("writeToon: writes TOON chunks without collecting on driver") {
+    assume(!isWindows, "writeToon test needs winutils on Windows CI")
     val schema = StructType(Seq(
       StructField("id", IntegerType),
       StructField("name", StringType),
