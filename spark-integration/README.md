@@ -94,6 +94,12 @@ Published artifacts compile against Spark `3.5.0` APIs and are validated on Spar
 If you currently call string-arg methods (`toToon(key = ...)`, `toonMetrics(key = ...)`), migration is optional.
 You can keep existing code, but new code should prefer `ToonSparkOptions`.
 
+Detailed docs:
+- `spark-integration/docs/API_STABILITY_POLICY.md`
+- `spark-integration/docs/COMPATIBILITY_MATRIX.md`
+- `spark-integration/docs/MIGRATION_GUIDE.md`
+- `spark-integration/docs/THIRD_PARTY_ADOPTION_PLAN.md`
+
 ## Quick start
 
 ### DataFrame to TOON
