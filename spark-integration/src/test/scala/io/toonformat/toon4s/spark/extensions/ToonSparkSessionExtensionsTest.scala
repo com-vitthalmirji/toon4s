@@ -1,24 +1,29 @@
 package io.toonformat.toon4s.spark.extensions
 
+import scala.util.Using
+
 import munit.FunSuite
 import org.apache.spark.sql.SparkSession
 
 class ToonSparkSessionExtensionsTest extends FunSuite {
 
   test("spark.sql.extensions auto-registers TOON UDFs") {
-    val spark = SparkSession
-      .builder()
-      .master("local[1]")
-      .appName("ToonSparkSessionExtensionsTest")
-      .config("spark.ui.enabled", "false")
-      .config("spark.sql.shuffle.partitions", "1")
-      .config(
-        "spark.sql.extensions",
-        "io.toonformat.toon4s.spark.extensions.ToonSparkSessionExtensions",
-      )
-      .getOrCreate()
+    val managedSpark = ManagedSparkSession(
+      SparkSession
+        .builder()
+        .master("local[1]")
+        .appName("ToonSparkSessionExtensionsTest")
+        .config("spark.ui.enabled", "false")
+        .config("spark.sql.shuffle.partitions", "1")
+        .config(
+          "spark.sql.extensions",
+          "io.toonformat.toon4s.spark.extensions.ToonSparkSessionExtensions",
+        )
+        .getOrCreate()
+    )
 
-    try {
+    Using.resource(managedSpark) { managed =>
+      val spark = managed.spark
       val result = spark.sql(
         """
           |SELECT
@@ -33,9 +38,13 @@ class ToonSparkSessionExtensionsTest extends FunSuite {
       assert(toonDoc.nonEmpty)
       assert(toonDoc.contains("Alice"))
       assert(row.getAs[Int]("token_count") > 0)
-    } finally {
-      spark.stop()
     }
   }
+
+}
+
+final private case class ManagedSparkSession(spark: SparkSession) extends AutoCloseable {
+
+  override def close(): Unit = spark.stop()
 
 }

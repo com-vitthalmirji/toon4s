@@ -18,9 +18,7 @@ class SparkDatasetOpsTest extends FunSuite {
   }
 
   override def afterAll(): Unit = {
-    if (sparkInstance != null) {
-      sparkInstance.stop()
-    }
+    Option(sparkInstance).foreach(_.stop())
   }
 
   test("Dataset[T] toToon encodes runtime data") {

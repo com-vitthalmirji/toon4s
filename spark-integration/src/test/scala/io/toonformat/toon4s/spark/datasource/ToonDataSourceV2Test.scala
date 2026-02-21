@@ -2,10 +2,14 @@ package io.toonformat.toon4s.spark.datasource
 
 import java.nio.file.Files
 
+import scala.util.Using
+
 import munit.FunSuite
 import org.apache.spark.sql.SparkSession
 
 class ToonDataSourceV2Test extends FunSuite {
+
+  private val isWindows = System.getProperty("os.name", "").toLowerCase.contains("win")
 
   private var spark: SparkSession = _
 
@@ -20,14 +24,12 @@ class ToonDataSourceV2Test extends FunSuite {
   }
 
   override def afterAll(): Unit = {
-    if (spark != null) {
-      spark.stop()
-    }
+    Option(spark).foreach(_.stop())
   }
 
   test("format(toon): write and read TOON documents") {
-    val tempDir = Files.createTempDirectory("toon-ds-v2-test").toFile
-    try {
+    assume(!isWindows, "TOON datasource write tests need winutils on Windows CI")
+    Using.resource(tempDirectory("toon-ds-v2-test")) { tempDir =>
       val sparkSession = spark
       import sparkSession.implicits._
       val df = Seq(
@@ -40,13 +42,13 @@ class ToonDataSourceV2Test extends FunSuite {
         .write
         .format("toon")
         .mode("overwrite")
-        .option("path", tempDir.getAbsolutePath)
+        .option("path", tempDir.file.getAbsolutePath)
         .option("key", "users")
         .save()
 
       val readDf = spark.read
         .format("toon")
-        .option("path", tempDir.getAbsolutePath)
+        .option("path", tempDir.file.getAbsolutePath)
         .load()
 
       assertEquals(readDf.schema.fieldNames.toSeq, Seq("toon"))
@@ -55,14 +57,12 @@ class ToonDataSourceV2Test extends FunSuite {
       assert(payloads.forall(_.contains("users")))
       assert(payloads.exists(_.contains("Alice")))
       assert(payloads.exists(_.contains("Bob")))
-    } finally {
-      deleteRecursively(tempDir)
     }
   }
 
   test("format(toon): splits partition output with maxRowsPerFile") {
-    val tempDir = Files.createTempDirectory("toon-ds-v2-split-test").toFile
-    try {
+    assume(!isWindows, "TOON datasource write tests need winutils on Windows CI")
+    Using.resource(tempDirectory("toon-ds-v2-split-test")) { tempDir =>
       val sparkSession = spark
       import sparkSession.implicits._
       val df = Seq(
@@ -75,14 +75,14 @@ class ToonDataSourceV2Test extends FunSuite {
         .write
         .format("toon")
         .mode("overwrite")
-        .option("path", tempDir.getAbsolutePath)
+        .option("path", tempDir.file.getAbsolutePath)
         .option("key", "users")
         .option("maxRowsPerFile", "1")
         .save()
 
       val payloads = spark.read
         .format("toon")
-        .option("path", tempDir.getAbsolutePath)
+        .option("path", tempDir.file.getAbsolutePath)
         .load()
         .collect()
         .map(_.getString(0))
@@ -90,8 +90,6 @@ class ToonDataSourceV2Test extends FunSuite {
 
       assertEquals(payloads.size, 3)
       assert(payloads.forall(_.contains("users")))
-    } finally {
-      deleteRecursively(tempDir)
     }
   }
 
@@ -112,32 +110,39 @@ class ToonDataSourceV2Test extends FunSuite {
     val sparkSession = spark
     import sparkSession.implicits._
     val df = Seq((1, "Alice")).toDF("id", "name")
-    val tempDir = Files.createTempDirectory("toon-ds-v2-invalid-option").toFile
 
-    try {
+    Using.resource(tempDirectory("toon-ds-v2-invalid-option")) { tempDir =>
       intercept[IllegalArgumentException] {
         df.write
           .format("toon")
           .mode("overwrite")
-          .option("path", tempDir.getAbsolutePath)
+          .option("path", tempDir.file.getAbsolutePath)
           .option("maxRowsPerFile", "0")
           .save()
       }
-    } finally {
-      deleteRecursively(tempDir)
     }
   }
 
-  private def deleteRecursively(file: java.io.File): Unit = {
-    if (!file.exists()) return
-    if (file.isDirectory) {
-      val children = file.listFiles()
-      if (children != null) {
-        children.foreach(deleteRecursively)
+  private def tempDirectory(prefix: String): TempDirectory =
+    TempDirectory(Files.createTempDirectory(prefix).toFile)
+
+}
+
+final private case class TempDirectory(file: java.io.File) extends AutoCloseable {
+
+  override def close(): Unit = {
+    def deleteRecursively(target: java.io.File): Unit = {
+      if (!target.exists()) {
+        ()
+      } else {
+        if (target.isDirectory) {
+          Option(target.listFiles()).toSeq.flatten.foreach(deleteRecursively)
+        }
+        target.delete()
+        ()
       }
     }
-    file.delete()
-    ()
+    deleteRecursively(file)
   }
 
 }

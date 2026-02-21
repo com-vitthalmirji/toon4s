@@ -23,9 +23,7 @@ class SparkToonOpsTest extends FunSuite {
   }
 
   override def afterAll(): Unit = {
-    if (spark != null) {
-      spark.stop()
-    }
+    Option(spark).foreach(_.stop())
   }
 
   test("toToon: encode simple DataFrame") {
