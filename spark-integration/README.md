@@ -45,6 +45,7 @@ TOON generation benchmark:
 - **Schema alignment detection**: Pre-flight validation based on benchmark findings
 - **Adaptive chunking**: Optimize prompt tax for dataset size
 - **Streaming chunk encoding**: `toToon` iterates rows with `toLocalIterator` to reduce driver memory pressure
+- **DataSource V2 connector**: `format("toon")` for batch write/read of TOON documents
 - **Token metrics**: Compare JSON vs TOON token counts and cost savings
 - **Temporal interoperability**: Round-trip support for `DateType`, `TimestampType`, and `TimestampNTZType`
 - **Strict decode coercion**: Invalid numeric/boolean strings fail with typed conversion errors
@@ -118,6 +119,37 @@ val options = ToonSparkOptions(
 val encoded = df.toToon(options)
 val metrics = df.toonMetrics(options)
 ```
+
+### Data source API
+
+```scala
+// Write TOON files (one TOON document per task output file)
+df.write
+  .format("toon")
+  .mode("overwrite")
+  .option("path", "/tmp/toon-output")
+  .option("key", "users")
+  .save()
+
+// Read TOON files back as a DataFrame with one string column: `toon`
+val toonDf = spark.read
+  .format("toon")
+  .option("path", "/tmp/toon-output")
+  .load()
+```
+
+### Spark SQL extensions provider
+
+```scala
+val spark = SparkSession.builder()
+  .config(
+    "spark.sql.extensions",
+    "io.toonformat.toon4s.spark.extensions.ToonSparkSessionExtensions"
+  )
+  .getOrCreate()
+```
+
+This auto-registers TOON SQL UDFs (for example `toon_encode_row`, `toon_estimate_tokens`).
 
 ### Token metrics
 
