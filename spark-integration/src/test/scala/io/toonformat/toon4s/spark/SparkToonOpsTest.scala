@@ -88,9 +88,10 @@ class SparkToonOpsTest extends SparkTestSuite {
     val data = (1 to 12).map(i => Row(i, s"user$i"))
     val df = spark.createDataFrame(data.asJava, schema).repartition(3)
     val tempDir = Files.createTempDirectory("toon-write-test")
+    val outputDir = tempDir.resolve("chunks-output")
     val outputPath =
-      if (System.getProperty("os.name", "").toLowerCase.contains("win")) tempDir.toUri.toString
-      else tempDir.toAbsolutePath.toString
+      if (System.getProperty("os.name", "").toLowerCase.contains("win")) outputDir.toUri.toString
+      else outputDir.toAbsolutePath.toString
 
     val writeResult = df.writeToon(
       outputPath = outputPath,
@@ -99,7 +100,7 @@ class SparkToonOpsTest extends SparkTestSuite {
       options = EncodeOptions(),
     )
 
-    assert(writeResult.isRight)
+    assert(writeResult.isRight, clues(writeResult.left.toOption.map(_.message).getOrElse("")))
 
     val loaded = spark.read.text(outputPath)
     val s = spark
