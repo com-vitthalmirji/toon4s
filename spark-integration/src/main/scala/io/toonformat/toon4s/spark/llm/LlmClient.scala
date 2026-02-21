@@ -1,21 +1,10 @@
 package io.toonformat.toon4s.spark.llm
 
 /**
- * LLM client abstraction aligned with llm4s design patterns.
+ * Legacy compatibility LLM client abstraction.
  *
- * ==Design philosophy==
- * This trait mirrors llm4s's `org.llm4s.llmconnect.LLMClient` interface while remaining simple and
- * standalone. When llm4s is published, this interface can be used as an adapter layer.
- *
- * ==Key Features==
- *   - Conversation-based API (llm4s pattern)
- *   - Result-based error handling (llm4s pattern)
- *   - Context window management (llm4s pattern)
- *   - Streaming support (llm4s pattern)
- *   - Backward compatible string-based methods
- *
- * @see
- *   [[https://github.com/llm4s/llm4s llm4s project]]
+ * This type is kept for migration tests only. New production paths should use
+ * `writeToLlmPartitions` with llm4s clients through `LlmPartitionWriterFactory`.
  */
 trait LlmClient {
 

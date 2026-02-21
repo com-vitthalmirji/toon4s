@@ -4,29 +4,11 @@ import scala.collection.immutable.VectorMap
 
 import io.toonformat.toon4s.JsonValue
 import io.toonformat.toon4s.JsonValue._
-import munit.FunSuite
-import org.apache.spark.sql.{Row, SparkSession}
+import io.toonformat.toon4s.spark.testkit.SparkTestSuite
+import org.apache.spark.sql.Row
 import org.apache.spark.sql.types._
 
-class SparkJsonInteropTest extends FunSuite {
-
-  private var spark: SparkSession = _
-
-  override def beforeAll(): Unit = {
-    spark = SparkSession
-      .builder()
-      .master("local[1]")
-      .appName("SparkJsonInteropTest")
-      .config("spark.ui.enabled", "false")
-      .config("spark.sql.shuffle.partitions", "1")
-      .getOrCreate()
-  }
-
-  override def afterAll(): Unit = {
-    if (spark != null) {
-      spark.stop()
-    }
-  }
+class SparkJsonInteropTest extends SparkTestSuite {
 
   test("rowToJsonValue: convert simple row") {
     val schema = StructType(Seq(

@@ -1,31 +1,17 @@
 package io.toonformat.toon4s.spark
 
-import munit.FunSuite
-import org.apache.spark.sql.SparkSession
+import io.toonformat.toon4s.spark.testkit.SparkTestSuite
 
-class SparkDatasetOpsTest extends FunSuite {
+class SparkDatasetOpsTest extends SparkTestSuite {
 
-  private var sparkInstance: SparkSession = _
+  override protected def sparkAppName: String = "toon4s-spark-dataset-test"
 
-  override def beforeAll(): Unit = {
-    sparkInstance = SparkSession
-      .builder()
-      .master("local[*]")
-      .appName("toon4s-spark-dataset-test")
-      .config("spark.ui.enabled", "false")
-      .config("spark.sql.warehouse.dir", "target/spark-warehouse")
-      .getOrCreate()
-  }
-
-  override def afterAll(): Unit = {
-    if (sparkInstance != null) {
-      sparkInstance.stop()
-    }
-  }
+  override protected def sparkConfig: Map[String, String] =
+    super.sparkConfig + ("spark.sql.warehouse.dir" -> "target/spark-warehouse")
 
   test("Dataset[T] toToon encodes runtime data") {
-    val spark = sparkInstance
-    import spark.implicits._
+    val session = spark
+    import session.implicits._
     import io.toonformat.toon4s.spark.SparkDatasetOps._
 
     val dataset = Seq(
@@ -44,8 +30,8 @@ class SparkDatasetOpsTest extends FunSuite {
   }
 
   test("Dataset[T] toonMetrics computes runtime metrics") {
-    val spark = sparkInstance
-    import spark.implicits._
+    val session = spark
+    import session.implicits._
     import io.toonformat.toon4s.spark.SparkDatasetOps._
 
     val dataset = Seq(
@@ -65,8 +51,8 @@ class SparkDatasetOpsTest extends FunSuite {
   }
 
   test("Dataset[T] toonMetrics supports caller chunk size") {
-    val spark = sparkInstance
-    import spark.implicits._
+    val session = spark
+    import session.implicits._
     import io.toonformat.toon4s.spark.SparkDatasetOps._
     import io.toonformat.toon4s.EncodeOptions
 
@@ -76,6 +62,32 @@ class SparkDatasetOpsTest extends FunSuite {
     assert(metricsResult.isRight)
     metricsResult.foreach { metrics =>
       assertEquals(metrics.rowCount, 20)
+      assertEquals(metrics.columnCount, 3)
+    }
+  }
+
+  test("Dataset[T] stable options API works") {
+    val session = spark
+    import session.implicits._
+    import io.toonformat.toon4s.spark.SparkDatasetOps._
+    import io.toonformat.toon4s.EncodeOptions
+
+    val dataset = (1 to 9).map(i => UserRecord(i, s"user$i", 20 + i)).toDS()
+    val options = ToonSparkOptions(
+      key = "users",
+      maxRowsPerChunk = 3,
+      encodeOptions = EncodeOptions(),
+    )
+
+    val encodeResult = dataset.toToon(options)
+    val metricsResult = dataset.toonMetrics(options)
+
+    assert(encodeResult.isRight)
+    encodeResult.foreach(chunks => assertEquals(chunks.size, 3))
+
+    assert(metricsResult.isRight)
+    metricsResult.foreach { metrics =>
+      assertEquals(metrics.rowCount, 9)
       assertEquals(metrics.columnCount, 3)
     }
   }

@@ -28,7 +28,7 @@ import org.apache.spark.storage.StorageLevel
  *   .table("events")
  *   .writeStream
  *   .foreachBatch { (batch, _) =>
- *     val json = batch.toJSON.collect().mkString("\n")
+ *     val json = batch.toJSON.take(1000).mkString("\n")
  *     sendToLLM(json) // Token-inefficient, high latency
  *   }
  * }}}
@@ -84,6 +84,8 @@ import org.apache.spark.storage.StorageLevel
  *   [[https://docs.databricks.com/structured-streaming/delta-lake.html Databricks Streaming]]
  */
 object DeltaLakeCDC {
+
+  private val DefaultMaxCollectedChangeTypes = 16
 
   /**
    * Configuration for Delta Lake CDC streaming.
@@ -217,26 +219,29 @@ object DeltaLakeCDC {
       config: DeltaCDCConfig
   )(processor: CDCBatchMetadata => Unit)(implicit spark: SparkSession): StreamingQuery = {
     // Build CDC stream reader
-    var reader = spark.readStream
+    val baseReader = spark.readStream
       .format("delta")
       .option("readChangeFeed", "true")
 
-    // Apply starting point
-    config.startingVersion.foreach(v => reader = reader.option("startingVersion", v.toString))
-    config.startingTimestamp.foreach(ts => reader = reader.option("startingTimestamp", ts))
+    val optionalEntries = Vector(
+      config.startingVersion.map(v => "startingVersion" -> v.toString),
+      config.startingTimestamp.map(ts => "startingTimestamp" -> ts),
+      config.maxFilesPerTrigger.map(max => "maxFilesPerTrigger" -> max.toString),
+    ).flatten
 
-    // Apply rate limiting
-    config.maxFilesPerTrigger.foreach(max =>
-      reader = reader.option("maxFilesPerTrigger", max.toString)
-    )
+    val reader = optionalEntries.foldLeft(baseReader) {
+      case (acc, (name, value)) =>
+        acc.option(name, value)
+    }
 
     val cdcStream = reader.table(config.tableName)
 
     // Analyze schema alignment once at startup
     val alignmentScore = ToonAlignmentAnalyzer.analyzeSchema(cdcStream.schema)
     if (!alignmentScore.aligned) {
-      spark.sparkContext.setJobDescription(
-        s"TOON schema warning: ${alignmentScore.recommendation}"
+      setJobDescriptionSafe(
+        spark,
+        s"TOON schema warning: ${alignmentScore.recommendation}",
       )
     }
 
@@ -279,7 +284,7 @@ object DeltaLakeCDC {
   ): Unit = {
     val batchResult = withCachedBatch(batchDF) { cachedBatch =>
       for {
-        changeTypes <- collectChangeTypes(cachedBatch)
+        changeTypes <- collectChangeTypes(cachedBatch, DefaultMaxCollectedChangeTypes)
         result <- {
           if (changeTypes.isEmpty) Right(None)
           else {
@@ -307,8 +312,9 @@ object DeltaLakeCDC {
       ()
     case Left(error: SparkToonError) =>
       // Fail the batch so streaming checkpoint/retry semantics can recover safely.
-      batchDF.sparkSession.sparkContext.setJobDescription(
-        s"Batch $batchId TOON encoding failed: ${error.message}"
+      setJobDescriptionSafe(
+        batchDF.sparkSession,
+        s"Batch $batchId TOON encoding failed: ${error.message}",
       )
       throw new RuntimeException(s"TOON encoding failed for batch $batchId: ${error.message}")
     }
@@ -320,25 +326,39 @@ object DeltaLakeCDC {
       use: DataFrame => Either[SparkToonError, A]
   ): Either[SparkToonError, A] = {
     val cachedBatch = batchDF.persist(StorageLevel.MEMORY_AND_DISK)
-    val useResult = Try(use(cachedBatch)).toEither.left.map { ex =>
-      SparkToonError.CollectionError(
-        s"Unexpected error while processing cached CDC batch: ${ex.getMessage}",
-        Some(ex),
-      )
+    try {
+      Try(use(cachedBatch)).toEither.left.map { ex =>
+        SparkToonError.CollectionError(
+          s"Unexpected error while processing cached CDC batch: ${ex.getMessage}",
+          Some(ex),
+        )
+      }.flatMap(result => result)
+    } finally {
+      cachedBatch.unpersist(blocking = false)
     }
-    cachedBatch.unpersist()
-    useResult.flatMap(result => result)
   }
 
-  private def collectChangeTypes(batchDF: DataFrame): Either[SparkToonError, Map[String, Long]] = {
+  private[integrations] def collectChangeTypes(
+      batchDF: DataFrame,
+      maxCollectedChangeTypes: Int,
+  ): Either[SparkToonError, Map[String, Long]] = {
+    val safeLimit =
+      if (maxCollectedChangeTypes > 0) maxCollectedChangeTypes else DefaultMaxCollectedChangeTypes
     Try {
       import batchDF.sparkSession.implicits._
-      batchDF
+      val changeTypeRows = batchDF
         .groupBy("_change_type")
         .count()
+        .limit(safeLimit + 1)
         .as[(String, Long)]
-        .collect()
-        .toMap
+        .take(safeLimit + 1)
+        .toVector
+      if (changeTypeRows.size > safeLimit) {
+        throw new IllegalStateException(
+          s"CDC change type cardinality exceeds safety limit ($safeLimit)."
+        )
+      }
+      changeTypeRows.toMap
     }.toEither.left.map { ex =>
       SparkToonError.CollectionError(
         s"Failed to collect CDC change types: ${ex.getMessage}",
@@ -347,7 +367,9 @@ object DeltaLakeCDC {
     }
   }
 
-  private def collectCommitVersions(batchDF: DataFrame): Either[SparkToonError, (Long, Long)] = {
+  private[integrations] def collectCommitVersions(
+      batchDF: DataFrame
+  ): Either[SparkToonError, (Long, Long)] = {
     val commitRangeResult = Try {
       import batchDF.sparkSession.implicits._
       batchDF
@@ -357,7 +379,7 @@ object DeltaLakeCDC {
           max("_commit_version"),
         )
         .as[(Long, Long)]
-        .collect()
+        .take(1)
         .headOption
     }.toEither.left.map { ex =>
       SparkToonError.CollectionError(
@@ -373,7 +395,7 @@ object DeltaLakeCDC {
     }
   }
 
-  private def resolveChunkSize(
+  private[integrations] def resolveChunkSize(
       batchDF: DataFrame,
       config: DeltaCDCConfig,
       batchId: Long,
@@ -393,12 +415,23 @@ object DeltaLakeCDC {
         if (!strategy.useToon) {
           // Schema not TOON-friendly, but user explicitly requested TOON streaming
           // Use small chunks to minimize damage
-          batchDF.sparkSession.sparkContext.setJobDescription(
-            s"Batch $batchId: ${strategy.reasoning}"
+          setJobDescriptionSafe(
+            batchDF.sparkSession,
+            s"Batch $batchId: ${strategy.reasoning}",
           )
         }
         strategy.chunkSize
       }
+    }
+  }
+
+  private def setJobDescriptionSafe(
+      spark: SparkSession,
+      description: String,
+  ): Unit = {
+    Try(spark.sparkContext).toOption.foreach { sc =>
+      Try(sc.setJobDescription(description))
+      ()
     }
   }
 

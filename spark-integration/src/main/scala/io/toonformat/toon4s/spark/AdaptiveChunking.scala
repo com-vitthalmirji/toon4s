@@ -77,7 +77,7 @@ object AdaptiveChunking {
    * if (strategy.useToon) {
    *   df.toToon(maxRowsPerChunk = strategy.chunkSize)
    * } else {
-   *   df.toJSON.collect() // Fall back to JSON
+   *   df.toJSON.take(1000) // Fall back to JSON with bounded sample
    * }
    *   }}}
    */

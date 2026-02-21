@@ -102,18 +102,60 @@ final case class ToonMetrics(
 
 object ToonMetrics {
 
+  /** Token estimation contract. */
+  trait TokenEstimator extends Serializable {
+
+    def estimate(text: String): Int
+
+  }
+
+  /**
+   * Approximate estimator based on average characters per token.
+   *
+   * @param charsPerToken
+   *   Approximate number of UTF-16 characters per token (must be > 0)
+   * @param minTokensWhenNonEmpty
+   *   Minimum token count for non-empty input
+   */
+  final case class CharsPerTokenEstimator(
+      charsPerToken: Double = 4.0,
+      minTokensWhenNonEmpty: Int = 1,
+  ) extends TokenEstimator {
+
+    require(charsPerToken > 0.0, "charsPerToken must be > 0")
+
+    require(minTokensWhenNonEmpty >= 0, "minTokensWhenNonEmpty must be >= 0")
+
+    override def estimate(text: String): Int = {
+      if (text.isEmpty) 0
+      else {
+        val rough = math.round(text.length.toDouble / charsPerToken).toInt
+        math.max(rough, minTokensWhenNonEmpty)
+      }
+    }
+
+  }
+
+  val defaultTokenEstimator: TokenEstimator = CharsPerTokenEstimator()
+
   /**
    * Token estimation strategy.
    *
-   * Uses approximate GPT-style tokenization (4 characters per token). This is a rough estimate; for
-   * exact counts, integrate with tiktoken or similar.
+   * Uses approximate GPT-style tokenization (4 characters per token) by default. For provider-
+   * specific estimates, pass a custom estimator.
    */
   def estimateTokens(text: String): Int = {
-    if (text.isEmpty) 0
-    else {
-      val rough = math.round(text.length / 4.0).toInt
-      if (rough <= 0) 1 else rough
-    }
+    estimateTokens(text, defaultTokenEstimator)
+  }
+
+  /** Estimate token count with a caller-provided estimator. */
+  def estimateTokens(text: String, estimator: TokenEstimator): Int = {
+    estimator.estimate(text)
+  }
+
+  /** Estimate token count using custom characters-per-token ratio. */
+  def estimateTokens(text: String, charsPerToken: Double): Int = {
+    estimateTokens(text, CharsPerTokenEstimator(charsPerToken = charsPerToken))
   }
 
   /**
@@ -135,9 +177,10 @@ object ToonMetrics {
       toonEncoded: String,
       rowCount: Int,
       columnCount: Int,
+      tokenEstimator: TokenEstimator = defaultTokenEstimator,
   ): ToonMetrics = {
-    val jsonTokens = estimateTokens(jsonEncoded)
-    val toonTokens = estimateTokens(toonEncoded)
+    val jsonTokens = estimateTokens(jsonEncoded, tokenEstimator)
+    val toonTokens = estimateTokens(toonEncoded, tokenEstimator)
     ToonMetrics(
       jsonTokenCount = jsonTokens,
       toonTokenCount = toonTokens,
@@ -145,6 +188,20 @@ object ToonMetrics {
       columnCount = columnCount,
     )
   }
+
+  def fromEncodedStrings(
+      jsonEncoded: String,
+      toonEncoded: String,
+      rowCount: Int,
+      columnCount: Int,
+  ): ToonMetrics =
+    fromEncodedStrings(
+      jsonEncoded = jsonEncoded,
+      toonEncoded = toonEncoded,
+      rowCount = rowCount,
+      columnCount = columnCount,
+      tokenEstimator = defaultTokenEstimator,
+    )
 
   /** Zero metrics (no data). */
   val empty: ToonMetrics = ToonMetrics(

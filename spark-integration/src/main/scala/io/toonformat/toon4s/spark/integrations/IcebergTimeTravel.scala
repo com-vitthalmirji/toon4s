@@ -2,6 +2,8 @@ package io.toonformat.toon4s.spark.integrations
 
 import java.time.Instant
 
+import scala.util.Try
+
 import io.toonformat.toon4s.spark.{AdaptiveChunking, ToonAlignmentAnalyzer}
 import io.toonformat.toon4s.spark.SparkToonOps._
 import io.toonformat.toon4s.spark.error.SparkToonError
@@ -440,25 +442,30 @@ object IcebergTimeTravel {
     instant.toEpochMilli.toString
 
   /** Encode DataFrame with adaptive chunking. */
-  private def encodeWithAdaptiveChunking(
+  private[integrations] def encodeWithAdaptiveChunking(
       df: DataFrame,
       config: TimeTravelConfig,
   ): Either[SparkToonError, Vector[String]] = {
-    val chunkSize = config.maxRowsPerChunk.getOrElse {
+    val chunkSizeEither = config.maxRowsPerChunk match {
+    case Some(value) if value <= 0 =>
+      Left(SparkToonError.ConversionError("maxRowsPerChunk must be greater than 0"))
+    case Some(value) => Right(value)
+    case None        =>
       val strategy = AdaptiveChunking.calculateOptimalChunkSize(df)
       if (!strategy.useToon) {
-        df.sparkSession.sparkContext.setJobDescription(
-          s"Snapshot encoding: ${strategy.reasoning}"
+        setJobDescriptionSafe(
+          df.sparkSession,
+          s"Snapshot encoding: ${strategy.reasoning}",
         )
       }
-      strategy.chunkSize
+      Right(strategy.chunkSize)
     }
 
-    df.toToon(key = config.key, maxRowsPerChunk = chunkSize)
+    chunkSizeEither.flatMap(chunkSize => df.toToon(key = config.key, maxRowsPerChunk = chunkSize))
   }
 
   /** Generate sequence of timestamps at regular intervals. */
-  private def generateTimestampSequence(
+  private[integrations] def generateTimestampSequence(
       start: Instant,
       end: Instant,
       intervalSeconds: Long,
@@ -472,6 +479,16 @@ object IcebergTimeTravel {
     }
 
     result.result()
+  }
+
+  private def setJobDescriptionSafe(
+      spark: SparkSession,
+      description: String,
+  ): Unit = {
+    Try(spark.sparkContext).toOption.foreach { sc =>
+      Try(sc.setJobDescription(description))
+      ()
+    }
   }
 
 }

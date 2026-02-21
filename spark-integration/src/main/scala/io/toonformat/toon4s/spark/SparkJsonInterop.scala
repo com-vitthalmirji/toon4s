@@ -24,7 +24,7 @@ import org.apache.spark.sql.types._
  * {{{
  * import io.toonformat.toon4s.spark.SparkJsonInterop
  *
- * val row: Row = df.collect().head
+ * val row: Row = df.take(1).head
  * val schema: StructType = df.schema
  *
  * // Convert Row to JsonValue
@@ -52,7 +52,7 @@ object SparkJsonInterop {
    * @example
    *   {{{
    * val df = Seq((1, "Alice", 25)).toDF("id", "name", "age")
-   * val row = df.collect().head
+   * val row = df.take(1).head
    * val json = rowToJsonValue(row, df.schema)
    * // json: JObj(VectorMap("id" -> JNumber(1), "name" -> JString("Alice"), "age" -> JNumber(25)))
    *   }}}

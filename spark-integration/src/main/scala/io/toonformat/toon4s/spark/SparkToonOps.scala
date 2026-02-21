@@ -3,12 +3,24 @@ package io.toonformat.toon4s.spark
 import scala.collection.immutable.VectorMap
 import scala.jdk.CollectionConverters._
 import scala.util.Try
+import scala.util.control.NonFatal
 
 import io.toonformat.toon4s.{DecodeOptions, EncodeOptions, Toon}
 import io.toonformat.toon4s.JsonValue
 import io.toonformat.toon4s.JsonValue._
 import io.toonformat.toon4s.spark.error.SparkToonError
-import org.apache.spark.sql.{DataFrame, Row, SparkSession}
+import io.toonformat.toon4s.spark.internal.SparkConfUtils
+import io.toonformat.toon4s.spark.llm.{
+  LlmChunkRequest,
+  LlmPartitionIdempotency,
+  LlmPartitionWriteMetrics,
+  LlmPartitionWriteOptions,
+  LlmPartitionWriterFactory,
+  LlmRetry,
+  LlmSendStatus,
+}
+import org.apache.spark.sql.{DataFrame, Dataset, Encoders, Row, SparkSession}
+import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types.StructType
 
 /**
@@ -47,6 +59,25 @@ import org.apache.spark.sql.types.StructType
  */
 object SparkToonOps {
 
+  final private class SparkToonEncodingException(val error: SparkToonError)
+      extends IllegalStateException(error.message) {
+
+    error.cause.foreach(initCause)
+
+  }
+
+  private val MaxCollectedChunksConfKey = "toon4s.spark.collect.maxChunks"
+
+  private val MaxCollectedPayloadBytesConfKey = "toon4s.spark.collect.maxPayloadBytes"
+
+  private val MaxCollectedPartitionMetricsConfKey = "toon4s.spark.metrics.maxPartitionStats"
+
+  private val DefaultMaxCollectedChunks = 10000
+
+  private val DefaultMaxCollectedPayloadBytes = 64L * 1024L * 1024L
+
+  private val DefaultMaxCollectedPartitionMetrics = 20000
+
   /**
    * Extension methods for DataFrame.
    *
@@ -54,6 +85,94 @@ object SparkToonOps {
    * overhead.
    */
   implicit class ToonDataFrameOps(val df: DataFrame) extends AnyVal {
+
+    /** Encode DataFrame to TOON using stable options model. */
+    def toToon(
+        options: ToonSparkOptions
+    ): Either[SparkToonError, Vector[String]] = {
+      if (options.maxRowsPerChunk <= 0) {
+        Left(SparkToonError.ConversionError("maxRowsPerChunk must be greater than 0"))
+      } else {
+        collectToonChunks(
+          toToonDataset(options),
+          options.key,
+          options.encodeOptions,
+        )
+      }
+    }
+
+    /**
+     * Distributed TOON encoding that runs at partition level and returns a Dataset of TOON chunks.
+     *
+     * This method is executor-side and avoids row-level encoding on the driver.
+     */
+    def toToonDataset(options: ToonSparkOptions): Dataset[String] = {
+      encodeToChunkDataset(
+        df,
+        options.key,
+        options.maxRowsPerChunk,
+        options.encodeOptions,
+      )
+    }
+
+    /**
+     * Write TOON chunks directly to storage without collecting payloads on the driver.
+     *
+     * Use this for production pipelines and large datasets.
+     */
+    def writeToon(
+        outputPath: String,
+        options: ToonSparkOptions,
+    ): Either[SparkToonError, Unit] = {
+      Try {
+        toToonDataset(options)
+          .write
+          .mode("overwrite")
+          .text(outputPath)
+      }.toEither.left.map { ex =>
+        SparkToonError.ConversionError(
+          s"Failed to write TOON chunks to path '$outputPath': ${ex.getMessage}",
+          Some(ex),
+        )
+      }
+    }
+
+    /**
+     * Encode TOON on executors and send each chunk from partition tasks.
+     *
+     * This keeps both encode and external send work in Spark task cores.
+     */
+    def writeToLlmPartitions(
+        writerFactory: LlmPartitionWriterFactory,
+        llmOptions: LlmPartitionWriteOptions = LlmPartitionWriteOptions(),
+        options: ToonSparkOptions = ToonSparkOptions(),
+    ): Either[SparkToonError, LlmPartitionWriteMetrics] = {
+      if (options.maxRowsPerChunk <= 0) {
+        Left(SparkToonError.ConversionError("maxRowsPerChunk must be greater than 0"))
+      } else {
+        writeChunksToLlmPartitions(
+          chunks = toToonDataset(options),
+          key = options.key,
+          writerFactory = writerFactory,
+          llmOptions = llmOptions,
+        )
+      }
+    }
+
+    /** Convenience overload for executor-side LLM sink. */
+    def writeToLlmPartitions(
+        writerFactory: LlmPartitionWriterFactory,
+        key: String,
+        maxRowsPerChunk: Int,
+        options: EncodeOptions,
+        llmOptions: LlmPartitionWriteOptions,
+    ): Either[SparkToonError, LlmPartitionWriteMetrics] = {
+      writeToLlmPartitions(
+        writerFactory = writerFactory,
+        llmOptions = llmOptions,
+        options = ToonSparkOptions(key, maxRowsPerChunk, options),
+      )
+    }
 
     /**
      * Encode DataFrame to TOON format with chunking.
@@ -87,7 +206,20 @@ object SparkToonOps {
         maxRowsPerChunk: Int = 1000,
         options: EncodeOptions = EncodeOptions(),
     ): Either[SparkToonError, Vector[String]] = {
-      encodeToChunksStreaming(df, key, maxRowsPerChunk, options)
+      toToon(ToonSparkOptions(key, maxRowsPerChunk, options))
+    }
+
+    /** Write TOON chunks directly using convenience parameters. */
+    def writeToon(
+        outputPath: String,
+        key: String = "data",
+        maxRowsPerChunk: Int = 1000,
+        options: EncodeOptions = EncodeOptions(),
+    ): Either[SparkToonError, Unit] = {
+      writeToon(
+        outputPath = outputPath,
+        options = ToonSparkOptions(key, maxRowsPerChunk, options),
+      )
     }
 
     /**
@@ -123,6 +255,46 @@ object SparkToonOps {
       toonMetrics(key, maxRowsPerChunk = 1000, options = options)
     }
 
+    /** Compute token metrics using stable options model. */
+    def toonMetrics(
+        options: ToonSparkOptions
+    ): Either[SparkToonError, ToonMetrics] = {
+      toonMetrics(options, ToonMetrics.defaultTokenEstimator)
+    }
+
+    /** Compute token metrics using stable options model and custom estimator. */
+    def toonMetrics(
+        options: ToonSparkOptions,
+        tokenEstimator: ToonMetrics.TokenEstimator,
+    ): Either[SparkToonError, ToonMetrics] = {
+      calculateMetricsDistributed(
+        df,
+        options.key,
+        options.maxRowsPerChunk,
+        options.encodeOptions,
+        tokenEstimator,
+      )
+    }
+
+    /** Compute token metrics using partition-level execution and compact aggregation. */
+    def toonMetricsDistributed(
+        options: ToonSparkOptions
+    ): Either[SparkToonError, ToonMetrics] = {
+      toonMetrics(options)
+    }
+
+    /** Compute token metrics with a caller-provided token estimator. */
+    def toonMetricsWithEstimator(
+        key: String = "data",
+        options: EncodeOptions = EncodeOptions(),
+        tokenEstimator: ToonMetrics.TokenEstimator,
+    ): Either[SparkToonError, ToonMetrics] = {
+      toonMetrics(
+        ToonSparkOptions(key = key, maxRowsPerChunk = 1000, encodeOptions = options),
+        tokenEstimator,
+      )
+    }
+
     /**
      * Compute token metrics comparing JSON vs TOON using caller-provided chunk size.
      *
@@ -133,7 +305,10 @@ object SparkToonOps {
         maxRowsPerChunk: Int,
         options: EncodeOptions,
     ): Either[SparkToonError, ToonMetrics] = {
-      calculateMetricsStreaming(df, key, maxRowsPerChunk, options)
+      toonMetrics(
+        ToonSparkOptions(key, maxRowsPerChunk, options),
+        ToonMetrics.defaultTokenEstimator,
+      )
     }
 
     /**
@@ -195,142 +370,201 @@ object SparkToonOps {
       schema: StructType,
       options: DecodeOptions = DecodeOptions(),
   )(implicit spark: SparkSession): Either[SparkToonError, DataFrame] = {
+    val toonDataset = spark.createDataset(toonDocuments)(Encoders.STRING)
+    fromToonDataset(toonDataset, schema, options)
+  }
 
-    // Step 1: Decode all TOON documents
-    val decodedResults = toonDocuments.map(toon => decodeSafe(toon, options))
-
-    // Step 2: Sequence Either values (short-circuit on first error)
-    sequence(decodedResults).flatMap {
-      jsonValues =>
-        // Step 3: Extract rows from decoded JSON (robust to nested wrappers)
-        val rows = extractRows(jsonValues)
-
-      // Step 4: Convert to Spark Rows
-      convertToSparkRows(rows, schema).map { sparkRows =>
-        // Step 5: Create DataFrame without RDD APIs (Spark Connect compatible)
-        spark.createDataFrame(sparkRows.asJava, schema)
+  /**
+   * Decode TOON Dataset back to DataFrame using partition-level Spark execution.
+   *
+   * This path avoids driver-side row decoding and scales for large TOON payloads.
+   */
+  def fromToonDataset(
+      toonDocuments: Dataset[String],
+      schema: StructType,
+      options: DecodeOptions = DecodeOptions(),
+  ): Either[SparkToonError, DataFrame] = {
+    val decodedJsonRows = toonDocuments.mapPartitions { chunks =>
+      chunks.flatMap { chunk =>
+        decodeSafe(chunk, options) match {
+        case Right(value) =>
+          extractRowsFromValue(value).iterator.map(encodeAsJson)
+        case Left(err) =>
+          throw new IllegalStateException(err.message, err.cause.orNull)
+        }
       }
+    }(Encoders.STRING)
+
+    Try(toonDocuments.sparkSession.read.schema(schema).json(decodedJsonRows)).toEither.left.map {
+      ex =>
+        SparkToonError.ConversionError(
+          s"Failed to decode TOON dataset to DataFrame: ${ex.getMessage}",
+          Some(ex),
+        )
     }
   }
 
   // ========== Private Helper Functions ==========
 
+  final case class PartitionMetrics(
+      jsonTokenCount: Int,
+      toonTokenCount: Int,
+      rowCount: Int,
+      columnCount: Int,
+      errorMessage: Option[String],
+  )
+
+  final case class LlmPartitionMetrics(
+      attemptedChunks: Long,
+      sentChunks: Long,
+      duplicateChunks: Long,
+      failedChunks: Long,
+      totalBytes: Long,
+      totalEstimatedTokens: Long,
+      errorMessage: Option[String],
+  )
+
   /**
-   * Stream DataFrame rows and encode incrementally into TOON chunks.
+   * Distributed partition-level encoding to TOON chunks.
    *
-   * Uses `toLocalIterator` to avoid materializing the full dataset in driver memory.
+   * Uses Dataset.mapPartitions so conversion happens on executors.
    */
-  private def encodeToChunksStreaming(
+  private def encodeToChunkDataset(
       df: DataFrame,
       key: String,
       maxRowsPerChunk: Int,
       options: EncodeOptions,
-  ): Either[SparkToonError, Vector[String]] = {
+  ): Dataset[String] = {
+    require(maxRowsPerChunk > 0, "maxRowsPerChunk must be greater than 0")
 
-    if (maxRowsPerChunk <= 0) {
-      Left(SparkToonError.ConversionError("maxRowsPerChunk must be greater than 0"))
-    } else {
-      val schema = df.schema
-      val iteratorResult = Try(df.toLocalIterator().asScala).toEither.left.map { ex =>
-        SparkToonError.CollectionError(
-          s"Failed to iterate DataFrame rows: ${ex.getMessage}",
-          Some(ex),
-        )
+    val schema = df.schema
+    df.mapPartitions { rows =>
+      val chunkRows = scala.collection.mutable.ArrayBuffer.empty[JsonValue]
+      val encodedChunks = scala.collection.mutable.ArrayBuffer.empty[String]
+
+      def flush(force: Boolean): Unit = {
+        val shouldFlush = chunkRows.nonEmpty && (force || chunkRows.size >= maxRowsPerChunk)
+        if (shouldFlush) {
+          val wrappedChunk = JObj(VectorMap(key -> JArray(chunkRows.toVector)))
+          encodeSafe(wrappedChunk, options) match {
+          case Right(encoded) =>
+            encodedChunks += encoded
+            chunkRows.clear()
+          case Left(err) =>
+            throw new SparkToonEncodingException(err)
+          }
+        }
       }
 
-      iteratorResult.flatMap { rowIterator =>
-        val chunkRows = scala.collection.mutable.ArrayBuffer.empty[JsonValue]
-        val encodedChunks = Vector.newBuilder[String]
-        var sawAnyRow = false
-        var maybeError: Option[SparkToonError] = None
-
-        def flushChunkIfNeeded(force: Boolean): Unit = {
-          val shouldFlush = chunkRows.nonEmpty && (force || chunkRows.size >= maxRowsPerChunk)
-          if (maybeError.isEmpty && shouldFlush) {
-            val wrappedChunk = JObj(VectorMap(key -> JArray(chunkRows.toVector)))
-            encodeSafe(wrappedChunk, options) match {
-            case Right(encoded) =>
-              encodedChunks += encoded
-              chunkRows.clear()
-            case Left(err) =>
-              maybeError = Some(err)
-            }
-          }
+      rows.foreach { row =>
+        SparkJsonInterop.rowToJsonValueSafe(row, schema) match {
+        case Right(jsonRow) =>
+          chunkRows += jsonRow
+          flush(force = false)
+        case Left(err) =>
+          throw new SparkToonEncodingException(err)
         }
+      }
 
-        var continue = true
-        while (continue && maybeError.isEmpty) {
-          nextRowSafe(rowIterator) match {
-          case Right(Some(row)) =>
-            sawAnyRow = true
-            SparkJsonInterop.rowToJsonValueSafe(row, schema) match {
-            case Right(jsonRow) =>
-              chunkRows += jsonRow
-              flushChunkIfNeeded(force = false)
-            case Left(err) =>
-              maybeError = Some(err)
-            }
-          case Right(None) =>
-            continue = false
-          case Left(err) =>
-            maybeError = Some(err)
-          }
-        }
+      flush(force = true)
+      encodedChunks.iterator
+    }(Encoders.STRING)
+  }
 
-        maybeError match {
-        case Some(err) =>
-          Left(err)
-        case None =>
-          if (!sawAnyRow) {
-            val wrappedChunk = JObj(VectorMap(key -> JArray(Vector.empty)))
-            encodeSafe(wrappedChunk, options).map(encoded => Vector(encoded))
-          } else {
-            flushChunkIfNeeded(force = true)
-            maybeError match {
-            case Some(err) => Left(err)
-            case None      => Right(encodedChunks.result())
-            }
-          }
+  private def collectToonChunks(
+      chunksDataset: Dataset[String],
+      key: String,
+      options: EncodeOptions,
+  ): Either[SparkToonError, Vector[String]] = {
+    val maxChunks = SparkConfUtils.readPositiveInt(
+      chunksDataset.sparkSession,
+      MaxCollectedChunksConfKey,
+      DefaultMaxCollectedChunks,
+    )
+    val maxPayloadBytes = readPositiveLongConf(
+      chunksDataset.sparkSession,
+      MaxCollectedPayloadBytesConfKey,
+      DefaultMaxCollectedPayloadBytes,
+    )
+
+    val collectedEither = Try(chunksDataset.take(maxChunks + 1).toVector).toEither.left.map { ex =>
+      SparkToonError.CollectionError(
+        s"Failed to collect TOON chunks: ${ex.getMessage}",
+        Some(ex),
+      )
+    }
+
+    collectedEither.flatMap { chunks =>
+      if (chunks.size > maxChunks) {
+        Left(
+          SparkToonError.CollectionError(
+            s"TOON chunk count exceeds collection safety limit ($maxChunks). " +
+              s"Increase '$MaxCollectedChunksConfKey' or use toToonDataset."
+          )
+        )
+      } else if (chunks.nonEmpty) {
+        val totalBytes =
+          chunks.foldLeft(0L)((acc, chunk) => acc + chunk.getBytes("UTF-8").length.toLong)
+        if (totalBytes > maxPayloadBytes) {
+          Left(
+            SparkToonError.CollectionError(
+              s"TOON payload size ($totalBytes bytes) exceeds collection safety limit " +
+                s"($maxPayloadBytes bytes). Increase '$MaxCollectedPayloadBytesConfKey' or use toToonDataset."
+            )
+          )
+        } else {
+          Right(chunks)
         }
+      } else {
+        val wrappedChunk = JObj(VectorMap(key -> JArray(Vector.empty)))
+        encodeSafe(wrappedChunk, options).map(encoded => Vector(encoded))
       }
     }
   }
 
+  private def readPositiveLongConf(
+      spark: SparkSession,
+      key: String,
+      defaultValue: Long,
+  ): Long = {
+    spark.conf
+      .getOption(key)
+      .flatMap(_.trim.toLongOption)
+      .filter(_ > 0L)
+      .getOrElse(defaultValue)
+  }
+
   /**
-   * Stream DataFrame rows and compute JSON/TOON metrics incrementally.
+   * Distributed partition-level metric calculation.
    *
-   * Uses chunk-local encoding and aggregates counts to avoid building a single huge payload.
+   * Computes compact per-partition summaries and aggregates on driver.
    */
-  private def calculateMetricsStreaming(
+  private def calculateMetricsDistributed(
       df: DataFrame,
       key: String,
       maxRowsPerChunk: Int,
       options: EncodeOptions,
+      tokenEstimator: ToonMetrics.TokenEstimator,
   ): Either[SparkToonError, ToonMetrics] = {
     if (maxRowsPerChunk <= 0) {
       Left(SparkToonError.ConversionError("maxRowsPerChunk must be greater than 0"))
     } else {
-      val chunkSize = maxRowsPerChunk
       val schema = df.schema
-
-      val iteratorResult = Try(df.toLocalIterator().asScala).toEither.left.map { ex =>
-        SparkToonError.CollectionError(
-          s"Failed to iterate DataFrame rows: ${ex.getMessage}",
-          Some(ex),
-        )
-      }
-
-      iteratorResult.flatMap { rowIterator =>
+      val maxPartitionMetrics = SparkConfUtils.readPositiveInt(
+        df.sparkSession,
+        MaxCollectedPartitionMetricsConfKey,
+        DefaultMaxCollectedPartitionMetrics,
+      )
+      val partitionMetricsDs = df.mapPartitions { rows =>
         val chunkRows = scala.collection.mutable.ArrayBuffer.empty[JsonValue]
-        var sawAnyRow = false
-        var maybeError: Option[SparkToonError] = None
         var jsonTokenCount = 0
         var toonTokenCount = 0
         var rowCount = 0
+        var error: Option[String] = None
 
-        def flushMetricsChunkIfNeeded(force: Boolean): Unit = {
-          val shouldFlush = chunkRows.nonEmpty && (force || chunkRows.size >= chunkSize)
-          if (maybeError.isEmpty && shouldFlush) {
+        def flush(force: Boolean): Unit = {
+          val shouldFlush = chunkRows.nonEmpty && (force || chunkRows.size >= maxRowsPerChunk)
+          if (error.isEmpty && shouldFlush) {
             val wrappedChunk = JObj(VectorMap(key -> JArray(chunkRows.toVector)))
             val jsonBaseline = encodeAsJson(wrappedChunk)
             encodeSafe(wrappedChunk, options) match {
@@ -340,129 +574,240 @@ object SparkToonOps {
                 toonEncoded = toonEncoded,
                 rowCount = chunkRows.size,
                 columnCount = schema.fields.length,
+                tokenEstimator = tokenEstimator,
               )
               jsonTokenCount += chunkMetrics.jsonTokenCount
               toonTokenCount += chunkMetrics.toonTokenCount
               rowCount += chunkRows.size
               chunkRows.clear()
             case Left(err) =>
-              maybeError = Some(err)
+              error = Some(err.message)
             }
           }
         }
 
-        var continue = true
-        while (continue && maybeError.isEmpty) {
-          nextRowSafe(rowIterator) match {
-          case Right(Some(row)) =>
-            sawAnyRow = true
+        rows.foreach { row =>
+          if (error.isEmpty) {
             SparkJsonInterop.rowToJsonValueSafe(row, schema) match {
             case Right(jsonRow) =>
               chunkRows += jsonRow
-              flushMetricsChunkIfNeeded(force = false)
+              flush(force = false)
             case Left(err) =>
-              maybeError = Some(err)
+              error = Some(err.message)
             }
-          case Right(None) =>
-            continue = false
-          case Left(err) =>
-            maybeError = Some(err)
           }
         }
 
-        maybeError match {
-        case Some(err) =>
-          Left(err)
-        case None =>
-          if (!sawAnyRow) {
-            val wrappedChunk = JObj(VectorMap(key -> JArray(Vector.empty)))
-            val jsonBaseline = encodeAsJson(wrappedChunk)
-            encodeSafe(wrappedChunk, options).map { toonEncoded =>
-              ToonMetrics.fromEncodedStrings(
-                jsonEncoded = jsonBaseline,
-                toonEncoded = toonEncoded,
-                rowCount = 0,
-                columnCount = schema.fields.length,
+        flush(force = true)
+        Iterator.single(PartitionMetrics(
+          jsonTokenCount = jsonTokenCount,
+          toonTokenCount = toonTokenCount,
+          rowCount = rowCount,
+          columnCount = schema.fields.length,
+          errorMessage = error,
+        ))
+      }(Encoders.product[PartitionMetrics])
+
+      val aggregatedEither = Try {
+        partitionMetricsDs
+          .toDF()
+          .agg(
+            coalesce(sum(col("jsonTokenCount")), lit(0)).cast("long").as("json_tokens"),
+            coalesce(sum(col("toonTokenCount")), lit(0)).cast("long").as("toon_tokens"),
+            coalesce(sum(col("rowCount")), lit(0)).cast("long").as("rows"),
+            coalesce(sum(lit(1)), lit(0)).cast("long").as("partition_count"),
+            first(col("errorMessage"), ignoreNulls = true).as("first_error"),
+          )
+          .head()
+      }.toEither.left.map { ex =>
+        SparkToonError.CollectionError(
+          s"Failed to aggregate distributed metrics: ${ex.getMessage}",
+          Some(ex),
+        )
+      }
+
+      aggregatedEither.flatMap { totalsRow =>
+        val partitionCount = totalsRow.getLong(3)
+        if (partitionCount > maxPartitionMetrics.toLong) {
+          Left(SparkToonError.CollectionError(
+            s"Partition metrics count exceeds safety limit ($maxPartitionMetrics). " +
+              s"Increase '$MaxCollectedPartitionMetricsConfKey'."
+          ))
+        } else {
+          val firstError = Option(totalsRow.getAs[String](4))
+          firstError match {
+          case Some(message) =>
+            Left(SparkToonError.ConversionError(s"Failed to compute TOON metrics: $message"))
+          case None =>
+            for {
+              jsonTokens <- boundedLongToInt(
+                totalsRow.getLong(0),
+                "jsonTokenCount",
+                "Use smaller chunks or compute metrics on a narrower dataset slice.",
               )
-            }
-          } else {
-            flushMetricsChunkIfNeeded(force = true)
-            maybeError match {
-            case Some(err) =>
-              Left(err)
-            case None =>
-              Right(ToonMetrics(
-                jsonTokenCount = jsonTokenCount,
-                toonTokenCount = toonTokenCount,
-                rowCount = rowCount,
-                columnCount = schema.fields.length,
-              ))
-            }
+              toonTokens <- boundedLongToInt(
+                totalsRow.getLong(1),
+                "toonTokenCount",
+                "Use smaller chunks or compute metrics on a narrower dataset slice.",
+              )
+              rows <- boundedLongToInt(
+                totalsRow.getLong(2),
+                "rowCount",
+                "Use partitioned metrics flow with bounded input size.",
+              )
+            } yield ToonMetrics(
+              jsonTokenCount = jsonTokens,
+              toonTokenCount = toonTokens,
+              rowCount = rows,
+              columnCount = schema.fields.length,
+            )
           }
         }
       }
     }
   }
 
-  /** Safely fetch next row from iterator, including `hasNext` failures. */
-  private def nextRowSafe(
-      rowIterator: Iterator[Row]
-  ): Either[SparkToonError, Option[Row]] = {
-    Try {
-      if (rowIterator.hasNext) Some(rowIterator.next())
-      else None
+  private def boundedLongToInt(
+      value: Long,
+      field: String,
+      guidance: String,
+  ): Either[SparkToonError, Int] = {
+    if (value > Int.MaxValue.toLong || value < Int.MinValue.toLong) {
+      Left(SparkToonError.CollectionError(
+        s"$field overflowed Int range while aggregating distributed metrics (value=$value). $guidance"
+      ))
+    } else Right(value.toInt)
+  }
+
+  private def writeChunksToLlmPartitions(
+      chunks: Dataset[String],
+      key: String,
+      writerFactory: LlmPartitionWriterFactory,
+      llmOptions: LlmPartitionWriteOptions,
+  ): Either[SparkToonError, LlmPartitionWriteMetrics] = {
+    val spark = chunks.sparkSession
+    val partitionStatsDs = spark.createDataset(
+      chunks.rdd.mapPartitionsWithIndex { (partitionId, chunkIterator) =>
+        val writer = writerFactory.create()
+        var chunkIndex = 0
+        var attemptedChunks = 0L
+        var sentChunks = 0L
+        var duplicateChunks = 0L
+        var failedChunks = 0L
+        var totalBytes = 0L
+        var totalEstimatedTokens = 0L
+        var firstError: Option[String] = None
+
+        def registerFailure(message: String): Unit = {
+          failedChunks += 1L
+          if (firstError.isEmpty) {
+            firstError = Some(message)
+          }
+        }
+
+        try {
+          while (chunkIterator.hasNext && (!llmOptions.failOnError || firstError.isEmpty)) {
+            val chunk = chunkIterator.next()
+            attemptedChunks += 1L
+            totalBytes += chunk.getBytes("UTF-8").length.toLong
+            totalEstimatedTokens += ToonMetrics.estimateTokens(chunk).toLong
+
+            val idempotencyKey = LlmPartitionIdempotency.build(
+              prefix = llmOptions.idempotencyPrefix,
+              key = key,
+              partitionId = partitionId,
+              chunkIndex = chunkIndex,
+              chunk = chunk,
+            )
+            val request = LlmChunkRequest(
+              idempotencyKey = idempotencyKey,
+              partitionId = partitionId,
+              chunkIndex = chunkIndex,
+              toonChunk = chunk,
+            )
+            val sendResult = LlmRetry.withRetries(
+              maxRetries = llmOptions.maxRetries,
+              backoffMs = llmOptions.retryBackoffMs,
+            ) {
+              writer.send(request)
+            }
+
+            sendResult match {
+            case Right(LlmSendStatus.Sent) =>
+              sentChunks += 1L
+            case Right(LlmSendStatus.Duplicate) =>
+              duplicateChunks += 1L
+            case Left(err) =>
+              registerFailure(err.formatted)
+            }
+            chunkIndex += 1
+          }
+        } catch {
+          case NonFatal(ex) =>
+            registerFailure(ex.getMessage)
+        } finally {
+          try writer.close()
+          catch {
+            case NonFatal(ex) =>
+              if (firstError.isEmpty) {
+                firstError = Some(s"Failed to close partition writer: ${ex.getMessage}")
+              }
+          }
+        }
+
+        Iterator.single(LlmPartitionMetrics(
+          attemptedChunks = attemptedChunks,
+          sentChunks = sentChunks,
+          duplicateChunks = duplicateChunks,
+          failedChunks = failedChunks,
+          totalBytes = totalBytes,
+          totalEstimatedTokens = totalEstimatedTokens,
+          errorMessage = firstError,
+        ))
+      }
+    )(Encoders.product[LlmPartitionMetrics])
+
+    val aggregatedEither = Try {
+      partitionStatsDs
+        .toDF()
+        .agg(
+          coalesce(sum(col("attemptedChunks")), lit(0L)).cast("long").as("attempted_chunks"),
+          coalesce(sum(col("sentChunks")), lit(0L)).cast("long").as("sent_chunks"),
+          coalesce(sum(col("duplicateChunks")), lit(0L)).cast("long").as("duplicate_chunks"),
+          coalesce(sum(col("failedChunks")), lit(0L)).cast("long").as("failed_chunks"),
+          coalesce(sum(col("totalBytes")), lit(0L)).cast("long").as("total_bytes"),
+          coalesce(sum(col("totalEstimatedTokens")), lit(0L)).cast("long").as("total_tokens"),
+          coalesce(sum(lit(1L)), lit(0L)).cast("long").as("partition_count"),
+          first(col("errorMessage"), ignoreNulls = true).as("first_error"),
+        )
+        .head()
     }.toEither.left.map { ex =>
       SparkToonError.CollectionError(
-        s"Failed while reading DataFrame rows: ${ex.getMessage}",
+        s"Failed to aggregate LLM partition metrics: ${ex.getMessage}",
         Some(ex),
       )
     }
-  }
 
-  /** Convert Spark Rows to JsonValue array. */
-  private def convertRowsToJsonArray(
-      rows: Array[Row],
-      schema: StructType,
-  ): Either[SparkToonError, JArray] = {
+    aggregatedEither.flatMap { row =>
+      val metrics = LlmPartitionWriteMetrics(
+        partitionCount = row.getLong(6),
+        attemptedChunks = row.getLong(0),
+        sentChunks = row.getLong(1),
+        duplicateChunks = row.getLong(2),
+        failedChunks = row.getLong(3),
+        totalBytes = row.getLong(4),
+        totalEstimatedTokens = row.getLong(5),
+        firstError = Option(row.getAs[String](7)),
+      )
 
-    // Convert each row, short-circuiting on first error
-    val jsonResults = rows.map(row => SparkJsonInterop.rowToJsonValueSafe(row, schema))
-
-    sequence(jsonResults.toVector).map(JArray.apply)
-  }
-
-  /** Convert JsonValue rows to Spark Rows. */
-  private def convertToSparkRows(
-      rows: Vector[JsonValue],
-      schema: StructType,
-  ): Either[SparkToonError, Vector[Row]] = {
-
-    val rowResults = rows.map(json => SparkJsonInterop.jsonValueToRowSafe(json, schema))
-
-    sequence(rowResults)
-  }
-
-  /** Encode JsonValue array in chunks. */
-  private def encodeChunks(
-      jsonArray: JArray,
-      key: String,
-      maxRowsPerChunk: Int,
-      options: EncodeOptions,
-  ): Either[SparkToonError, Vector[String]] = {
-
-    val rawChunks = jsonArray.value.grouped(maxRowsPerChunk).toVector
-    // Ensure we always emit at least one chunk, even for empty inputs
-    val chunks =
-      if (rawChunks.isEmpty) Vector(Vector.empty[JsonValue])
-      else rawChunks
-
-    // Encode each chunk, short-circuiting on first error
-    val chunkResults = chunks.map { chunk =>
-      val wrappedChunk = JObj(VectorMap(key -> JArray(chunk)))
-      encodeSafe(wrappedChunk, options)
+      if (llmOptions.failOnError && metrics.failedChunks > 0L) {
+        Left(SparkToonError.ConversionError(
+          s"Failed to write TOON chunks to LLM partitions: ${metrics.firstError.getOrElse("unknown error")}"
+        ))
+      } else {
+        Right(metrics)
+      }
     }
-
-    sequence(chunkResults)
   }
 
   /** Safely encode JsonValue to TOON. */
@@ -486,7 +831,7 @@ object SparkToonOps {
    *
    * Handles both wrapped (JObj with key) and unwrapped (direct JArray) formats.
    */
-  private def extractRows(jsonValues: Vector[JsonValue]): Vector[JsonValue] = {
+  private def extractRowsFromValue(value: JsonValue): Vector[JsonValue] = {
     def findRowArray(value: JsonValue): Option[Vector[JsonValue]] = value match {
     // Direct array of row objects
     case JArray(rows) if rows.forall {
@@ -498,15 +843,14 @@ object SparkToonOps {
     // Object wrapper – search values recursively
     case JObj(fields) =>
       fields.valuesIterator
-        .collectFirst {
-          case v if findRowArray(v).isDefined => findRowArray(v).get
-        }
+        .map(findRowArray)
+        .collectFirst { case Some(rows) => rows }
 
     // Other JSON shapes are ignored
     case _ => None
     }
 
-    jsonValues.flatMap(v => findRowArray(v).getOrElse(Vector.empty))
+    findRowArray(value).getOrElse(Vector.empty)
   }
 
   /** Encode a JsonValue as a minimal JSON string for baseline token estimates. */
@@ -544,25 +888,6 @@ object SparkToonOps {
     }
 
     encode(value)
-  }
-
-  /**
-   * Sequence Vector of Either values.
-   *
-   * Monadic traversal that short-circuits on first Left. Equivalent to Cats' sequence but
-   * implemented manually to avoid dependency.
-   *
-   * @param eithers
-   *   Vector of Either values
-   * @return
-   *   Either of first error or Vector of successes
-   */
-  private def sequence[E, A](eithers: Vector[Either[E, A]]): Either[E, Vector[A]] = {
-    eithers.foldLeft[Either[E, Vector[A]]](Right(Vector.empty)) {
-      case (Right(acc), Right(value)) => Right(acc :+ value)
-      case (Left(err), _)             => Left(err)
-      case (_, Left(err))             => Left(err)
-    }
   }
 
 }

@@ -22,7 +22,7 @@ import org.apache.spark.sql.types._
  *   df.toToon() // Safe to use TOON
  * } else {
  *   logger.warn(s"Schema not TOON-aligned: \${alignment.recommendation}")
- *   df.toJSON.collect() // Fall back to JSON
+ *   df.toJSON.take(1000) // Fall back to JSON with bounded sample
  * }
  * }}}
  *

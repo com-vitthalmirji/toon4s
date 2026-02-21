@@ -1,13 +1,27 @@
-# toon4s-spark
+# toon4s for Apache Spark
 
-[Apache Spark](https://spark.apache.org/) integration for TOON format - encode DataFrames, Datasets to token-efficient
-TOON format for LLM processing.
+TOON encoding for [Apache Spark](https://spark.apache.org/) DataFrames and Datasets, optimized for LLM workloads and
+tabular analytics.
 
 ## Overview
 
-toon4s-spark provides production-ready TOON encoding for Apache Spark DataFrames and Datasets. Based on
+The spark-integration module provides production-ready TOON encoding for Apache Spark DataFrames and Datasets. Based on
 the [TOON Generation Benchmark](https://github.com/vetertann/TOON-generation-benchmark), this integration delivers **22%
 token savings** for tabular data with intelligent safeguards for schema alignment and prompt tax optimization.
+
+This is an external third-party integration maintained in this repository:
+https://github.com/com-vitthalmirji/toon4s
+
+### Pipeline fit
+
+```text
+Lakehouse tables or streams
+  -> Spark SQL or DataFrame transform
+  -> toon4s-spark encoding (toToonDataset or writeToon)
+  -> TOON chunks
+  -> LLM endpoint call (writeToLlmPartitions)
+  -> response validation (ToonLlmResponseValidator)
+```
 
 ### When to use TOON vs JSON
 
@@ -44,7 +58,8 @@ TOON generation benchmark:
 - **Type-safe `Dataset[T]` support**: Compile-time safety with Scala case classes
 - **Schema alignment detection**: Pre-flight validation based on benchmark findings
 - **Adaptive chunking**: Optimize prompt tax for dataset size
-- **Streaming chunk encoding**: `toToon` iterates rows with `toLocalIterator` to reduce driver memory pressure
+- **Distributed chunk encoding**: `toToonDataset` and `writeToon` encode in executor partitions; `toToon` is a bounded convenience API
+- **DataSource V2 connector**: `format("toon")` for batch write/read of TOON documents
 - **Token metrics**: Compare JSON vs TOON token counts and cost savings
 - **Temporal interoperability**: Round-trip support for `DateType`, `TimestampType`, and `TimestampNTZType`
 - **Strict decode coercion**: Invalid numeric/boolean strings fail with typed conversion errors
@@ -52,8 +67,8 @@ TOON generation benchmark:
 - **Iceberg time travel**: Historical TOON snapshots for trend analysis
 - **Production monitoring**: Health checks, telemetry, and readiness reports
 - **SQL UDFs**: Register TOON functions for use in Spark SQL queries
-- **LLM client abstraction**: [llm4s](https://github.com/llm4s/llm4s) compatible conversation-based API
-- **Forward compatible**: Designed to integrate seamlessly with llm4s when available
+- **Executor-side LLM sink**: `writeToLlmPartitions` with [llm4s](https://github.com/llm4s/llm4s) clients
+- **Idempotent send path**: per-partition writer factory with retry and idempotency key support
 
 ## Installation
 
@@ -72,7 +87,135 @@ libraryDependencies ++= Seq(
 )
 ```
 
+Artifact note: the published artifact ID is `toon4s-spark`.
+
 Compatibility note: CI validates Spark `3.5.0` and `4.0.1`.
+
+Published artifacts compile against Spark `3.5.0` APIs and are validated on Spark `4.0.1` in CI.
+
+### Compatibility matrix
+
+| Module              | Scala | Spark support | JDK |
+|---------------------|-------|---------------|-----|
+| `toon4s-spark`      | 2.13  | 3.5.x, 4.0.x  | 21  |
+| `toon4s` root build | 2.13, 3.3.3 | N/A | 21  |
+
+See `spark-integration/docs/COMPATIBILITY_MATRIX.md` for full policy and notes.
+
+## Stability and migration notes
+
+- Stable API for patch releases:
+  - `ToonSparkOptions`
+  - `DataFrame.toToon(options: ToonSparkOptions)`
+  - `DataFrame.toonMetrics(options: ToonSparkOptions)`
+  - `Dataset[T].toToon(options: ToonSparkOptions)`
+  - `Dataset[T].toonMetrics(options: ToonSparkOptions)`
+- Data source API:
+  - `format("toon")` reads one TOON document per row using a single `toon` string column.
+  - `maxRowsPerFile` controls write-side chunking per task output file.
+- SQL extension API:
+  - `io.toonformat.toon4s.spark.extensions.ToonSparkSessionExtensions` auto-registers TOON UDFs.
+
+If you currently call string-arg methods (`toToon(key = ...)`, `toonMetrics(key = ...)`), migration is optional.
+You can keep existing code, but new code should prefer `ToonSparkOptions`.
+
+### Large-data execution guidance
+
+- `toToon(options)` is a convenience API that returns `Vector[String]`.
+- For large datasets and production paths, use distributed APIs:
+  - `toToonDataset(options)`
+  - `writeToon(outputPath, options)`
+  - `writeToLlmPartitions(writerFactory, llmOptions, options)`
+- These paths execute encoding and sink operations on Spark task partitions.
+
+Detailed docs:
+- `spark-integration/docs/API_STABILITY_POLICY.md`
+- `spark-integration/docs/COMPATIBILITY_MATRIX.md`
+- `spark-integration/docs/MIGRATION_GUIDE.md`
+- `spark-integration/docs/BENCHMARK_REPRODUCIBILITY.md`
+- `spark-integration/docs/TOON_VS_JSON_DECISION_TREE.md`
+- `spark-integration/docs/PROMPT_ENGINEERING.md`
+- `spark-integration/docs/PIPELINE_LESSONS.md`
+- `spark-integration/docs/case-studies.md`
+- `spark-integration/docs/WORKLOAD_MEASUREMENT_TEMPLATE.md`
+- `spark-integration/docs/UPSTREAM_PROPOSAL_PREP.md`
+- `spark-integration/docs/OUTREACH_ASSETS.md`
+- `spark-integration/docs/REVIEW_OUTCOME_CLOSURE.md`
+
+Core TOON docs:
+- [toon4s README](../README.md)
+- [Scala TOON specification](../SCALA-TOON-SPECIFICATION.md)
+
+Website submission docs:
+- `spark-integration/docs/SPARK_WEBSITE_SUBMISSION.md`
+
+## Try it in 5 minutes
+
+### 1) Batch query to TOON
+
+```scala
+import io.toonformat.toon4s.spark.SparkToonOps._
+import org.apache.spark.sql.SparkSession
+
+val spark = SparkSession.builder().master("local[*]").appName("toon-quickstart").getOrCreate()
+import spark.implicits._
+
+val users = Seq((1, "Alice", "US"), (2, "Bob", "IN"), (3, "Cara", "DE"))
+  .toDF("id", "name", "country")
+users.createOrReplaceTempView("users")
+
+val df = spark.sql("SELECT id, name, country FROM users ORDER BY id")
+val chunks = df.toToon(ToonSparkOptions(key = "users", maxRowsPerChunk = 1000))
+println(chunks.map(_.headOption.getOrElse("")).getOrElse("encoding failed"))
+```
+
+### 2) Streaming sketch with TOON sink
+
+```scala
+import io.toonformat.toon4s.spark.SparkToonOps._
+import org.apache.spark.sql.streaming.Trigger
+
+val streamDf = spark.readStream.format("delta").table("events_cdc")
+
+val query = streamDf.writeStream
+  .trigger(Trigger.ProcessingTime("30 seconds"))
+  .foreachBatch { (batchDf, _) =>
+    val result = batchDf.toToon(ToonSparkOptions(key = "events", maxRowsPerChunk = 500))
+    result.foreach(_.foreach(chunk => writeToonSink(chunk))) // your sink
+  }
+  .option("checkpointLocation", "/tmp/toon-checkpoints/events")
+  .start()
+```
+
+### 3) Spark + LLM end-to-end stub
+
+```scala
+def callLLM(chunk: String): String = s"LLM summary for ${chunk.take(80)}..."
+
+df.toToon(ToonSparkOptions(key = "users")).foreach { chunks =>
+  chunks.foreach { chunk =>
+    val response = callLLM(chunk)
+    println(response)
+  }
+}
+```
+
+Runnable files:
+- `spark-integration/examples/TryIn5MinutesExample.scala`
+- `spark-integration/examples/SparkLlmEndToEndExample.scala`
+- `spark-integration/examples/WorkloadMeasurementExample.scala`
+
+Measured workload notes:
+- `spark-integration/docs/WORKLOAD_MEASUREMENT_2026-02-21.md`
+
+### 4) spark-shell quick check
+
+```scala
+import io.toonformat.toon4s.spark.SparkToonOps._
+import io.toonformat.toon4s.spark.ToonSparkOptions
+val df = Seq((1, "alice"), (2, "bob")).toDF("id", "name")
+df.toToon(ToonSparkOptions(key = "users", maxRowsPerChunk = 1000))
+```
 
 ## Quick start
 
@@ -104,6 +247,80 @@ df.toToon(key = "users") match {
     println(s"Error: ${error.message}")
 }
 ```
+
+## Guardrails and observability
+
+Use guardrails to control TOON eligibility and fallback behavior with explicit defaults.
+
+```scala
+import io.toonformat.toon4s.spark.monitoring.ToonMonitoring
+import io.toonformat.toon4s.spark.monitoring.ToonMonitoring._
+
+val result = ToonMonitoring.encodeWithGuardrails(
+  df = df,
+  options = ToonSparkOptions(key = "users"),
+  guardrailOptions = GuardrailOptions(
+    minBytesPerChunk = 10 * 1024,
+    maxRowsPerChunk = 1000,
+    mode = GuardrailMode.Strict,
+  ),
+  fallbackMode = FallbackMode.Json,
+  onWarning = msg => logger.warn(msg),
+)
+```
+
+Guardrail counters include:
+- `totalEncodes`, `successfulEncodes`, `failedEncodes`
+- `chunkCount`, `minChunkBytes`, `maxChunkBytes`, `avgChunkBytes`
+- `avgEstimatedTokensPerChunk`
+
+### Stable options API
+
+```scala
+import io.toonformat.toon4s.spark.ToonSparkOptions
+
+val options = ToonSparkOptions(
+  key = "users",
+  maxRowsPerChunk = 500
+)
+
+val encoded = df.toToon(options)
+val metrics = df.toonMetrics(options)
+```
+
+### Data source API
+
+```scala
+// Write TOON files (chunked TOON documents per task output file)
+df.write
+  .format("toon")
+  .mode("overwrite")
+  .option("path", "/tmp/toon-output")
+  .option("key", "users")
+  .option("maxRowsPerFile", "1000")
+  .save()
+
+// Read TOON files back as a DataFrame with one string column: `toon`
+val toonDf = spark.read
+  .format("toon")
+  .option("path", "/tmp/toon-output")
+  .load()
+```
+
+Note: `format("toon")` commit uses filesystem rename semantics. On object stores, rename behavior can differ from HDFS/local filesystems. For object-store-heavy pipelines, prefer `writeToon(...)` and validate commit behavior in your environment.
+
+### Spark SQL extensions provider
+
+```scala
+val spark = SparkSession.builder()
+  .config(
+    "spark.sql.extensions",
+    "io.toonformat.toon4s.spark.extensions.ToonSparkSessionExtensions"
+  )
+  .getOrCreate()
+```
+
+This auto-registers TOON SQL UDFs (for example `toon_encode_row`, `toon_estimate_tokens`).
 
 ### Token metrics
 
@@ -190,117 +407,39 @@ largeDf.toToon(
 
 ### LLM integration [llm4s-compatible](https://github.com/llm4s/llm4s)
 
-`toon4s-spark` provides an LLM client abstraction that mirrors [llm4s](https://github.com/llm4s/llm4s) design patterns
-for
-forward compatibility.
+Use `writeToLlmPartitions` with `LlmPartitionSink` as the production path.
+It builds partition-local clients and sends chunks from executor tasks.
 
-#### Conversation-based API
+The standalone `llm` package remains available for local tests and prototyping.
 
 ```scala
 import io.toonformat.toon4s.spark.llm._
 
-// Create conversation
-val conversation = for {
-  sys <- Message.system("You are a data analyst")
-  user <- Message.user("Analyze this data: ...")
-  conv <- Conversation.create(sys, user)
-} yield conv
+val writerFactory = LlmPartitionWriterFactory.fromClientFactory(
+  clientFactory = () => myLlmClient(),
+  idempotencyStore = new IdempotencyStore.InMemory(),
+)
 
-// Use mock client for testing
-val client = MockLlmClient.alwaysSucceeds
-
-conversation.flatMap { conv =>
-  client.complete(conv, CompletionOptions.default)
-} match {
-  case Right(completion) =>
-    println(s"Response: ${completion.content}")
-    println(s"Tokens: ${completion.usage}")
-  case Left(error) =>
-    println(s"Error: ${error.formatted}")
-}
+val metrics = df.writeToLlmPartitions(
+  writerFactory = writerFactory,
+  llmOptions = LlmPartitionWriteOptions(maxRetries = 2, failOnError = true),
+  options = ToonSparkOptions(key = "events", maxRowsPerChunk = 1000),
+)
 ```
 
-#### Send TOON data to LLM
+`writeToLlmPartitions` performs encode and send inside executor tasks.
+Use `LlmPartitionSink` with llm4s clients for production pipelines.
+
+For legacy local tests, standalone helpers remain under `io.toonformat.toon4s.spark.llm`,
+but new integrations should prefer the partition sink path above.
+
+If you still have a legacy `LlmClient`, adapt it instead of building a second send path:
 
 ```scala
-df.toToon(key = "analytics_data") match {
-  case Right(toonChunks) =>
-    toonChunks.foreach { toon =>
-      val result = for {
-        conv <- Conversation.fromPrompts(
-          "You are a data analyst",
-          s"Analyze this data:\n$toon"
-        )
-        completion <- client.complete(conv)
-      } yield completion
-
-      result.foreach { completion =>
-        println(s"Analysis: ${completion.content}")
-        completion.usage.foreach { usage =>
-          println(s"Cost: ${usage.estimateCost(0.01, 0.03)}")
-        }
-      }
-    }
-  case Left(error) =>
-    println(s"Encoding error: ${error.message}")
-}
+val writerFactory = LlmPartitionWriterFactory.fromLegacyClientFactory(
+  clientFactory = () => legacyClient,
+)
 ```
-
-#### Backward-compatible string API
-
-```scala
-// Simple string-based API for quick prototyping
-val client = MockLlmClient(Map("test" -> "response"))
-
-client.completeSimple("What is 2+2?") match {
-  case Right(response) => println(response)
-  case Left(error) => println(error.message)
-}
-
-// With system prompt
-client.completeWithSystem(
-  "You are helpful",
-  "What is 2+2?"
-) match {
-  case Right(response) => println(response)
-  case Left(error) => println(error.message)
-}
-```
-
-#### Streaming support
-
-```scala
-val result = for {
-  conv <- Conversation.userOnly("Tell me a story")
-  completion <- client.streamComplete(conv) { chunk =>
-    chunk.content.foreach(print) // Print each chunk as it arrives
-  }
-} yield completion
-```
-
-#### Context window management (llm4s pattern)
-
-```scala
-val client = MockLlmClient.alwaysSucceeds
-
-// Check context limits
-val contextWindow = client.getContextWindow() // 128000 for GPT-4o
-val reserved = client.getReserveCompletion() // 4096 reserved for output
-
-// Calculate available budget
-val budget = client.getContextBudget(HeadroomPercent.Standard)
-println(s"Available: ${budget.available} tokens")
-
-// Check if prompt fits
-if (budget.fits(promptTokens)) {
-  // Send to LLM
-}
-```
-
-#### Retry helper behavior
-
-`LlmClientHelpers.retry` only waits when another retry attempt is still available. If wait is interrupted, it
-returns a typed error and preserves thread interruption.
 
 ## API reference
 
@@ -320,6 +459,16 @@ materialize all rows at once on the driver.
 **`toonMetrics(key: String, options: EncodeOptions): Either[SparkToonError, ToonMetrics]`**
 
 Compute token metrics comparing JSON vs TOON efficiency.
+
+**`toonMetricsWithEstimator(key, options, tokenEstimator)`**
+
+Use this when your provider tokenizer differs from the default 4 chars/token estimate.
+Example:
+
+```scala
+val estimator = ToonMetrics.CharsPerTokenEstimator(charsPerToken = 3.2)
+val metrics = df.toonMetricsWithEstimator("data", EncodeOptions(), estimator)
+```
 
 **`showToonSample(n: Int): Unit`**
 
@@ -342,6 +491,17 @@ Register with `ToonUDFs.register(spark)`:
 - `toon_encode_string(string)`: Encode string value
 - `toon_decode_string(string)`: Decode TOON string
 - `toon_estimate_tokens(string)`: Estimate token count
+
+### LLM response validation
+
+Use `ToonLlmResponseValidator` to detect format confusion in LLM responses.
+
+```scala
+import io.toonformat.toon4s.spark.llm.ToonLlmResponseValidator
+
+val check = ToonLlmResponseValidator.validate(responseText)
+if (!check.valid) logger.warn(check.issues.map(_.message).mkString("; "))
+```
 
 ### ToonMetrics
 
@@ -794,7 +954,7 @@ sequenceDiagram
 
 ### Strategic alignment with Spark ecosystem
 
-toon4s-spark is positioned at the intersection of:
+toon4s for Apache Spark is positioned at the intersection of:
 
 1. **Spark's strength**: Tabular data, SQL results, ETL pipelines
 2. **TOON's sweet spot**: Tabular encoding (90.5% accuracy, 22% token savings)
@@ -1048,3 +1208,8 @@ df.toToon() match {
 ## License
 
 MIT License - See [LICENSE](../LICENSE) file for details.
+
+## Trademark notice
+
+Apache Spark, Spark, Apache, and related marks are trademarks of The Apache Software Foundation.
+This project is an independent third-party library and is not affiliated with or endorsed by ASF.

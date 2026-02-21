@@ -120,9 +120,9 @@ object SparkToonError {
   }
 
   /**
-   * Collection failed (driver out of memory, dataset too large).
+   * Materialization failed (driver out of memory, dataset too large).
    *
-   * This error occurs when DataFrame.collect() fails due to driver memory pressure. Solutions:
+   * This error occurs when driver-side extraction fails due to memory pressure. Solutions:
    *   - Reduce maxRowsPerChunk parameter
    *   - Filter DataFrame before encoding
    *   - Use chunked processing with toToonChunked

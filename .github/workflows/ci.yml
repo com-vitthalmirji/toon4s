@@ -52,6 +52,9 @@ jobs:
       - name: scalafmt check
         run: sbt clean scalafmtCheckAll
 
+      - name: scalafix check
+        run: sbt clean "sparkIntegration/scalafixAll --check"
+
       - name: cross compile
         run: sbt clean +compile
 

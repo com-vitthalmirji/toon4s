@@ -32,3 +32,5 @@ hs_err_pid*
 .bsp
 docs/internals
 .DS_Store
+# local benchmark datasets
+tmp-data/

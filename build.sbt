@@ -4,12 +4,15 @@ import sbtdynver.DynVerPlugin.autoImport._
 
 lazy val Scala3Latest = "3.3.3"
 
-lazy val Scala213Latest = "2.13.14"
+lazy val Scala213Latest = "2.13.16"
 
 lazy val SparkSqlDefaultVersion = "3.5.0"
 
 lazy val SparkSqlVersion =
   sys.props.getOrElse("toon4s.spark.version", SparkSqlDefaultVersion)
+
+lazy val Llm4sVersion =
+  sys.props.getOrElse("toon4s.llm4s.version", "0.1.16")
 
 ThisBuild / organization := "com.vitthalmirji"
 
@@ -109,10 +112,8 @@ lazy val core = (project in file("core"))
         )
     },
     // MiMa configuration for binary compatibility checking
-    // Check against previous published versions to ensure no breaking changes
     mimaPreviousArtifacts := Set(
-      // Uncomment when first version is published:
-      // organization.value %% moduleName.value % "0.1.0"
+      organization.value %% moduleName.value % "0.7.0"
     ),
     // Exclude known binary incompatible changes (add as needed)
     mimaBinaryIssueFilters := Seq(
@@ -165,7 +166,10 @@ lazy val sparkIntegration = (project in file("spark-integration"))
     scalaVersion := Scala213Latest,
     libraryDependencies ++= Seq(
       "org.apache.spark" %% "spark-sql" % SparkSqlVersion % Provided,
+      ("org.llm4s"       %% "core"      % Llm4sVersion % Provided).intransitive(),
       "org.scalameta"    %% "munit"     % "1.2.1" % Test,
+      "org.scalacheck"   %% "scalacheck"       % "1.19.0" % Test,
+      "org.scalameta"    %% "munit-scalacheck" % "1.2.0"  % Test,
     ),
     scalacOptions ++= commonScalacOptions,
     // Allow Scala 2.13 compiler to read Scala 3 TASTy from toon4s-core
@@ -202,8 +206,7 @@ lazy val sparkIntegration = (project in file("spark-integration"))
     ),
     // MiMa configuration for binary compatibility checking
     mimaPreviousArtifacts := Set(
-      // Will be uncommented after first release
-      // organization.value %% moduleName.value % "0.1.0"
+      organization.value %% moduleName.value % "0.7.0"
     ),
     // Exclude known binary incompatible changes (add as needed)
     mimaBinaryIssueFilters := Seq(
