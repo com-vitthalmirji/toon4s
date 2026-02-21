@@ -220,18 +220,20 @@ object DeltaLakeCDC {
       config: DeltaCDCConfig
   )(processor: CDCBatchMetadata => Unit)(implicit spark: SparkSession): StreamingQuery = {
     // Build CDC stream reader
-    var reader = spark.readStream
+    val baseReader = spark.readStream
       .format("delta")
       .option("readChangeFeed", "true")
 
-    // Apply starting point
-    config.startingVersion.foreach(v => reader = reader.option("startingVersion", v.toString))
-    config.startingTimestamp.foreach(ts => reader = reader.option("startingTimestamp", ts))
+    val optionalEntries = Vector(
+      config.startingVersion.map(v => "startingVersion" -> v.toString),
+      config.startingTimestamp.map(ts => "startingTimestamp" -> ts),
+      config.maxFilesPerTrigger.map(max => "maxFilesPerTrigger" -> max.toString),
+    ).flatten
 
-    // Apply rate limiting
-    config.maxFilesPerTrigger.foreach(max =>
-      reader = reader.option("maxFilesPerTrigger", max.toString)
-    )
+    val reader = optionalEntries.foldLeft(baseReader) {
+      case (acc, (name, value)) =>
+        acc.option(name, value)
+    }
 
     val cdcStream = reader.table(config.tableName)
 

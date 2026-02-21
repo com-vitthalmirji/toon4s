@@ -307,6 +307,8 @@ val toonDf = spark.read
   .load()
 ```
 
+Note: `format("toon")` commit uses filesystem rename semantics. On object stores, rename behavior can differ from HDFS/local filesystems. For object-store-heavy pipelines, prefer `writeToon(...)` and validate commit behavior in your environment.
+
 ### Spark SQL extensions provider
 
 ```scala

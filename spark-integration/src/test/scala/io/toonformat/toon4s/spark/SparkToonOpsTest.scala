@@ -102,7 +102,7 @@ class SparkToonOpsTest extends SparkTestSuite {
     val s = spark
     import s.implicits._
     assert(loaded.count() > 0L)
-    assert(loaded.as[String].collect().exists(_.contains("users")))
+    assert(loaded.as[String].take(100).exists(_.contains("users")))
   }
 
   test("writeToLlmPartitions: send from partition tasks and aggregate metrics") {

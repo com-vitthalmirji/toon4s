@@ -166,7 +166,7 @@ lazy val sparkIntegration = (project in file("spark-integration"))
     scalaVersion := Scala213Latest,
     libraryDependencies ++= Seq(
       "org.apache.spark" %% "spark-sql" % SparkSqlVersion % Provided,
-      "org.llm4s"        %% "core"      % Llm4sVersion,
+      ("org.llm4s"       %% "core"      % Llm4sVersion % Provided).intransitive(),
       "org.scalameta"    %% "munit"     % "1.2.1" % Test,
       "org.scalacheck"   %% "scalacheck"       % "1.19.0" % Test,
       "org.scalameta"    %% "munit-scalacheck" % "1.2.0"  % Test,

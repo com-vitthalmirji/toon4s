@@ -8,6 +8,9 @@ import org.apache.spark.sql.{DataFrame, SparkSession}
 import SparkToonOps._
 
 /**
+ * Reference-only copy for readable documentation.
+ * The compiled entry point is in `src/main/scala/examples/WorkloadMeasurementRunner.scala`.
+ *
  * Measure JSON vs TOON behavior on one real Spark workload.
  *
  * Usage:

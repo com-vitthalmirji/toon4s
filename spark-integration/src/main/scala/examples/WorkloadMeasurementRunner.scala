@@ -155,8 +155,7 @@ object WorkloadMeasurementRunner {
         coalesce(sum(col("tokens")), lit(0L)).cast("long").as("tokens"),
         coalesce(sum(col("records")), lit(0L)).cast("long").as("records"),
       )
-      .collect()
-      .head
+      .head()
 
     PayloadStats(
       bytes = totals.getLong(0),

@@ -112,10 +112,10 @@ private[datasource] object ToonDataSourceV2 {
     new IllegalArgumentException(error.message)
 
   def raise[A](error: DataSourceError): A =
-    scala.util.Failure[A](toException(error)).get
+    throw toException(error)
 
   def raiseThrowable[A](error: Throwable): A =
-    scala.util.Failure[A](error).get
+    throw error
 
   def activeHadoopConf(): Configuration = {
     val sessionResult = Try(SparkSession.active).toEither.left.map { ex =>
@@ -259,9 +259,7 @@ final private[datasource] class ToonPartitionReaderFactory(conf: SerializableCon
 
       override def close(): Unit = {
         val readerClose = Try(reader.close())
-        val streamClose = Try(stream.close())
         readerClose.failed.foreach(ToonDataSourceV2.raiseThrowable[Unit])
-        streamClose.failed.foreach(ToonDataSourceV2.raiseThrowable[Unit])
       }
     }
   }

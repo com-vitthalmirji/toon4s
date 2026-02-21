@@ -31,6 +31,8 @@ class ToonSparkSessionExtensionsTest extends FunSuite {
         """
           |SELECT
           |  toon_encode_string('Alice') AS toon_doc,
+          |  toon_encode_row('Alice') AS toon_row_doc,
+          |  toon_decode_row(toon_encode_row('Alice')) AS decoded_row,
           |  toon_estimate_tokens('Alice') AS token_count
           |""".stripMargin
       )
@@ -38,8 +40,12 @@ class ToonSparkSessionExtensionsTest extends FunSuite {
       assertEquals(result.count(), 1L)
       val row = result.take(1).head
       val toonDoc = row.getAs[String]("toon_doc")
+      val toonRowDoc = row.getAs[String]("toon_row_doc")
       assert(toonDoc.nonEmpty)
       assert(toonDoc.contains("Alice"))
+      assert(toonRowDoc.nonEmpty)
+      assert(toonRowDoc != "Alice")
+      assert(row.getAs[String]("decoded_row").contains("Alice"))
       assert(row.getAs[Int]("token_count") > 0)
     }
 

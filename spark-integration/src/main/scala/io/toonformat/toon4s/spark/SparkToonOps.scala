@@ -9,6 +9,7 @@ import io.toonformat.toon4s.{DecodeOptions, EncodeOptions, Toon}
 import io.toonformat.toon4s.JsonValue
 import io.toonformat.toon4s.JsonValue._
 import io.toonformat.toon4s.spark.error.SparkToonError
+import io.toonformat.toon4s.spark.internal.SparkConfUtils
 import io.toonformat.toon4s.spark.llm.{
   LlmChunkRequest,
   LlmPartitionIdempotency,
@@ -57,6 +58,9 @@ import org.apache.spark.sql.types.StructType
  * }}}
  */
 object SparkToonOps {
+
+  final private class SparkToonEncodingException(val error: SparkToonError)
+      extends IllegalStateException(error.message, error.cause.orNull)
 
   private val MaxCollectedChunksConfKey = "toon4s.spark.collect.maxChunks"
 
@@ -454,7 +458,7 @@ object SparkToonOps {
           chunkRows += jsonRow
           flush(force = false)
         case Left(err) =>
-          throw new IllegalStateException(err.message, err.cause.orNull)
+          throw new SparkToonEncodingException(err)
         }
       }
 
@@ -468,7 +472,7 @@ object SparkToonOps {
       key: String,
       options: EncodeOptions,
   ): Either[SparkToonError, Vector[String]] = {
-    val maxChunks = readPositiveIntConf(
+    val maxChunks = SparkConfUtils.readPositiveInt(
       chunksDataset.sparkSession,
       MaxCollectedChunksConfKey,
       DefaultMaxCollectedChunks,
@@ -514,18 +518,6 @@ object SparkToonOps {
     }
   }
 
-  private def readPositiveIntConf(
-      spark: SparkSession,
-      key: String,
-      defaultValue: Int,
-  ): Int = {
-    spark.conf
-      .getOption(key)
-      .flatMap(_.trim.toIntOption)
-      .filter(_ > 0)
-      .getOrElse(defaultValue)
-  }
-
   private def readPositiveLongConf(
       spark: SparkSession,
       key: String,
@@ -554,7 +546,7 @@ object SparkToonOps {
       Left(SparkToonError.ConversionError("maxRowsPerChunk must be greater than 0"))
     } else {
       val schema = df.schema
-      val maxPartitionMetrics = readPositiveIntConf(
+      val maxPartitionMetrics = SparkConfUtils.readPositiveInt(
         df.sparkSession,
         MaxCollectedPartitionMetricsConfKey,
         DefaultMaxCollectedPartitionMetrics,
@@ -643,19 +635,44 @@ object SparkToonOps {
           case Some(message) =>
             Left(SparkToonError.ConversionError(s"Failed to compute TOON metrics: $message"))
           case None =>
-            val jsonTokens = totalsRow.getLong(0).toInt
-            val toonTokens = totalsRow.getLong(1).toInt
-            val rows = totalsRow.getLong(2).toInt
-            Right(ToonMetrics(
+            for {
+              jsonTokens <- boundedLongToInt(
+                totalsRow.getLong(0),
+                "jsonTokenCount",
+                "Use smaller chunks or compute metrics on a narrower dataset slice.",
+              )
+              toonTokens <- boundedLongToInt(
+                totalsRow.getLong(1),
+                "toonTokenCount",
+                "Use smaller chunks or compute metrics on a narrower dataset slice.",
+              )
+              rows <- boundedLongToInt(
+                totalsRow.getLong(2),
+                "rowCount",
+                "Use partitioned metrics flow with bounded input size.",
+              )
+            } yield ToonMetrics(
               jsonTokenCount = jsonTokens,
               toonTokenCount = toonTokens,
               rowCount = rows,
               columnCount = schema.fields.length,
-            ))
+            )
           }
         }
       }
     }
+  }
+
+  private def boundedLongToInt(
+      value: Long,
+      field: String,
+      guidance: String,
+  ): Either[SparkToonError, Int] = {
+    if (value > Int.MaxValue.toLong || value < Int.MinValue.toLong) {
+      Left(SparkToonError.CollectionError(
+        s"$field overflowed Int range while aggregating distributed metrics (value=$value). $guidance"
+      ))
+    } else Right(value.toInt)
   }
 
   private def writeChunksToLlmPartitions(

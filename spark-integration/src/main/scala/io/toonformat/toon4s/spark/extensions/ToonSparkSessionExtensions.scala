@@ -27,13 +27,9 @@ private object ToonSparkSessionExtensions {
     (FunctionIdentifier, ExpressionInfo, Seq[Expression] => Expression)
 
   private val functions: Seq[FunctionDescription] = Seq(
-    unaryStringFunction("toon_encode_row")(value => stringify(value)),
+    unaryStringFunction("toon_encode_row")(value => encodeToToonString(value)),
     unaryStringFunction("toon_decode_row")(value => decodeToString(value)),
-    unaryStringFunction("toon_encode_string") { value =>
-      Option(value)
-        .map(v => Toon.encode(JString(v.toString), EncodeOptions()).getOrElse(s"\"$v\""))
-        .getOrElse("null")
-    },
+    unaryStringFunction("toon_encode_string")(value => encodeToToonString(value)),
     unaryStringFunction("toon_decode_string")(value => decodeToString(value)),
     unaryIntFunction("toon_estimate_tokens") { value =>
       val text = Option(value).map(_.toString).getOrElse("")
@@ -92,6 +88,9 @@ private object ToonSparkSessionExtensions {
       .getOrElse("")
   }
 
-  private def stringify(value: Any): String = Option(value).map(_.toString).getOrElse("")
+  private def encodeToToonString(value: Any): String =
+    Option(value)
+      .map(v => Toon.encode(JString(v.toString), EncodeOptions()).getOrElse(s"\"$v\""))
+      .getOrElse("null")
 
 }

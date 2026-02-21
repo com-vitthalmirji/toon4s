@@ -6,7 +6,8 @@ import scala.util.Try
 
 import io.toonformat.toon4s.spark.ToonMetrics
 import io.toonformat.toon4s.spark.error.SparkToonError
-import org.apache.spark.sql.{DataFrame, Encoders, SparkSession}
+import io.toonformat.toon4s.spark.internal.SparkConfUtils
+import org.apache.spark.sql.{DataFrame, Encoders}
 import org.apache.spark.sql.functions._
 
 private[monitoring] object ToonMonitoringSupport {
@@ -75,7 +76,7 @@ private[monitoring] object ToonMonitoringSupport {
       df: DataFrame,
       configuredMaxRows: Int,
   ): Either[SparkToonError, ToonMonitoring.EncodingCounters] = {
-    val confMaxRows = readPositiveIntConf(
+    val confMaxRows = SparkConfUtils.readPositiveInt(
       df.sparkSession,
       MaxJsonFallbackRowsConfKey,
       DefaultMaxJsonFallbackRows,
@@ -169,16 +170,5 @@ private[monitoring] object ToonMonitoringSupport {
     else if (bytes < 1024 * 1024 * 1024) f"${bytes / (1024.0 * 1024.0)}%.1f MB"
     else f"${bytes / (1024.0 * 1024.0 * 1024.0)}%.1f GB"
   }
-
-  private def readPositiveIntConf(
-      spark: SparkSession,
-      key: String,
-      defaultValue: Int,
-  ): Int =
-    spark.conf
-      .getOption(key)
-      .flatMap(_.trim.toIntOption)
-      .filter(_ > 0)
-      .getOrElse(defaultValue)
 
 }
