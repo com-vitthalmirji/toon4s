@@ -33,7 +33,6 @@ import org.apache.spark.sql.connector.read.{
   ScanBuilder,
 }
 import org.apache.spark.sql.connector.write._
-import org.apache.spark.sql.internal.connector.SimpleTableProvider
 import org.apache.spark.sql.sources.DataSourceRegister
 import org.apache.spark.sql.types.{StringType, StructField, StructType}
 import org.apache.spark.sql.util.CaseInsensitiveStringMap
@@ -44,9 +43,9 @@ import org.apache.spark.util.SerializableConfiguration
  * Third-party TOON DataSource V2.
  *
  * Read path: one TOON document per row in a single `toon` string column. Write path: one TOON
- * document per task file, produced from input rows.
+ * document chunks per task file, produced from input rows.
  */
-class ToonDataSourceV2 extends SimpleTableProvider with DataSourceRegister {
+class ToonDataSourceV2 extends TableProvider with DataSourceRegister {
 
   override def shortName(): String = "toon"
 
@@ -60,11 +59,10 @@ class ToonDataSourceV2 extends SimpleTableProvider with DataSourceRegister {
       partitioning: Array[Transform],
       properties: util.Map[String, String],
   ): Table = {
-    new ToonTable(new CaseInsensitiveStringMap(properties), Some(schema))
-  }
-
-  override def getTable(options: CaseInsensitiveStringMap): Table = {
-    new ToonTable(options, None)
+    new ToonTable(
+      options = new CaseInsensitiveStringMap(properties),
+      userSchema = Option(schema),
+    )
   }
 
 }
@@ -78,6 +76,10 @@ private[datasource] object ToonDataSourceV2 {
   val PathOption = "path"
 
   val DefaultTopLevelKey = "data"
+
+  val MaxRowsPerFileOption = "maxRowsPerFile"
+
+  val DefaultMaxRowsPerFile = 10000
 
   val ReadSchema: StructType =
     StructType(Seq(StructField(ToonColumnName, StringType, nullable = false)))
@@ -175,8 +177,6 @@ final private[datasource] case class ToonInputPartition(path: String) extends In
 final private[datasource] class ToonPartitionReaderFactory(conf: SerializableConfiguration)
     extends PartitionReaderFactory {
 
-  import ToonDataSourceV2._
-
   override def createReader(partition: InputPartition): PartitionReader[InternalRow] = {
     val input = partition.asInstanceOf[ToonInputPartition]
     val path = new Path(input.path)
@@ -236,6 +236,11 @@ final private[datasource] class ToonWriteBuilder(
     val key = Option(sourceOptions.get(ToonDataSourceV2.KeyOption))
       .filter(_.nonEmpty)
       .getOrElse(ToonDataSourceV2.DefaultTopLevelKey)
+    val maxRowsPerFile = parsePositiveInt(
+      sourceOptions,
+      ToonDataSourceV2.MaxRowsPerFileOption,
+      ToonDataSourceV2.DefaultMaxRowsPerFile,
+    )
     val schema = info.schema()
     val queryId = info.queryId()
     val hadoopConf = SparkSession.active.sparkContext.hadoopConfiguration
@@ -250,6 +255,7 @@ final private[datasource] class ToonWriteBuilder(
           queryId = queryId,
           outputPath = outputPath.toUri.toString,
           key = key,
+          maxRowsPerFile = maxRowsPerFile,
           schema = schema,
           conf = hadoopConf,
         )
@@ -267,12 +273,31 @@ final private[datasource] class ToonWriteBuilder(
     }
   }
 
+  private def parsePositiveInt(
+      map: CaseInsensitiveStringMap,
+      key: String,
+      defaultValue: Int,
+  ): Int = {
+    Option(map.get(key)).filter(_.nonEmpty) match {
+    case None      => defaultValue
+    case Some(raw) =>
+      raw.toIntOption match {
+      case Some(value) if value > 0 => value
+      case _                        =>
+        throw new IllegalArgumentException(
+          s"Option '$key' must be a positive integer for format(\"toon\")"
+        )
+      }
+    }
+  }
+
 }
 
 final private[datasource] class ToonBatchWrite(
     queryId: String,
     outputPath: String,
     key: String,
+    maxRowsPerFile: Int,
     schema: StructType,
     conf: Configuration,
 ) extends BatchWrite {
@@ -282,6 +307,7 @@ final private[datasource] class ToonBatchWrite(
       outputPath = outputPath,
       queryId = queryId,
       key = key,
+      maxRowsPerFile = maxRowsPerFile,
       schema = schema,
       conf = new SerializableConfiguration(conf),
     )
@@ -318,24 +344,30 @@ final private[datasource] class ToonDataWriterFactory(
     outputPath: String,
     queryId: String,
     key: String,
+    maxRowsPerFile: Int,
     schema: StructType,
     conf: SerializableConfiguration,
 ) extends DataWriterFactory {
 
   override def createWriter(partitionId: Int, taskId: Long): DataWriter[InternalRow] = {
     val jobPath = new Path(new Path(outputPath, "_temporary"), queryId)
-    val filePath =
-      new Path(jobPath, s"${ToonDataSourceV2.WriterFilePrefix}$partitionId-$taskId.toon")
-    val fs = filePath.getFileSystem(conf.value)
-    new ToonDataWriter(fs, filePath, key, schema)
+    val fs = jobPath.getFileSystem(conf.value)
+    fs.mkdirs(jobPath)
+    new ToonDataWriter(fs, jobPath, partitionId, taskId, key, maxRowsPerFile, schema)
   }
 
 }
 
+final private[datasource] case class ToonWriterCommitMessage(files: Array[String])
+    extends WriterCommitMessage
+
 final private[datasource] class ToonDataWriter(
     fs: FileSystem,
-    file: Path,
+    jobPath: Path,
+    partitionId: Int,
+    taskId: Long,
     key: String,
+    maxRowsPerFile: Int,
     schema: StructType,
 ) extends DataWriter[InternalRow] {
 
@@ -343,24 +375,51 @@ final private[datasource] class ToonDataWriter(
 
   private val rows = scala.collection.mutable.ArrayBuffer.empty[JsonValue]
 
+  private val createdFiles = scala.collection.mutable.ArrayBuffer.empty[Path]
+
+  private var chunkIndex = 0
+
   override def write(record: InternalRow): Unit = {
     val row = scalaConverter(record).asInstanceOf[org.apache.spark.sql.Row]
     rows += SparkJsonInterop.rowToJsonValue(row, schema)
+    if (rows.size >= maxRowsPerFile) {
+      flushChunk()
+    }
   }
 
   override def commit(): WriterCommitMessage = {
-    val payload = JObj(scala.collection.immutable.VectorMap(key -> JArray(rows.toVector)))
-    val encoded = Toon.encode(payload, EncodeOptions()).fold(throw _, identity)
-    val out = fs.create(file, true)
-    try out.write(encoded.getBytes(StandardCharsets.UTF_8))
-    finally out.close()
-    null
+    flushChunk()
+    ToonWriterCommitMessage(createdFiles.map(_.toString).toArray)
   }
 
   override def abort(): Unit = {
-    fs.delete(file, false)
+    createdFiles.foreach(path => fs.delete(path, false))
+    rows.clear()
   }
 
   override def close(): Unit = {}
+
+  private def flushChunk(): Unit = {
+    if (rows.isEmpty) {
+      ()
+    } else {
+      val file = nextFilePath()
+      chunkIndex += 1
+      val out = fs.create(file, true)
+      try {
+        val payload = JObj(scala.collection.immutable.VectorMap(key -> JArray(rows.toVector)))
+        val encoded = Toon.encode(payload, EncodeOptions()).fold(throw _, identity)
+        out.write(encoded.getBytes(StandardCharsets.UTF_8))
+        createdFiles += file
+        rows.clear()
+      } finally {
+        out.close()
+      }
+    }
+  }
+
+  private def nextFilePath(): Path = {
+    new Path(jobPath, s"${ToonDataSourceV2.WriterFilePrefix}$partitionId-$taskId-$chunkIndex.toon")
+  }
 
 }

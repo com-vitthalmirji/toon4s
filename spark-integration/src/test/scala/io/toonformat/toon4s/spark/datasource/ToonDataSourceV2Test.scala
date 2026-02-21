@@ -60,6 +60,41 @@ class ToonDataSourceV2Test extends FunSuite {
     }
   }
 
+  test("format(toon): splits partition output with maxRowsPerFile") {
+    val tempDir = Files.createTempDirectory("toon-ds-v2-split-test").toFile
+    try {
+      val sparkSession = spark
+      import sparkSession.implicits._
+      val df = Seq(
+        (1, "Alice"),
+        (2, "Bob"),
+        (3, "Cara"),
+      ).toDF("id", "name")
+
+      df.repartition(1)
+        .write
+        .format("toon")
+        .mode("overwrite")
+        .option("path", tempDir.getAbsolutePath)
+        .option("key", "users")
+        .option("maxRowsPerFile", "1")
+        .save()
+
+      val payloads = spark.read
+        .format("toon")
+        .option("path", tempDir.getAbsolutePath)
+        .load()
+        .collect()
+        .map(_.getString(0))
+        .toSeq
+
+      assertEquals(payloads.size, 3)
+      assert(payloads.forall(_.contains("users")))
+    } finally {
+      deleteRecursively(tempDir)
+    }
+  }
+
   test("format(toon): requires path option") {
     val sparkSession = spark
     import sparkSession.implicits._
@@ -70,6 +105,26 @@ class ToonDataSourceV2Test extends FunSuite {
         .format("toon")
         .mode("overwrite")
         .save()
+    }
+  }
+
+  test("format(toon): maxRowsPerFile must be positive") {
+    val sparkSession = spark
+    import sparkSession.implicits._
+    val df = Seq((1, "Alice")).toDF("id", "name")
+    val tempDir = Files.createTempDirectory("toon-ds-v2-invalid-option").toFile
+
+    try {
+      intercept[IllegalArgumentException] {
+        df.write
+          .format("toon")
+          .mode("overwrite")
+          .option("path", tempDir.getAbsolutePath)
+          .option("maxRowsPerFile", "0")
+          .save()
+      }
+    } finally {
+      deleteRecursively(tempDir)
     }
   }
 

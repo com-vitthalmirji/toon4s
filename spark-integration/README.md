@@ -75,6 +75,25 @@ libraryDependencies ++= Seq(
 
 Compatibility note: CI validates Spark `3.5.0` and `4.0.1`.
 
+Published artifacts compile against Spark `3.5.0` APIs and are validated on Spark `4.0.1` in CI.
+
+## Stability and migration notes
+
+- Stable API for patch releases:
+  - `ToonSparkOptions`
+  - `DataFrame.toToon(options: ToonSparkOptions)`
+  - `DataFrame.toonMetrics(options: ToonSparkOptions)`
+  - `Dataset[T].toToon(options: ToonSparkOptions)`
+  - `Dataset[T].toonMetrics(options: ToonSparkOptions)`
+- Data source API:
+  - `format("toon")` reads one TOON document per row using a single `toon` string column.
+  - `maxRowsPerFile` controls write-side chunking per task output file.
+- SQL extension API:
+  - `io.toonformat.toon4s.spark.extensions.ToonSparkSessionExtensions` auto-registers TOON UDFs.
+
+If you currently call string-arg methods (`toToon(key = ...)`, `toonMetrics(key = ...)`), migration is optional.
+You can keep existing code, but new code should prefer `ToonSparkOptions`.
+
 ## Quick start
 
 ### DataFrame to TOON
@@ -123,12 +142,13 @@ val metrics = df.toonMetrics(options)
 ### Data source API
 
 ```scala
-// Write TOON files (one TOON document per task output file)
+// Write TOON files (chunked TOON documents per task output file)
 df.write
   .format("toon")
   .mode("overwrite")
   .option("path", "/tmp/toon-output")
   .option("key", "users")
+  .option("maxRowsPerFile", "1000")
   .save()
 
 // Read TOON files back as a DataFrame with one string column: `toon`

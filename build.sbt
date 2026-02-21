@@ -202,8 +202,7 @@ lazy val sparkIntegration = (project in file("spark-integration"))
     ),
     // MiMa configuration for binary compatibility checking
     mimaPreviousArtifacts := Set(
-      // Will be uncommented after first release
-      // organization.value %% moduleName.value % "0.1.0"
+      organization.value %% moduleName.value % "0.7.0"
     ),
     // Exclude known binary incompatible changes (add as needed)
     mimaBinaryIssueFilters := Seq(
