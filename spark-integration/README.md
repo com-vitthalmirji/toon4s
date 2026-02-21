@@ -98,6 +98,7 @@ Detailed docs:
 - `spark-integration/docs/API_STABILITY_POLICY.md`
 - `spark-integration/docs/COMPATIBILITY_MATRIX.md`
 - `spark-integration/docs/MIGRATION_GUIDE.md`
+- `spark-integration/docs/RELEASE_NOTES_TEMPLATE.md`
 - `spark-integration/docs/THIRD_PARTY_ADOPTION_PLAN.md`
 
 ## Quick start
