@@ -522,9 +522,8 @@ object SparkToonOps {
     // Object wrapper – search values recursively
     case JObj(fields) =>
       fields.valuesIterator
-        .collectFirst {
-          case v if findRowArray(v).isDefined => findRowArray(v).get
-        }
+        .map(findRowArray)
+        .collectFirst { case Some(rows) => rows }
 
     // Other JSON shapes are ignored
     case _ => None

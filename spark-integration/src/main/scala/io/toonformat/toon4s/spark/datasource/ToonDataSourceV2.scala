@@ -4,6 +4,7 @@ import java.io.{BufferedReader, InputStreamReader}
 import java.nio.charset.StandardCharsets
 import java.util
 
+import scala.annotation.tailrec
 import scala.jdk.CollectionConverters._
 import scala.util.{Try, Using}
 
@@ -110,6 +111,12 @@ private[datasource] object ToonDataSourceV2 {
   def toException(error: DataSourceError): IllegalArgumentException =
     new IllegalArgumentException(error.message)
 
+  def raise[A](error: DataSourceError): A =
+    scala.util.Failure[A](toException(error)).get
+
+  def raiseThrowable[A](error: Throwable): A =
+    scala.util.Failure[A](error).get
+
 }
 
 final private[datasource] class ToonTable(
@@ -150,8 +157,7 @@ final private[datasource] class ToonScanBuilder(options: CaseInsensitiveStringMa
   override def toBatch: Batch = this
 
   override def planInputPartitions(): Array[InputPartition] = {
-    val path =
-      requirePath(options).fold(error => throw ToonDataSourceV2.toException(error), identity)
+    val path = requirePath(options).fold(ToonDataSourceV2.raise, identity)
     val fs = path.getFileSystem(activeHadoopConf())
     val files = listVisibleFiles(fs, path)
     files.map(f => ToonInputPartition(f.toUri.toString)).toArray
@@ -207,7 +213,7 @@ final private[datasource] class ToonPartitionReaderFactory(conf: SerializableCon
     val path = partition match {
     case ToonInputPartition(value) => new Path(value)
     case _                         =>
-      throw ToonDataSourceV2.toException(
+      ToonDataSourceV2.raise(
         ToonDataSourceV2.InvalidOption("partition", "unsupported partition type")
       )
     }
@@ -224,14 +230,7 @@ final private[datasource] class ToonPartitionReaderFactory(conf: SerializableCon
           false
         } else {
           val sb = new StringBuilder
-          var line = reader.readLine()
-          var first = true
-          while (line != null) {
-            if (!first) sb.append('\n')
-            sb.append(line)
-            first = false
-            line = reader.readLine()
-          }
+          readLines(reader, sb, isFirstLine = true)
           content = sb.result()
           consumed = true
           content.nonEmpty
@@ -243,9 +242,27 @@ final private[datasource] class ToonPartitionReaderFactory(conf: SerializableCon
       override def close(): Unit = {
         val readerClose = Try(reader.close())
         val streamClose = Try(stream.close())
-        readerClose.failed.foreach(throw _)
-        streamClose.failed.foreach(throw _)
+        readerClose.failed.foreach(ToonDataSourceV2.raiseThrowable[Unit])
+        streamClose.failed.foreach(ToonDataSourceV2.raiseThrowable[Unit])
       }
+    }
+  }
+
+  @tailrec
+  private def readLines(
+      reader: BufferedReader,
+      builder: StringBuilder,
+      isFirstLine: Boolean,
+  ): Unit = {
+    Option(reader.readLine()) match {
+    case Some(line) =>
+      if (!isFirstLine) {
+        builder.append('\n')
+      }
+      builder.append(line)
+      readLines(reader, builder, isFirstLine = false)
+    case None =>
+      ()
     }
   }
 
@@ -277,7 +294,7 @@ final private[datasource] class ToonWriteBuilder(
     buildResult match {
     case Left(error) =>
       new Write {
-        override def toBatch: BatchWrite = throw ToonDataSourceV2.toException(error)
+        override def toBatch: BatchWrite = ToonDataSourceV2.raise(error)
       }
     case Right((outputPath, maxRowsPerFile)) =>
       val key = Option(sourceOptions.get(ToonDataSourceV2.KeyOption))
@@ -363,7 +380,7 @@ final private[datasource] class ToonBatchWrite(
         val src = part.getPath
         val dst = new Path(finalPath, src.getName)
         if (!fs.rename(src, dst)) {
-          throw ToonDataSourceV2.toException(
+          ToonDataSourceV2.raise[Unit](
             ToonDataSourceV2.CommitFailure(s"Failed to rename $src to $dst")
           )
         }
@@ -374,14 +391,14 @@ final private[datasource] class ToonBatchWrite(
       fs.delete(tempPath, true)
     }.toEither
 
-    moveResult.left.foreach(throw _)
-    cleanupResult.left.foreach(throw _)
+    moveResult.left.foreach(ToonDataSourceV2.raiseThrowable[Unit])
+    cleanupResult.left.foreach(ToonDataSourceV2.raiseThrowable[Unit])
   }
 
   override def abort(messages: Array[WriterCommitMessage]): Unit = {
     val tempPath = new Path(new Path(outputPath, "_temporary"), queryId)
     val fs = tempPath.getFileSystem(conf)
-    Try(fs.delete(tempPath, true)).failed.foreach(throw _)
+    Try(fs.delete(tempPath, true)).failed.foreach(ToonDataSourceV2.raiseThrowable[Unit])
   }
 
 }
@@ -433,7 +450,7 @@ final private[datasource] class ToonDataWriter(
         flushChunk()
       }
     case _ =>
-      throw ToonDataSourceV2.toException(
+      ToonDataSourceV2.raise[Unit](
         ToonDataSourceV2.InvalidOption("row", "unsupported row conversion result")
       )
     }
@@ -459,7 +476,8 @@ final private[datasource] class ToonDataWriter(
       chunkIndex += 1
       Using.resource(fs.create(file, true)) { out =>
         val payload = JObj(scala.collection.immutable.VectorMap(key -> JArray(rows.toVector)))
-        val encoded = Toon.encode(payload, EncodeOptions()).fold(throw _, identity)
+        val encoded =
+          Toon.encode(payload, EncodeOptions()).fold(ToonDataSourceV2.raiseThrowable, identity)
         out.write(encoded.getBytes(StandardCharsets.UTF_8))
         createdFiles += file
         rows.clear()

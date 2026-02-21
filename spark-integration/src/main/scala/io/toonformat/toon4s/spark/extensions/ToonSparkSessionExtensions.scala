@@ -27,7 +27,7 @@ private object ToonSparkSessionExtensions {
     (FunctionIdentifier, ExpressionInfo, Seq[Expression] => Expression)
 
   private val functions: Seq[FunctionDescription] = Seq(
-    unaryStringFunction("toon_encode_row")(value => Option(value).map(_.toString).orNull),
+    unaryStringFunction("toon_encode_row")(value => stringify(value)),
     unaryStringFunction("toon_decode_row")(value => decodeToString(value)),
     unaryStringFunction("toon_encode_string") { value =>
       Option(value)
@@ -44,17 +44,18 @@ private object ToonSparkSessionExtensions {
   private def unaryStringFunction(name: String)(
       fn: Any => String
   ): FunctionDescription =
-    unaryFunction(name, StringType, nullable = true)(fn)
+    unaryFunction(name, StringType, nullable = false, defaultValue = "")(fn)
 
   private def unaryIntFunction(name: String)(
       fn: Any => Int
   ): FunctionDescription =
-    unaryFunction(name, IntegerType, nullable = false)(fn)
+    unaryFunction(name, IntegerType, nullable = false, defaultValue = 0)(fn)
 
   private def unaryFunction[A](
       name: String,
       returnType: org.apache.spark.sql.types.DataType,
       nullable: Boolean,
+      defaultValue: A,
   )(fn: Any => A): FunctionDescription = {
     (
       FunctionIdentifier(name),
@@ -73,22 +74,24 @@ private object ToonSparkSessionExtensions {
             nullable = nullable,
           )
         case None =>
-          Literal.create(null, returnType)
+          Literal(defaultValue, returnType)
         }
       },
     )
   }
 
   private def decodeToString(value: Any): String = {
-    val input = Option(value).map(_.toString).orNull
-    Option(input)
+    Option(value)
+      .map(_.toString)
       .flatMap(text =>
         Toon.decode(text, DecodeOptions()).toOption.map {
           case JString(s) => s
           case json       => json.toString
         }
       )
-      .orNull
+      .getOrElse("")
   }
+
+  private def stringify(value: Any): String = Option(value).map(_.toString).getOrElse("")
 
 }
