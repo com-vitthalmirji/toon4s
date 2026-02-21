@@ -108,11 +108,22 @@ See `spark-integration/docs/COMPATIBILITY_MATRIX.md` for full policy and notes.
 If you currently call string-arg methods (`toToon(key = ...)`, `toonMetrics(key = ...)`), migration is optional.
 You can keep existing code, but new code should prefer `ToonSparkOptions`.
 
+### Large-data execution guidance
+
+- `toToon(options)` is a convenience API that returns `Vector[String]`.
+- For large datasets and production paths, use distributed APIs:
+  - `toToonDataset(options)`
+  - `writeToon(outputPath, options)`
+  - `writeToLlmPartitions(writerFactory, llmOptions, options)`
+- These paths execute encoding and sink operations on Spark task partitions.
+
 Detailed docs:
 - `spark-integration/docs/API_STABILITY_POLICY.md`
 - `spark-integration/docs/COMPATIBILITY_MATRIX.md`
 - `spark-integration/docs/MIGRATION_GUIDE.md`
 - `spark-integration/docs/BENCHMARK_REPRODUCIBILITY.md`
+- `spark-integration/docs/TOON_VS_JSON_DECISION_TREE.md`
+- `spark-integration/docs/PROMPT_ENGINEERING.md`
 - `spark-integration/docs/PIPELINE_LESSONS.md`
 - `spark-integration/docs/case-studies.md`
 - `spark-integration/docs/WORKLOAD_MEASUREMENT_TEMPLATE.md`
@@ -182,6 +193,15 @@ Runnable files:
 
 Measured workload notes:
 - `spark-integration/docs/WORKLOAD_MEASUREMENT_2026-02-21.md`
+
+### 4) spark-shell quick check
+
+```scala
+import io.toonformat.toon4s.spark.SparkToonOps._
+import io.toonformat.toon4s.spark.ToonSparkOptions
+val df = Seq((1, "alice"), (2, "bob")).toDF("id", "name")
+df.toToon(ToonSparkOptions(key = "users", maxRowsPerChunk = 1000))
+```
 
 ## Quick start
 
@@ -371,8 +391,25 @@ largeDf.toToon(
 
 ### LLM integration [llm4s-compatible](https://github.com/llm4s/llm4s)
 
-This module provides a standalone LLM client abstraction inspired by
-[llm4s](https://github.com/llm4s/llm4s) design patterns for future compatibility.
+Use `writeToLlmPartitions` with `LlmPartitionSink` as the production path.
+It builds partition-local clients and sends chunks from executor tasks.
+
+The standalone `llm` package remains available for local tests and prototyping.
+
+```scala
+import io.toonformat.toon4s.spark.llm._
+
+val writerFactory = LlmPartitionWriterFactory.fromClientFactory(
+  clientFactory = () => myLlmClient(),
+  idempotencyStore = new IdempotencyStore.InMemory(),
+)
+
+val metrics = df.writeToLlmPartitions(
+  writerFactory = writerFactory,
+  llmOptions = LlmPartitionWriteOptions(maxRetries = 2, failOnError = true),
+  options = ToonSparkOptions(key = "events", maxRowsPerChunk = 1000),
+)
+```
 
 #### Conversation-based API
 

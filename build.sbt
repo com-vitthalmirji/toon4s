@@ -112,10 +112,8 @@ lazy val core = (project in file("core"))
         )
     },
     // MiMa configuration for binary compatibility checking
-    // Check against previous published versions to ensure no breaking changes
     mimaPreviousArtifacts := Set(
-      // Uncomment when first version is published:
-      // organization.value %% moduleName.value % "0.1.0"
+      organization.value %% moduleName.value % "0.7.0"
     ),
     // Exclude known binary incompatible changes (add as needed)
     mimaBinaryIssueFilters := Seq(
@@ -170,6 +168,8 @@ lazy val sparkIntegration = (project in file("spark-integration"))
       "org.apache.spark" %% "spark-sql" % SparkSqlVersion % Provided,
       ("org.llm4s"       %% "core"      % Llm4sVersion).intransitive(),
       "org.scalameta"    %% "munit"     % "1.2.1" % Test,
+      "org.scalacheck"   %% "scalacheck"       % "1.19.0" % Test,
+      "org.scalameta"    %% "munit-scalacheck" % "1.2.0"  % Test,
     ),
     scalacOptions ++= commonScalacOptions,
     // Allow Scala 2.13 compiler to read Scala 3 TASTy from toon4s-core

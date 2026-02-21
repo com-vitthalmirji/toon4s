@@ -3,10 +3,10 @@ package examples
 import scala.util.Try
 
 import io.toonformat.toon4s.spark.{SparkToonOps, ToonMetrics, ToonSparkOptions}
+import io.toonformat.toon4s.spark.SparkToonOps._
 import org.apache.spark.sql.{DataFrame, Dataset, Encoders, SparkSession}
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types.{DateType, NumericType, StringType, StructField, TimestampType}
-import SparkToonOps._
 
 object WorkloadMeasurementRunner {
 
@@ -53,10 +53,12 @@ object WorkloadMeasurementRunner {
       val toonEncodeMs = System.currentTimeMillis() - toonStart
 
       val rowCount = jsonStats.records
-      val bytesSavingsPct = pct(jsonStats.bytes.toDouble - toonStats.bytes.toDouble, jsonStats.bytes.toDouble)
+      val bytesSavingsPct =
+        pct(jsonStats.bytes.toDouble - toonStats.bytes.toDouble, jsonStats.bytes.toDouble)
       val tokenSavingsPct =
         pct(jsonStats.tokens.toDouble - toonStats.tokens.toDouble, jsonStats.tokens.toDouble)
-      val overheadPctVsJson = pct(toonEncodeMs.toDouble - jsonEncodeMs.toDouble, jsonEncodeMs.toDouble)
+      val overheadPctVsJson =
+        pct(toonEncodeMs.toDouble - jsonEncodeMs.toDouble, jsonEncodeMs.toDouble)
       val avgChunkBytes =
         if (toonStats.records > 0) toonStats.bytes.toDouble / toonStats.records.toDouble else 0.0
 
@@ -80,17 +82,17 @@ object WorkloadMeasurementRunner {
 
   private def loadSource(spark: SparkSession, config: CliConfig): DataFrame = {
     config.parquet.orElse(config.json).orElse(config.csv) match {
-      case Some(path) if config.parquet.nonEmpty =>
-        spark.read.parquet(path)
-      case Some(path) =>
-        if (config.json.nonEmpty) spark.read.option("multiLine", "true").json(path)
-        else
-          spark.read
-            .option("header", "true")
-            .option("inferSchema", "true")
-            .csv(path)
-      case None =>
-        throw new IllegalArgumentException("Provide --parquet, --json, or --csv")
+    case Some(path) if config.parquet.nonEmpty =>
+      spark.read.parquet(path)
+    case Some(path) =>
+      if (config.json.nonEmpty) spark.read.option("multiLine", "true").json(path)
+      else
+        spark.read
+          .option("header", "true")
+          .option("inferSchema", "true")
+          .csv(path)
+    case None =>
+      throw new IllegalArgumentException("Provide --parquet, --json, or --csv")
     }
   }
 
@@ -115,7 +117,9 @@ object WorkloadMeasurementRunner {
         floor(col(name) / lit(100)).cast("long").as("group_key")
     }
 
-    val groupExpr = dateOrTimestamp.orElse(stringBucket).orElse(numericBucket).getOrElse(lit("all").as("group_key"))
+    val groupExpr = dateOrTimestamp.orElse(
+      stringBucket
+    ).orElse(numericBucket).getOrElse(lit("all").as("group_key"))
 
     input
       .select(groupExpr, col(metricColumn).cast("double").as("metric_value"))
@@ -164,23 +168,24 @@ object WorkloadMeasurementRunner {
   private def parseArgs(args: Vector[String]): Option[CliConfig] = {
     def loop(rest: Vector[String], acc: CliConfig): Option[CliConfig] = {
       rest match {
-        case Vector() => Some(acc)
-        case Vector("--parquet", value, tail @ _*) =>
-          loop(tail.toVector, acc.copy(parquet = Some(value)))
-        case Vector("--json", value, tail @ _*) =>
-          loop(tail.toVector, acc.copy(json = Some(value)))
-        case Vector("--csv", value, tail @ _*) =>
-          loop(tail.toVector, acc.copy(csv = Some(value)))
-        case Vector("--key", value, tail @ _*) =>
-          loop(tail.toVector, acc.copy(key = value))
-        case Vector("--mode", value, tail @ _*) if value == "agg" || value == "raw" =>
-          loop(tail.toVector, acc.copy(mode = value))
-        case Vector("--maxRowsPerChunk", value, tail @ _*) =>
-          Try(value.toInt).toOption.flatMap(v => loop(tail.toVector, acc.copy(maxRowsPerChunk = v)))
-        case _ =>
-          None
+      case Vector()                              => Some(acc)
+      case Vector("--parquet", value, tail @ _*) =>
+        loop(tail.toVector, acc.copy(parquet = Some(value)))
+      case Vector("--json", value, tail @ _*) =>
+        loop(tail.toVector, acc.copy(json = Some(value)))
+      case Vector("--csv", value, tail @ _*) =>
+        loop(tail.toVector, acc.copy(csv = Some(value)))
+      case Vector("--key", value, tail @ _*) =>
+        loop(tail.toVector, acc.copy(key = value))
+      case Vector("--mode", value, tail @ _*) if value == "agg" || value == "raw" =>
+        loop(tail.toVector, acc.copy(mode = value))
+      case Vector("--maxRowsPerChunk", value, tail @ _*) =>
+        Try(value.toInt).toOption.flatMap(v => loop(tail.toVector, acc.copy(maxRowsPerChunk = v)))
+      case _ =>
+        None
       }
     }
     loop(args, CliConfig())
   }
+
 }
