@@ -1,13 +1,16 @@
-# toon4s-spark
+# toon4s-spark for Apache Spark
 
-[Apache Spark](https://spark.apache.org/) integration for TOON format - encode DataFrames, Datasets to token-efficient
-TOON format for LLM processing.
+TOON encoding for [Apache Spark](https://spark.apache.org/) DataFrames and Datasets, optimized for LLM workloads and
+tabular analytics.
 
 ## Overview
 
 toon4s-spark provides production-ready TOON encoding for Apache Spark DataFrames and Datasets. Based on
 the [TOON Generation Benchmark](https://github.com/vetertann/TOON-generation-benchmark), this integration delivers **22%
 token savings** for tabular data with intelligent safeguards for schema alignment and prompt tax optimization.
+
+This is an external third-party integration maintained in this repository:
+https://github.com/com-vitthalmirji/toon4s
 
 ### When to use TOON vs JSON
 
@@ -98,6 +101,11 @@ Detailed docs:
 - `spark-integration/docs/API_STABILITY_POLICY.md`
 - `spark-integration/docs/COMPATIBILITY_MATRIX.md`
 - `spark-integration/docs/MIGRATION_GUIDE.md`
+- `spark-integration/docs/BENCHMARK_REPRODUCIBILITY.md`
+
+Core TOON docs:
+- `README.md`
+- `SCALA-TOON-SPECIFICATION.md`
 
 ## Quick start
 
@@ -1119,3 +1127,8 @@ df.toToon() match {
 ## License
 
 MIT License - See [LICENSE](../LICENSE) file for details.
+
+## Trademark notice
+
+Apache Spark, Spark, Apache, and related marks are trademarks of The Apache Software Foundation.
+This project is an independent third-party library and is not affiliated with or endorsed by ASF.
