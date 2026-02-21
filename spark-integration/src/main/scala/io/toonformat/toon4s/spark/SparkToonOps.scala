@@ -55,6 +55,18 @@ object SparkToonOps {
    */
   implicit class ToonDataFrameOps(val df: DataFrame) extends AnyVal {
 
+    /** Encode DataFrame to TOON using stable options model. */
+    def toToon(
+        options: ToonSparkOptions
+    ): Either[SparkToonError, Vector[String]] = {
+      encodeToChunksStreaming(
+        df,
+        options.key,
+        options.maxRowsPerChunk,
+        options.encodeOptions,
+      )
+    }
+
     /**
      * Encode DataFrame to TOON format with chunking.
      *
@@ -87,7 +99,7 @@ object SparkToonOps {
         maxRowsPerChunk: Int = 1000,
         options: EncodeOptions = EncodeOptions(),
     ): Either[SparkToonError, Vector[String]] = {
-      encodeToChunksStreaming(df, key, maxRowsPerChunk, options)
+      toToon(ToonSparkOptions(key, maxRowsPerChunk, options))
     }
 
     /**
@@ -123,6 +135,18 @@ object SparkToonOps {
       toonMetrics(key, maxRowsPerChunk = 1000, options = options)
     }
 
+    /** Compute token metrics using stable options model. */
+    def toonMetrics(
+        options: ToonSparkOptions
+    ): Either[SparkToonError, ToonMetrics] = {
+      calculateMetricsStreaming(
+        df,
+        options.key,
+        options.maxRowsPerChunk,
+        options.encodeOptions,
+      )
+    }
+
     /**
      * Compute token metrics comparing JSON vs TOON using caller-provided chunk size.
      *
@@ -133,7 +157,7 @@ object SparkToonOps {
         maxRowsPerChunk: Int,
         options: EncodeOptions,
     ): Either[SparkToonError, ToonMetrics] = {
-      calculateMetricsStreaming(df, key, maxRowsPerChunk, options)
+      toonMetrics(ToonSparkOptions(key, maxRowsPerChunk, options))
     }
 
     /**

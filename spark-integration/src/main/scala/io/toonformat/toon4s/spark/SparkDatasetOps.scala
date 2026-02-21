@@ -64,6 +64,14 @@ object SparkDatasetOps {
    */
   implicit class DatasetToonOps[T](ds: Dataset[T])(implicit encoder: Encoder[T]) {
 
+    /** Encode Dataset[T] to TOON using stable options model. */
+    def toToon(
+        options: ToonSparkOptions
+    ): Either[SparkToonError, Vector[String]] = {
+      import SparkToonOps._
+      ds.toDF().toToon(options)
+    }
+
     /**
      * Encode Dataset[T] to TOON format.
      *
@@ -95,9 +103,7 @@ object SparkDatasetOps {
         maxRowsPerChunk: Int = 1000,
         options: EncodeOptions = EncodeOptions(),
     ): Either[SparkToonError, Vector[String]] = {
-      // Delegate to DataFrame implementation
-      import SparkToonOps._
-      ds.toDF().toToon(key, maxRowsPerChunk, options)
+      toToon(ToonSparkOptions(key, maxRowsPerChunk, options))
     }
 
     /**
@@ -131,6 +137,14 @@ object SparkDatasetOps {
       toonMetrics(key, maxRowsPerChunk = 1000, options = options)
     }
 
+    /** Compute token metrics for Dataset[T] using stable options model. */
+    def toonMetrics(
+        options: ToonSparkOptions
+    ): Either[SparkToonError, ToonMetrics] = {
+      import SparkToonOps._
+      ds.toDF().toonMetrics(options)
+    }
+
     /**
      * Compute token metrics for Dataset[T] with caller-provided chunk size.
      *
@@ -141,8 +155,7 @@ object SparkDatasetOps {
         maxRowsPerChunk: Int,
         options: EncodeOptions,
     ): Either[SparkToonError, ToonMetrics] = {
-      import SparkToonOps._
-      ds.toDF().toonMetrics(key, maxRowsPerChunk, options)
+      toonMetrics(ToonSparkOptions(key, maxRowsPerChunk, options))
     }
 
     /**

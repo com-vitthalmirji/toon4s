@@ -52,6 +52,32 @@ class SparkToonOpsTest extends FunSuite {
     }
   }
 
+  test("toToon: encode with ToonSparkOptions") {
+    val schema = StructType(Seq(
+      StructField("id", IntegerType),
+      StructField("name", StringType),
+    ))
+    val data = Seq(
+      Row(1, "Alice"),
+      Row(2, "Bob"),
+      Row(3, "Cara"),
+    )
+    val df = spark.createDataFrame(data.asJava, schema)
+    val options = ToonSparkOptions(
+      key = "users",
+      maxRowsPerChunk = 2,
+      encodeOptions = EncodeOptions(),
+    )
+
+    val result = df.toToon(options)
+
+    assert(result.isRight)
+    result.foreach { chunks =>
+      assertEquals(chunks.size, 2)
+      assert(chunks.head.contains("users"))
+    }
+  }
+
   test("toToon: handle empty DataFrame") {
     val df = spark.emptyDataFrame
 
@@ -151,6 +177,31 @@ class SparkToonOpsTest extends FunSuite {
     result.foreach { metrics =>
       assertEquals(metrics.rowCount, 25)
       assertEquals(metrics.columnCount, 2)
+    }
+  }
+
+  test("toonMetrics: support ToonSparkOptions") {
+    val schema = StructType(Seq(
+      StructField("id", IntegerType),
+      StructField("name", StringType),
+    ))
+    val data = (1 to 11).map(i => Row(i, s"user$i"))
+    val df = spark.createDataFrame(data.asJava, schema)
+
+    val result = df.toonMetrics(
+      ToonSparkOptions(
+        key = "users",
+        maxRowsPerChunk = 4,
+        encodeOptions = EncodeOptions(),
+      )
+    )
+
+    assert(result.isRight)
+    result.foreach { metrics =>
+      assertEquals(metrics.rowCount, 11)
+      assertEquals(metrics.columnCount, 2)
+      assert(metrics.jsonTokenCount > 0)
+      assert(metrics.toonTokenCount > 0)
     }
   }
 

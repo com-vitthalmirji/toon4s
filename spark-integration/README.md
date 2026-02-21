@@ -105,6 +105,20 @@ df.toToon(key = "users") match {
 }
 ```
 
+### Stable options API
+
+```scala
+import io.toonformat.toon4s.spark.ToonSparkOptions
+
+val options = ToonSparkOptions(
+  key = "users",
+  maxRowsPerChunk = 500
+)
+
+val encoded = df.toToon(options)
+val metrics = df.toonMetrics(options)
+```
+
 ### Token metrics
 
 ```scala

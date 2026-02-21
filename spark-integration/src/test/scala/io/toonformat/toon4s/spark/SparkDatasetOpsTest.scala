@@ -80,6 +80,32 @@ class SparkDatasetOpsTest extends FunSuite {
     }
   }
 
+  test("Dataset[T] stable options API works") {
+    val spark = sparkInstance
+    import spark.implicits._
+    import io.toonformat.toon4s.spark.SparkDatasetOps._
+    import io.toonformat.toon4s.EncodeOptions
+
+    val dataset = (1 to 9).map(i => UserRecord(i, s"user$i", 20 + i)).toDS()
+    val options = ToonSparkOptions(
+      key = "users",
+      maxRowsPerChunk = 3,
+      encodeOptions = EncodeOptions(),
+    )
+
+    val encodeResult = dataset.toToon(options)
+    val metricsResult = dataset.toonMetrics(options)
+
+    assert(encodeResult.isRight)
+    encodeResult.foreach(chunks => assertEquals(chunks.size, 3))
+
+    assert(metricsResult.isRight)
+    metricsResult.foreach { metrics =>
+      assertEquals(metrics.rowCount, 9)
+      assertEquals(metrics.columnCount, 3)
+    }
+  }
+
 }
 
 final case class UserRecord(id: Int, name: String, age: Int)
