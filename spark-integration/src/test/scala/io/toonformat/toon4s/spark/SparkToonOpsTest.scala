@@ -409,6 +409,34 @@ class SparkToonOpsTest extends SparkTestSuite {
     }
   }
 
+  test("toonMetricsWithEstimator: support custom estimator") {
+    val rows = Seq(
+      org.apache.spark.sql.Row(1, "Alice"),
+      org.apache.spark.sql.Row(2, "Bob"),
+      org.apache.spark.sql.Row(3, "Charlie"),
+    )
+    val schema = StructType(
+      Seq(StructField("id", IntegerType), StructField("name", StringType))
+    )
+    val df = spark.createDataFrame(
+      spark.sparkContext.parallelize(rows),
+      schema,
+    )
+    val estimator = ToonMetrics.CharsPerTokenEstimator(charsPerToken = 2.0)
+
+    val result = df.toonMetricsWithEstimator(
+      key = "data",
+      options = EncodeOptions(),
+      tokenEstimator = estimator,
+    )
+
+    assert(result.isRight)
+    result.foreach { metrics =>
+      assert(metrics.jsonTokenCount > 0)
+      assert(metrics.toonTokenCount > 0)
+    }
+  }
+
   test("toonMetrics: reject non-positive chunk size") {
     val schema = StructType(Seq(StructField("id", IntegerType)))
     val df = spark.createDataFrame(Seq(Row(1)).asJava, schema)

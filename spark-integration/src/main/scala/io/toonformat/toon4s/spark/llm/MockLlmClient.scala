@@ -1,16 +1,6 @@
 package io.toonformat.toon4s.spark.llm
 
-/**
- * Mock LLM client for testing.
- *
- * Returns predefined responses for testing without making actual API calls. Aligned with llm4s
- * testing patterns.
- *
- * @param config
- *   Client configuration
- * @param responses
- *   Map of conversation keys to response strings
- */
+/** Mock implementation for compatibility tests. */
 class MockLlmClient(
     val config: LlmConfig,
     responses: Map[String, String] = Map.empty,

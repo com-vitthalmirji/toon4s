@@ -3,19 +3,15 @@ package io.toonformat.toon4s.spark
 import scala.util.Try
 
 /**
- * LLM integration types and abstractions.
+ * LLM integration helpers.
  *
- * Design aligned with llm4s (https://github.com/llm4s/llm4s) for forward compatibility.
+ * Production path:
+ *   - `DataFrame.writeToLlmPartitions(...)`
+ *   - `LlmPartitionWriterFactory.fromClientFactory(...)`
+ *   - llm4s client types (`org.llm4s.*`)
  *
- * ==Migration path==
- * When llm4s is published to Maven Central, users can:
- *   1. Add llm4s dependency
- *   2. Use Llm4sAdapter to bridge between toon4s-spark and llm4s
- *   3. Gradually migrate to llm4s-native conversation model
- *
- * ==Current status==
- * This package provides a simplified standalone LLM client abstraction inspired by llm4s design
- * patterns. Types use similar naming and structure to support future migration.
+ * Compatibility path:
+ *   - The standalone `LlmClient`/`Message`/`Completion` helpers stay for local tests and migration.
  */
 package object llm {
 

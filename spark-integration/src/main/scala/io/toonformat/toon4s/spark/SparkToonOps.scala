@@ -251,11 +251,20 @@ object SparkToonOps {
     def toonMetrics(
         options: ToonSparkOptions
     ): Either[SparkToonError, ToonMetrics] = {
+      toonMetrics(options, ToonMetrics.defaultTokenEstimator)
+    }
+
+    /** Compute token metrics using stable options model and custom estimator. */
+    def toonMetrics(
+        options: ToonSparkOptions,
+        tokenEstimator: ToonMetrics.TokenEstimator,
+    ): Either[SparkToonError, ToonMetrics] = {
       calculateMetricsDistributed(
         df,
         options.key,
         options.maxRowsPerChunk,
         options.encodeOptions,
+        tokenEstimator,
       )
     }
 
@@ -264,6 +273,18 @@ object SparkToonOps {
         options: ToonSparkOptions
     ): Either[SparkToonError, ToonMetrics] = {
       toonMetrics(options)
+    }
+
+    /** Compute token metrics with a caller-provided token estimator. */
+    def toonMetricsWithEstimator(
+        key: String = "data",
+        options: EncodeOptions = EncodeOptions(),
+        tokenEstimator: ToonMetrics.TokenEstimator,
+    ): Either[SparkToonError, ToonMetrics] = {
+      toonMetrics(
+        ToonSparkOptions(key = key, maxRowsPerChunk = 1000, encodeOptions = options),
+        tokenEstimator,
+      )
     }
 
     /**
@@ -276,7 +297,10 @@ object SparkToonOps {
         maxRowsPerChunk: Int,
         options: EncodeOptions,
     ): Either[SparkToonError, ToonMetrics] = {
-      toonMetrics(ToonSparkOptions(key, maxRowsPerChunk, options))
+      toonMetrics(
+        ToonSparkOptions(key, maxRowsPerChunk, options),
+        ToonMetrics.defaultTokenEstimator,
+      )
     }
 
     /**
@@ -524,6 +548,7 @@ object SparkToonOps {
       key: String,
       maxRowsPerChunk: Int,
       options: EncodeOptions,
+      tokenEstimator: ToonMetrics.TokenEstimator,
   ): Either[SparkToonError, ToonMetrics] = {
     if (maxRowsPerChunk <= 0) {
       Left(SparkToonError.ConversionError("maxRowsPerChunk must be greater than 0"))
@@ -553,6 +578,7 @@ object SparkToonOps {
                 toonEncoded = toonEncoded,
                 rowCount = chunkRows.size,
                 columnCount = schema.fields.length,
+                tokenEstimator = tokenEstimator,
               )
               jsonTokenCount += chunkMetrics.jsonTokenCount
               toonTokenCount += chunkMetrics.toonTokenCount

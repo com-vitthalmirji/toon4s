@@ -411,113 +411,11 @@ val metrics = df.writeToLlmPartitions(
 )
 ```
 
-#### Conversation-based API
+`writeToLlmPartitions` performs encode and send inside executor tasks.
+Use `LlmPartitionSink` with llm4s clients for production pipelines.
 
-```scala
-import io.toonformat.toon4s.spark.llm._
-
-// Create conversation
-val conversation = for {
-  sys <- Message.system("You are a data analyst")
-  user <- Message.user("Analyze this data: ...")
-  conv <- Conversation.create(sys, user)
-} yield conv
-
-// Use mock client for testing
-val client = MockLlmClient.alwaysSucceeds
-
-conversation.flatMap { conv =>
-  client.complete(conv, CompletionOptions.default)
-} match {
-  case Right(completion) =>
-    println(s"Response: ${completion.content}")
-    println(s"Tokens: ${completion.usage}")
-  case Left(error) =>
-    println(s"Error: ${error.formatted}")
-}
-```
-
-#### Send TOON data to LLM
-
-```scala
-df.toToon(key = "analytics_data") match {
-  case Right(toonChunks) =>
-    toonChunks.foreach { toon =>
-      val result = for {
-        conv <- Conversation.fromPrompts(
-          "You are a data analyst",
-          s"Analyze this data:\n$toon"
-        )
-        completion <- client.complete(conv)
-      } yield completion
-
-      result.foreach { completion =>
-        println(s"Analysis: ${completion.content}")
-        completion.usage.foreach { usage =>
-          println(s"Cost: ${usage.estimateCost(0.01, 0.03)}")
-        }
-      }
-    }
-  case Left(error) =>
-    println(s"Encoding error: ${error.message}")
-}
-```
-
-#### Backward-compatible string API
-
-```scala
-// Simple string-based API for quick prototyping
-val client = MockLlmClient(Map("test" -> "response"))
-
-client.completeSimple("What is 2+2?") match {
-  case Right(response) => println(response)
-  case Left(error) => println(error.message)
-}
-
-// With system prompt
-client.completeWithSystem(
-  "You are helpful",
-  "What is 2+2?"
-) match {
-  case Right(response) => println(response)
-  case Left(error) => println(error.message)
-}
-```
-
-#### Streaming support
-
-```scala
-val result = for {
-  conv <- Conversation.userOnly("Tell me a story")
-  completion <- client.streamComplete(conv) { chunk =>
-    chunk.content.foreach(print) // Print each chunk as it arrives
-  }
-} yield completion
-```
-
-#### Context window management (llm4s pattern)
-
-```scala
-val client = MockLlmClient.alwaysSucceeds
-
-// Check context limits
-val contextWindow = client.getContextWindow() // 128000 for GPT-4o
-val reserved = client.getReserveCompletion() // 4096 reserved for output
-
-// Calculate available budget
-val budget = client.getContextBudget(HeadroomPercent.Standard)
-println(s"Available: ${budget.available} tokens")
-
-// Check if prompt fits
-if (budget.fits(promptTokens)) {
-  // Send to LLM
-}
-```
-
-#### Retry helper behavior
-
-`LlmClientHelpers.retry` only waits when another retry attempt is still available. If wait is interrupted, it
-returns a typed error and preserves thread interruption.
+For legacy local tests, standalone helpers remain under `io.toonformat.toon4s.spark.llm`,
+but new integrations should prefer the partition sink path above.
 
 ## API reference
 
@@ -537,6 +435,16 @@ materialize all rows at once on the driver.
 **`toonMetrics(key: String, options: EncodeOptions): Either[SparkToonError, ToonMetrics]`**
 
 Compute token metrics comparing JSON vs TOON efficiency.
+
+**`toonMetricsWithEstimator(key, options, tokenEstimator)`**
+
+Use this when your provider tokenizer differs from the default 4 chars/token estimate.
+Example:
+
+```scala
+val estimator = ToonMetrics.CharsPerTokenEstimator(charsPerToken = 3.2)
+val metrics = df.toonMetricsWithEstimator("data", EncodeOptions(), estimator)
+```
 
 **`showToonSample(n: Int): Unit`**
 
@@ -559,6 +467,17 @@ Register with `ToonUDFs.register(spark)`:
 - `toon_encode_string(string)`: Encode string value
 - `toon_decode_string(string)`: Decode TOON string
 - `toon_estimate_tokens(string)`: Estimate token count
+
+### LLM response validation
+
+Use `ToonLlmResponseValidator` to detect format confusion in LLM responses.
+
+```scala
+import io.toonformat.toon4s.spark.llm.ToonLlmResponseValidator
+
+val check = ToonLlmResponseValidator.validate(responseText)
+if (!check.valid) logger.warn(check.issues.map(_.message).mkString("; "))
+```
 
 ### ToonMetrics
 

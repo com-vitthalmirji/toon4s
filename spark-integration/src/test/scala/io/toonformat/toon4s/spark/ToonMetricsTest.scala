@@ -24,6 +24,17 @@ class ToonMetricsTest extends FunSuite {
     assertEquals(tokens, 2) // 8 / 4 = 2
   }
 
+  test("estimateTokens: custom chars per token") {
+    val tokens = ToonMetrics.estimateTokens("12345678", charsPerToken = 2.0)
+    assertEquals(tokens, 4)
+  }
+
+  test("estimateTokens: custom estimator") {
+    val estimator = ToonMetrics.CharsPerTokenEstimator(charsPerToken = 8.0)
+    val tokens = ToonMetrics.estimateTokens("12345678", estimator)
+    assertEquals(tokens, 1)
+  }
+
   test("fromEncodedStrings: compute metrics") {
     val jsonEncoded = """{"id":1,"name":"Alice","age":25}"""
     val toonEncoded = """id\tname\tage\n1\tAlice\t25"""
