@@ -5,8 +5,8 @@ This plan tracks the path from useful integration to credible third party Spark 
 ## Current status
 
 - P0 complete
-- P1 in progress
-- P2 pending
+- P1 complete
+- P2 in progress
 - P3 pending
 
 ## Target state

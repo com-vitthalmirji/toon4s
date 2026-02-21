@@ -38,6 +38,11 @@ TOON generation benchmark:
 
 > **Key finding**: TOON excels at **tabular lakehouse data** (the primary Spark use case) but fails on deep hierarchies.
 
+Reproducibility and claim traceability:
+- `spark-integration/docs/BENCHMARK_WORKFLOW.md`
+- `spark-integration/docs/BENCHMARK_REPORT_TEMPLATE.md`
+- `spark-integration/docs/CLAIMS_TRACEABILITY.md`
+
 ## Features
 
 - **`DataFrame` <-> TOON conversion**: Pure functional API with Either error handling
@@ -100,6 +105,9 @@ Detailed docs:
 - `spark-integration/docs/MIGRATION_GUIDE.md`
 - `spark-integration/docs/RELEASE_NOTES_TEMPLATE.md`
 - `spark-integration/docs/THIRD_PARTY_ADOPTION_PLAN.md`
+- `spark-integration/docs/BENCHMARK_WORKFLOW.md`
+- `spark-integration/docs/BENCHMARK_REPORT_TEMPLATE.md`
+- `spark-integration/docs/CLAIMS_TRACEABILITY.md`
 
 ## Quick start
 
