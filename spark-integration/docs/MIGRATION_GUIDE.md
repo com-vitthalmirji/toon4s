@@ -64,6 +64,7 @@ spark.conf.set(
 - Dataset metrics: `toonMetrics(options: ToonSparkOptions)`
 - Data source name: `format("toon")`
 - SQL extension provider: `io.toonformat.toon4s.spark.extensions.ToonSparkSessionExtensions`
+- Guardrailed encode: `ToonMonitoring.encodeWithGuardrails(...)`
 
 ## Breaking behavior list
 
@@ -79,5 +80,9 @@ Behavior changes to note:
 - `toonMetrics` chunk size should match production encode chunk size for aligned estimates.
 - DataSource writes chunk rows by `maxRowsPerFile` per output file.
 - On Windows CI, write path tests are guarded due missing Hadoop `winutils`.
+- Guardrail defaults:
+  - `minBytesPerChunk = 10 * 1024`
+  - `maxRowsPerChunk = 1000`
+  - `mode = Strict`
 
 Trademark notice: Apache Spark and Spark are trademarks of The Apache Software Foundation.

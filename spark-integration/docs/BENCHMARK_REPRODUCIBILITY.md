@@ -32,7 +32,7 @@ Use a representative DataFrame and call:
 ```scala
 import io.toonformat.toon4s.spark.monitoring.ToonMonitoring._
 
-measureEncodingPerformance(df, key = "data", chunkSize = 1000)
+measureEncodingPerformance(df, key = "data", maxRowsPerChunk = Some(1000))
 ```
 
 Record:
@@ -43,6 +43,47 @@ Record:
 - JSON token count
 - TOON token count
 - savings percent
+
+## Workload-level measurement run
+
+Use the dedicated harness for one real workload:
+
+```bash
+spark-submit \
+  --class examples.WorkloadMeasurementExample \
+  <jar> \
+  --table <table_name> \
+  --key workload \
+  --maxRowsPerChunk 1000
+```
+
+or
+
+```bash
+spark-submit \
+  --class examples.WorkloadMeasurementExample \
+  <jar> \
+  --parquet /path/to/file.parquet \
+  --key workload \
+  --maxRowsPerChunk 1000
+```
+
+or
+
+```bash
+spark-submit \
+  --class examples.WorkloadMeasurementExample \
+  <jar> \
+  --csv /path/to/file.csv \
+  --key workload \
+  --maxRowsPerChunk 1000
+```
+
+Store findings in `spark-integration/docs/WORKLOAD_MEASUREMENT_TEMPLATE.md`.
+
+Reference example note:
+
+- `spark-integration/docs/WORKLOAD_MEASUREMENT_2026-02-21.md`
 
 ## Rules for claim updates
 

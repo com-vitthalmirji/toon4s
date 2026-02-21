@@ -8,6 +8,9 @@ import org.apache.spark.sql.SparkSession
 class ToonSparkSessionExtensionsTest extends FunSuite {
 
   test("spark.sql.extensions auto-registers TOON UDFs") {
+    SparkSession.clearActiveSession()
+    SparkSession.clearDefaultSession()
+
     val managedSpark = ManagedSparkSession(
       SparkSession
         .builder()
@@ -33,12 +36,15 @@ class ToonSparkSessionExtensionsTest extends FunSuite {
       )
 
       assertEquals(result.count(), 1L)
-      val row = result.collect().head
+      val row = result.take(1).head
       val toonDoc = row.getAs[String]("toon_doc")
       assert(toonDoc.nonEmpty)
       assert(toonDoc.contains("Alice"))
       assert(row.getAs[Int]("token_count") > 0)
     }
+
+    SparkSession.clearActiveSession()
+    SparkSession.clearDefaultSession()
   }
 
 }

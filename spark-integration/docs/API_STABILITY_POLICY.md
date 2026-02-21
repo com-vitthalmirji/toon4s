@@ -11,6 +11,7 @@ This policy defines what stays stable in patch releases of toon4s for Apache Spa
 - `Dataset[T].toonMetrics(options: ToonSparkOptions)`
 - Data source format name `toon`
 - SQL extension provider class `io.toonformat.toon4s.spark.extensions.ToonSparkSessionExtensions`
+- Monitoring guardrails API under `io.toonformat.toon4s.spark.monitoring.ToonMonitoring`
 
 ## Compatibility commitment
 

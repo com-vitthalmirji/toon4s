@@ -82,6 +82,15 @@ Compatibility note: CI validates Spark `3.5.0` and `4.0.1`.
 
 Published artifacts compile against Spark `3.5.0` APIs and are validated on Spark `4.0.1` in CI.
 
+### Compatibility matrix
+
+| Module              | Scala | Spark support | JDK |
+|---------------------|-------|---------------|-----|
+| `toon4s-spark`      | 2.13  | 3.5.x, 4.0.x  | 21  |
+| `toon4s` root build | 2.13, 3.3.3 | N/A | 21  |
+
+See `spark-integration/docs/COMPATIBILITY_MATRIX.md` for full policy and notes.
+
 ## Stability and migration notes
 
 - Stable API for patch releases:
@@ -104,10 +113,75 @@ Detailed docs:
 - `spark-integration/docs/COMPATIBILITY_MATRIX.md`
 - `spark-integration/docs/MIGRATION_GUIDE.md`
 - `spark-integration/docs/BENCHMARK_REPRODUCIBILITY.md`
+- `spark-integration/docs/PIPELINE_LESSONS.md`
+- `spark-integration/docs/case-studies.md`
+- `spark-integration/docs/WORKLOAD_MEASUREMENT_TEMPLATE.md`
 
 Core TOON docs:
-- `README.md`
-- `SCALA-TOON-SPECIFICATION.md`
+- [toon4s README](../README.md)
+- [Scala TOON specification](../SCALA-TOON-SPECIFICATION.md)
+
+Website submission docs:
+- `spark-integration/docs/SPARK_WEBSITE_SUBMISSION.md`
+
+## Try it in 5 minutes
+
+### 1) Batch query to TOON
+
+```scala
+import io.toonformat.toon4s.spark.SparkToonOps._
+import org.apache.spark.sql.SparkSession
+
+val spark = SparkSession.builder().master("local[*]").appName("toon-quickstart").getOrCreate()
+import spark.implicits._
+
+val users = Seq((1, "Alice", "US"), (2, "Bob", "IN"), (3, "Cara", "DE"))
+  .toDF("id", "name", "country")
+users.createOrReplaceTempView("users")
+
+val df = spark.sql("SELECT id, name, country FROM users ORDER BY id")
+val chunks = df.toToon(ToonSparkOptions(key = "users", maxRowsPerChunk = 1000))
+println(chunks.map(_.headOption.getOrElse("")).getOrElse("encoding failed"))
+```
+
+### 2) Streaming sketch with TOON sink
+
+```scala
+import io.toonformat.toon4s.spark.SparkToonOps._
+import org.apache.spark.sql.streaming.Trigger
+
+val streamDf = spark.readStream.format("delta").table("events_cdc")
+
+val query = streamDf.writeStream
+  .trigger(Trigger.ProcessingTime("30 seconds"))
+  .foreachBatch { (batchDf, _) =>
+    val result = batchDf.toToon(ToonSparkOptions(key = "events", maxRowsPerChunk = 500))
+    result.foreach(_.foreach(chunk => writeToonSink(chunk))) // your sink
+  }
+  .option("checkpointLocation", "/tmp/toon-checkpoints/events")
+  .start()
+```
+
+### 3) Spark + LLM end-to-end stub
+
+```scala
+def callLLM(chunk: String): String = s"LLM summary for ${chunk.take(80)}..."
+
+df.toToon(ToonSparkOptions(key = "users")).foreach { chunks =>
+  chunks.foreach { chunk =>
+    val response = callLLM(chunk)
+    println(response)
+  }
+}
+```
+
+Runnable files:
+- `spark-integration/examples/TryIn5MinutesExample.scala`
+- `spark-integration/examples/SparkLlmEndToEndExample.scala`
+- `spark-integration/examples/WorkloadMeasurementExample.scala`
+
+Measured workload notes:
+- `spark-integration/docs/WORKLOAD_MEASUREMENT_2026-02-21.md`
 
 ## Quick start
 
@@ -139,6 +213,32 @@ df.toToon(key = "users") match {
     println(s"Error: ${error.message}")
 }
 ```
+
+## Guardrails and observability
+
+Use guardrails to control TOON eligibility and fallback behavior with explicit defaults.
+
+```scala
+import io.toonformat.toon4s.spark.monitoring.ToonMonitoring
+import io.toonformat.toon4s.spark.monitoring.ToonMonitoring._
+
+val result = ToonMonitoring.encodeWithGuardrails(
+  df = df,
+  options = ToonSparkOptions(key = "users"),
+  guardrailOptions = GuardrailOptions(
+    minBytesPerChunk = 10 * 1024,
+    maxRowsPerChunk = 1000,
+    mode = GuardrailMode.Strict,
+  ),
+  fallbackMode = FallbackMode.Json,
+  onWarning = msg => logger.warn(msg),
+)
+```
+
+Guardrail counters include:
+- `totalEncodes`, `successfulEncodes`, `failedEncodes`
+- `chunkCount`, `minChunkBytes`, `maxChunkBytes`, `avgChunkBytes`
+- `avgEstimatedTokensPerChunk`
 
 ### Stable options API
 
@@ -271,9 +371,8 @@ largeDf.toToon(
 
 ### LLM integration [llm4s-compatible](https://github.com/llm4s/llm4s)
 
-This module provides an LLM client abstraction that mirrors [llm4s](https://github.com/llm4s/llm4s) design patterns
-for
-forward compatibility.
+This module provides a standalone LLM client abstraction inspired by
+[llm4s](https://github.com/llm4s/llm4s) design patterns for future compatibility.
 
 #### Conversation-based API
 

@@ -14,8 +14,8 @@ import scala.util.Try
  *   3. Gradually migrate to llm4s-native conversation model
  *
  * ==Current status==
- * This package provides a simplified LLM client abstraction that mirrors llm4s design patterns but
- * works standalone. All types use similar naming and structure to llm4s for easy future migration.
+ * This package provides a simplified standalone LLM client abstraction inspired by llm4s design
+ * patterns. Types use similar naming and structure to support future migration.
  */
 package object llm {
 

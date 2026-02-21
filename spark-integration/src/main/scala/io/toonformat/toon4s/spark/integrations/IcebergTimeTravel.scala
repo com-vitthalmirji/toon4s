@@ -2,6 +2,8 @@ package io.toonformat.toon4s.spark.integrations
 
 import java.time.Instant
 
+import scala.util.Try
+
 import io.toonformat.toon4s.spark.{AdaptiveChunking, ToonAlignmentAnalyzer}
 import io.toonformat.toon4s.spark.SparkToonOps._
 import io.toonformat.toon4s.spark.error.SparkToonError
@@ -447,8 +449,9 @@ object IcebergTimeTravel {
     val chunkSize = config.maxRowsPerChunk.getOrElse {
       val strategy = AdaptiveChunking.calculateOptimalChunkSize(df)
       if (!strategy.useToon) {
-        df.sparkSession.sparkContext.setJobDescription(
-          s"Snapshot encoding: ${strategy.reasoning}"
+        setJobDescriptionSafe(
+          df.sparkSession,
+          s"Snapshot encoding: ${strategy.reasoning}",
         )
       }
       strategy.chunkSize
@@ -472,6 +475,16 @@ object IcebergTimeTravel {
     }
 
     result.result()
+  }
+
+  private def setJobDescriptionSafe(
+      spark: SparkSession,
+      description: String,
+  ): Unit = {
+    Try(spark.sparkContext).toOption.foreach { sc =>
+      Try(sc.setJobDescription(description))
+      ()
+    }
   }
 
 }

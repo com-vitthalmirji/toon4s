@@ -117,6 +117,24 @@ private[datasource] object ToonDataSourceV2 {
   def raiseThrowable[A](error: Throwable): A =
     scala.util.Failure[A](error).get
 
+  def activeHadoopConf(): Configuration = {
+    val sessionResult = Try(SparkSession.active).toEither.left.map { ex =>
+      CommitFailure(
+        s"Active SparkSession is required for TOON datasource Hadoop configuration: ${ex.getMessage}"
+      )
+    }
+
+    sessionResult
+      .flatMap { session =>
+        Try(session.sparkContext.hadoopConfiguration).toEither.left.map { ex =>
+          CommitFailure(
+            s"SparkContext Hadoop configuration is unavailable for TOON datasource: ${ex.getMessage}"
+          )
+        }
+      }
+      .fold(raise, identity)
+  }
+
 }
 
 final private[datasource] class ToonTable(
@@ -177,7 +195,7 @@ final private[datasource] class ToonScanBuilder(options: CaseInsensitiveStringMa
   }
 
   private def activeHadoopConf(): Configuration =
-    SparkSession.active.sparkContext.hadoopConfiguration
+    ToonDataSourceV2.activeHadoopConf()
 
   private def listVisibleFiles(fs: FileSystem, root: Path): Seq[Path] = {
     if (!fs.exists(root)) {
@@ -302,7 +320,7 @@ final private[datasource] class ToonWriteBuilder(
         .getOrElse(ToonDataSourceV2.DefaultTopLevelKey)
       val schema = info.schema()
       val queryId = info.queryId()
-      val hadoopConf = SparkSession.active.sparkContext.hadoopConfiguration
+      val hadoopConf = ToonDataSourceV2.activeHadoopConf()
 
       new Write {
         override def toBatch: BatchWrite = {

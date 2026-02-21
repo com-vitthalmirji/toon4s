@@ -72,6 +72,12 @@ object SparkDatasetOps {
       ds.toDF().toToon(options)
     }
 
+    /** Distributed encoding path that returns TOON chunks as Dataset[String]. */
+    def toToonDataset(options: ToonSparkOptions): Dataset[String] = {
+      import SparkToonOps._
+      ds.toDF().toToonDataset(options)
+    }
+
     /**
      * Encode Dataset[T] to TOON format.
      *
@@ -145,6 +151,14 @@ object SparkDatasetOps {
       ds.toDF().toonMetrics(options)
     }
 
+    /** Distributed metrics path with partition-level execution. */
+    def toonMetricsDistributed(
+        options: ToonSparkOptions
+    ): Either[SparkToonError, ToonMetrics] = {
+      import SparkToonOps._
+      ds.toDF().toonMetricsDistributed(options)
+    }
+
     /**
      * Compute token metrics for Dataset[T] with caller-provided chunk size.
      *
@@ -202,7 +216,7 @@ object SparkDatasetOps {
    * SparkDatasetOps.fromToon[User](toonChunks) match {
    *   case Right(ds: Dataset[User]) =>
    *     ds.show()
-   *     ds.filter(_.id > 100).collect()
+   *     ds.filter(_.id > 100).take(10)
    *   case Left(error) =>
    *     logger.error(s"Decoding failed: \${error.message}")
    * }

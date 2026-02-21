@@ -4,12 +4,15 @@ import sbtdynver.DynVerPlugin.autoImport._
 
 lazy val Scala3Latest = "3.3.3"
 
-lazy val Scala213Latest = "2.13.14"
+lazy val Scala213Latest = "2.13.16"
 
 lazy val SparkSqlDefaultVersion = "3.5.0"
 
 lazy val SparkSqlVersion =
   sys.props.getOrElse("toon4s.spark.version", SparkSqlDefaultVersion)
+
+lazy val Llm4sVersion =
+  sys.props.getOrElse("toon4s.llm4s.version", "0.1.16")
 
 ThisBuild / organization := "com.vitthalmirji"
 
@@ -165,6 +168,7 @@ lazy val sparkIntegration = (project in file("spark-integration"))
     scalaVersion := Scala213Latest,
     libraryDependencies ++= Seq(
       "org.apache.spark" %% "spark-sql" % SparkSqlVersion % Provided,
+      ("org.llm4s"       %% "core"      % Llm4sVersion).intransitive(),
       "org.scalameta"    %% "munit"     % "1.2.1" % Test,
     ),
     scalacOptions ++= commonScalacOptions,

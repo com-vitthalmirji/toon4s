@@ -4,28 +4,11 @@ import java.nio.file.Files
 
 import scala.util.Using
 
-import munit.FunSuite
-import org.apache.spark.sql.SparkSession
+import io.toonformat.toon4s.spark.testkit.SparkTestSuite
 
-class ToonDataSourceV2Test extends FunSuite {
+class ToonDataSourceV2Test extends SparkTestSuite {
 
   private val isWindows = System.getProperty("os.name", "").toLowerCase.contains("win")
-
-  private var spark: SparkSession = _
-
-  override def beforeAll(): Unit = {
-    spark = SparkSession
-      .builder()
-      .master("local[1]")
-      .appName("ToonDataSourceV2Test")
-      .config("spark.ui.enabled", "false")
-      .config("spark.sql.shuffle.partitions", "1")
-      .getOrCreate()
-  }
-
-  override def afterAll(): Unit = {
-    Option(spark).foreach(_.stop())
-  }
 
   test("format(toon): write and read TOON documents") {
     assume(!isWindows, "TOON datasource write tests need winutils on Windows CI")
@@ -52,7 +35,7 @@ class ToonDataSourceV2Test extends FunSuite {
         .load()
 
       assertEquals(readDf.schema.fieldNames.toSeq, Seq("toon"))
-      val payloads = readDf.collect().map(_.getString(0)).toSeq
+      val payloads = readDf.take(100).map(_.getString(0)).toSeq
       assert(payloads.nonEmpty)
       assert(payloads.forall(_.contains("users")))
       assert(payloads.exists(_.contains("Alice")))
@@ -84,7 +67,7 @@ class ToonDataSourceV2Test extends FunSuite {
         .format("toon")
         .option("path", tempDir.file.getAbsolutePath)
         .load()
-        .collect()
+        .take(10)
         .map(_.getString(0))
         .toSeq
 

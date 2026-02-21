@@ -6,6 +6,9 @@ This directory contains production-ready examples demonstrating toon4s-spark int
 
 | Example | Use Case | Key Features | Platform |
 |---------|----------|--------------|----------|
+| **TryIn5MinutesExample** | First successful run | Local batch query, TOON encode, first chunk output | Local Spark |
+| **SparkLlmEndToEndExample** | Query to LLM flow | SQL aggregation, TOON encoding, LLM stub call | Local Spark |
+| **WorkloadMeasurementExample** | Real workload proof | JSON vs TOON bytes, tokens, timing, chunk stats | Local Spark / Cluster |
 | **DatabricksStreamingExample** | Real-time fraud detection | Delta Lake CDC, streaming TOON encoding, health monitoring | Databricks + Delta Lake |
 | **IcebergTrendAnalysisExample** | Quarterly business trends | Time travel, multi-snapshot comparison, LLM analysis | Apache Iceberg |
 | **ProductionMonitoringExample** | Pre-deployment validation | Health checks, telemetry, schema drift detection | Any Spark cluster |
@@ -30,7 +33,69 @@ All examples are based on [TOON Generation Benchmark](https://github.com/veterta
 
 ## Running Examples
 
-### 1. Databricks Streaming Example
+### 1. Try in 5 minutes
+
+**Run**:
+
+```bash
+spark-submit \
+  --class examples.TryIn5MinutesExample \
+  --master local[*] \
+  toon4s-spark-assembly.jar
+```
+
+### 2. Spark + LLM end-to-end stub
+
+**Run**:
+
+```bash
+spark-submit \
+  --class examples.SparkLlmEndToEndExample \
+  --master local[*] \
+  toon4s-spark-assembly.jar
+```
+
+### 3. Workload measurement harness
+
+**Run with a table**:
+
+```bash
+spark-submit \
+  --class examples.WorkloadMeasurementExample \
+  --master local[*] \
+  toon4s-spark-assembly.jar \
+  --table analytics.events \
+  --key workload \
+  --maxRowsPerChunk 1000
+```
+
+**Run with a parquet file**:
+
+```bash
+spark-submit \
+  --class examples.WorkloadMeasurementExample \
+  --master local[*] \
+  toon4s-spark-assembly.jar \
+  --parquet /data/events.parquet \
+  --key workload \
+  --maxRowsPerChunk 1000
+```
+
+Use `spark-integration/docs/WORKLOAD_MEASUREMENT_TEMPLATE.md` to store your run note.
+
+**Run with a csv file**:
+
+```bash
+spark-submit \
+  --class examples.WorkloadMeasurementExample \
+  --master local[*] \
+  toon4s-spark-assembly.jar \
+  --csv /data/customers.csv \
+  --key workload \
+  --maxRowsPerChunk 1000
+```
+
+### 4. Databricks Streaming Example
 
 **Scenario**: Financial institution monitors transaction table for fraud patterns using real-time LLM analysis.
 
@@ -94,7 +159,7 @@ val query = streamDeltaCDCWithMetadata(config) { metadata =>
 query.awaitTermination()
 ```
 
-### 2. Iceberg Time Travel Example
+### 5. Iceberg Time Travel Example
 
 **Scenario**: E-commerce company analyzes quarterly customer trends using historical Iceberg snapshots.
 
@@ -162,7 +227,7 @@ val timeSeries = generateSnapshotTimeSeries(
 )
 ```
 
-### 3. Production Monitoring Example
+### 6. Production Monitoring Example
 
 **Scenario**: Pre-deployment validation and runtime monitoring for production TOON encoding.
 
@@ -412,7 +477,7 @@ repartitionedDf.toToon() // Parallel encoding
 if (shouldUseToon(df)) {
   df.toToon()
 } else {
-  df.toJSON.collect() // Fall back to JSON
+  df.toJSON.take(1000) // Fall back to JSON with bounded sample
 }
 ```
 
