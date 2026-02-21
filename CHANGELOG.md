@@ -1,5 +1,35 @@
 # Changelog
 
+## [0.8.0] - 2026-02-21
+
+
+### Bug fixes
+- fix spark integration blockers and cleanup ([`f4f38c2`](https://github.com/com-vitthalmirji/toon4s/commit/f4f38c2c2df3dad706947d944f9f727e9183a4aa)) by @vim89
+
+
+
+### Documentation
+- update CHANGELOG.md for main [skip ci] ([`0830dfc`](https://github.com/com-vitthalmirji/toon4s/commit/0830dfc6e4f7e65a84a4d3801e42820516dd3959)) by @github-actions[bot]
+- cleanup ([`79dee62`](https://github.com/com-vitthalmirji/toon4s/commit/79dee627f8924b627d8047397b0b90e9642a6f5e)) by @vim89
+- updated MAINTAINERS.md ([`903dda8`](https://github.com/com-vitthalmirji/toon4s/commit/903dda8858dcf4a44ff2211f7492b7edfd9dee02)) by @vim89
+- cleanup ([`bd59d55`](https://github.com/com-vitthalmirji/toon4s/commit/bd59d553d86cf1f1da4e2f036df1f2dc3963a586)) by @vim89
+
+
+
+### Features
+- harden spark integration and readiness pack ([`e2a6b0d`](https://github.com/com-vitthalmirji/toon4s/commit/e2a6b0df02676edabdb2733da8122da52ff7af1b)) [#63](https://github.com/com-vitthalmirji/toon4s/pull/63) by @vim89
+
+
+
+### Spark
+- add stable ToonSparkOptions API ([`b01a037`](https://github.com/com-vitthalmirji/toon4s/commit/b01a037a10ea95cc1f3ad5fe5586b5ce2d54fd4c)) by @vim89
+- add datasource and sql extension ([`469edc5`](https://github.com/com-vitthalmirji/toon4s/commit/469edc5502550fcc954d5264e53fd89cc6076560)) by @vim89
+- format datasource and extension files ([`62124fc`](https://github.com/com-vitthalmirji/toon4s/commit/62124fc7301792e1a3aae1db4c7f989aae51ff0f)) by @vim89
+- harden adoption guardrails ([`eb0d949`](https://github.com/com-vitthalmirji/toon4s/commit/eb0d949268719bfdae5f17a4329685d84b672f9e)) by @vim89
+- remove parser extension risk ([`4e0ccd1`](https://github.com/com-vitthalmirji/toon4s/commit/4e0ccd122a76f769494c1009fec8db6d3fc9764f)) by @vim89
+- align extension and datasource safety ([`5ad383f`](https://github.com/com-vitthalmirji/toon4s/commit/5ad383fa5a89c9be20707b4403bd34f1f8579451)) by @vim89
+
+
 ## [0.7.0] - 2026-02-06
 
 
