@@ -60,7 +60,11 @@ import org.apache.spark.sql.types.StructType
 object SparkToonOps {
 
   final private class SparkToonEncodingException(val error: SparkToonError)
-      extends IllegalStateException(error.message, error.cause.orNull)
+      extends IllegalStateException(error.message) {
+
+    error.cause.foreach(initCause)
+
+  }
 
   private val MaxCollectedChunksConfKey = "toon4s.spark.collect.maxChunks"
 
@@ -447,7 +451,7 @@ object SparkToonOps {
             encodedChunks += encoded
             chunkRows.clear()
           case Left(err) =>
-            throw new IllegalStateException(err.message, err.cause.orNull)
+            throw new SparkToonEncodingException(err)
           }
         }
       }
