@@ -20,51 +20,51 @@ private[monitoring] object ToonPerformanceMeasurer {
     )
 
     metricsResult match {
-      case Right(toonMetrics) =>
-        val chunkSize = maxRowsPerChunk.getOrElse {
-          AdaptiveChunking.calculateOptimalChunkSize(df).chunkSize
-        }
-        val encodingResult = df.toToon(key = key, maxRowsPerChunk = chunkSize)
-        val endTime = System.currentTimeMillis()
+    case Right(toonMetrics) =>
+      val chunkSize = maxRowsPerChunk.getOrElse {
+        AdaptiveChunking.calculateOptimalChunkSize(df).chunkSize
+      }
+      val encodingResult = df.toToon(key = key, maxRowsPerChunk = chunkSize)
+      val endTime = System.currentTimeMillis()
 
-        encodingResult match {
-          case Right(chunks) =>
-            ToonMonitoring.EncodingMetrics(
-              encodingTimeMs = endTime - startTime,
-              jsonTokenCount = toonMetrics.jsonTokenCount,
-              toonTokenCount = toonMetrics.toonTokenCount,
-              savingsPercent = toonMetrics.savingsPercent,
-              chunkCount = chunks.size,
-              avgChunkSize = if (chunks.nonEmpty) toonMetrics.rowCount / chunks.size else 0,
-              success = true,
-              errorType = None,
-            )
-
-          case Left(error) =>
-            ToonMonitoring.EncodingMetrics(
-              encodingTimeMs = endTime - startTime,
-              jsonTokenCount = toonMetrics.jsonTokenCount,
-              toonTokenCount = toonMetrics.toonTokenCount,
-              savingsPercent = toonMetrics.savingsPercent,
-              chunkCount = 0,
-              avgChunkSize = 0,
-              success = false,
-              errorType = Some(error.getClass.getSimpleName),
-            )
-        }
-
-      case Left(error) =>
-        val endTime = System.currentTimeMillis()
+      encodingResult match {
+      case Right(chunks) =>
         ToonMonitoring.EncodingMetrics(
           encodingTimeMs = endTime - startTime,
-          jsonTokenCount = 0,
-          toonTokenCount = 0,
-          savingsPercent = 0.0,
+          jsonTokenCount = toonMetrics.jsonTokenCount,
+          toonTokenCount = toonMetrics.toonTokenCount,
+          savingsPercent = toonMetrics.savingsPercent,
+          chunkCount = chunks.size,
+          avgChunkSize = if (chunks.nonEmpty) toonMetrics.rowCount / chunks.size else 0,
+          success = true,
+          errorType = None,
+        )
+
+      case Left(error) =>
+        ToonMonitoring.EncodingMetrics(
+          encodingTimeMs = endTime - startTime,
+          jsonTokenCount = toonMetrics.jsonTokenCount,
+          toonTokenCount = toonMetrics.toonTokenCount,
+          savingsPercent = toonMetrics.savingsPercent,
           chunkCount = 0,
           avgChunkSize = 0,
           success = false,
           errorType = Some(error.getClass.getSimpleName),
         )
+      }
+
+    case Left(error) =>
+      val endTime = System.currentTimeMillis()
+      ToonMonitoring.EncodingMetrics(
+        encodingTimeMs = endTime - startTime,
+        jsonTokenCount = 0,
+        toonTokenCount = 0,
+        savingsPercent = 0.0,
+        chunkCount = 0,
+        avgChunkSize = 0,
+        success = false,
+        errorType = Some(error.getClass.getSimpleName),
+      )
     }
   }
 

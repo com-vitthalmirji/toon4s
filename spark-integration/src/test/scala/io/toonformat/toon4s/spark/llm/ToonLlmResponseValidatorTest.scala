@@ -13,7 +13,9 @@ class ToonLlmResponseValidatorTest extends FunSuite {
   test("validate: flags empty response") {
     val result = ToonLlmResponseValidator.validate("   ")
     assert(!result.valid)
-    assert(result.issues.exists(_.isInstanceOf[ToonLlmResponseValidator.ValidationIssue.EmptyResponse]))
+    assert(
+      result.issues.exists(_.isInstanceOf[ToonLlmResponseValidator.ValidationIssue.EmptyResponse])
+    )
   }
 
   test("validate: flags format confusion response") {

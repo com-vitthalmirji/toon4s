@@ -3,25 +3,33 @@ package io.toonformat.toon4s.spark.llm
 /**
  * Lightweight response checks for TOON prompt pipelines.
  *
- * This detects common signs that a model did not understand the TOON payload format and returned
- * a clarification request or raw JSON echo instead of the requested task output.
+ * This detects common signs that a model did not understand the TOON payload format and returned a
+ * clarification request or raw JSON echo instead of the requested task output.
  */
 object ToonLlmResponseValidator {
 
   sealed trait ValidationIssue extends Product with Serializable {
+
     def message: String
+
   }
 
   object ValidationIssue {
-    final case class EmptyResponse(message: String = "LLM response is empty") extends ValidationIssue
+
+    final case class EmptyResponse(message: String = "LLM response is empty")
+        extends ValidationIssue
+
     final case class FormatConfusion(message: String) extends ValidationIssue
+
     final case class RawJsonEcho(message: String) extends ValidationIssue
+
   }
 
   final case class ValidationResult(
       valid: Boolean,
       issues: Vector[ValidationIssue],
   ) {
+
     def hasConfusion: Boolean = issues.exists {
       case _: ValidationIssue.FormatConfusion => true
       case _                                  => false
@@ -31,6 +39,7 @@ object ToonLlmResponseValidator {
       case _: ValidationIssue.RawJsonEcho => true
       case _                              => false
     }
+
   }
 
   private val confusionPatterns = Vector(

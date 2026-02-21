@@ -628,4 +628,28 @@ class SparkToonOpsTest extends SparkTestSuite {
     }
   }
 
+  test("distributed round-trip: 10k rows without driver collect") {
+    val schema = StructType(Seq(
+      StructField("id", IntegerType),
+      StructField("name", StringType),
+      StructField("score", DoubleType),
+    ))
+
+    val data = (1 to 10000).map(i => Row(i, s"user$i", i.toDouble / 10.0))
+    val df = spark.createDataFrame(
+      spark.sparkContext.parallelize(data, 4),
+      schema,
+    )
+
+    val options = ToonSparkOptions(key = "users", maxRowsPerChunk = 500)
+    val toonChunks = df.toToonDataset(options)
+    val decoded = SparkToonOps.fromToonDataset(toonChunks, schema)
+
+    assert(decoded.isRight)
+    decoded.foreach { decodedDf =>
+      assertEquals(decodedDf.count(), 10000L)
+      assertEquals(decodedDf.schema, schema)
+    }
+  }
+
 }

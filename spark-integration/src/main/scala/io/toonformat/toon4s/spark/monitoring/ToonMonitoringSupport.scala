@@ -12,6 +12,7 @@ import org.apache.spark.sql.functions._
 private[monitoring] object ToonMonitoringSupport {
 
   val MaxJsonFallbackRowsConfKey = "toon4s.spark.fallback.json.maxRows"
+
   val DefaultMaxJsonFallbackRows = 10000
 
   def estimateSavings(alignmentScore: Double): Double = {

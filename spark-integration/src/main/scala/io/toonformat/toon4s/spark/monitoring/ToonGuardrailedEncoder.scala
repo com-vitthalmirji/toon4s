@@ -16,10 +16,10 @@ private[monitoring] object ToonGuardrailedEncoder {
     val enoughDataForToon = chunking.estimatedDataSize >= options.minBytesPerChunk
 
     val useToon = options.mode match {
-      case ToonMonitoring.GuardrailMode.Strict =>
-        alignment.aligned && chunking.useToon && enoughDataForToon
-      case ToonMonitoring.GuardrailMode.Lenient =>
-        alignment.score >= 0.7 && enoughDataForToon
+    case ToonMonitoring.GuardrailMode.Strict =>
+      alignment.aligned && chunking.useToon && enoughDataForToon
+    case ToonMonitoring.GuardrailMode.Lenient =>
+      alignment.score >= 0.7 && enoughDataForToon
     }
 
     val reason =
@@ -68,39 +68,39 @@ private[monitoring] object ToonGuardrailedEncoder {
       val warning = s"${decision.reason}. Fallback mode: $fallbackMode"
       onWarning(warning)
       fallbackMode match {
-        case ToonMonitoring.FallbackMode.Json =>
-          ToonMonitoringSupport.collectJsonFallbackSummary(df, guardrailOptions.maxJsonFallbackRows)
-            .map { counters =>
-              ToonMonitoring.GuardrailedEncodingResult(
-                path = ToonMonitoring.EncodingPath.JsonFallback,
-                toonChunks = Vector.empty,
-                jsonFallbackRows = Vector.empty,
-                counters = counters,
-                decision = decision,
-                warning = Some(warning),
-              )
-            }
-        case ToonMonitoring.FallbackMode.Skip =>
-          Right(ToonMonitoring.GuardrailedEncodingResult(
-            path = ToonMonitoring.EncodingPath.Skipped,
-            toonChunks = Vector.empty,
-            jsonFallbackRows = Vector.empty,
-            counters = ToonMonitoring.EncodingCounters(
-              totalEncodes = 1L,
-              successfulEncodes = 0L,
-              failedEncodes = 1L,
-              chunkCount = 0,
-              minChunkRows = 0,
-              maxChunkRows = 0,
-              avgChunkRows = 0.0,
-              minChunkBytes = 0L,
-              maxChunkBytes = 0L,
-              avgChunkBytes = 0.0,
-              avgEstimatedTokensPerChunk = 0.0,
-            ),
-            decision = decision,
-            warning = Some(warning),
-          ))
+      case ToonMonitoring.FallbackMode.Json =>
+        ToonMonitoringSupport.collectJsonFallbackSummary(df, guardrailOptions.maxJsonFallbackRows)
+          .map { counters =>
+            ToonMonitoring.GuardrailedEncodingResult(
+              path = ToonMonitoring.EncodingPath.JsonFallback,
+              toonChunks = Vector.empty,
+              jsonFallbackRows = Vector.empty,
+              counters = counters,
+              decision = decision,
+              warning = Some(warning),
+            )
+          }
+      case ToonMonitoring.FallbackMode.Skip =>
+        Right(ToonMonitoring.GuardrailedEncodingResult(
+          path = ToonMonitoring.EncodingPath.Skipped,
+          toonChunks = Vector.empty,
+          jsonFallbackRows = Vector.empty,
+          counters = ToonMonitoring.EncodingCounters(
+            totalEncodes = 1L,
+            successfulEncodes = 0L,
+            failedEncodes = 1L,
+            chunkCount = 0,
+            minChunkRows = 0,
+            maxChunkRows = 0,
+            avgChunkRows = 0.0,
+            minChunkBytes = 0L,
+            maxChunkBytes = 0L,
+            avgChunkBytes = 0.0,
+            avgEstimatedTokensPerChunk = 0.0,
+          ),
+          decision = decision,
+          warning = Some(warning),
+        ))
       }
     }
   }
