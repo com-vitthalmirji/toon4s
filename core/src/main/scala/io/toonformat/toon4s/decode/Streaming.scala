@@ -1,6 +1,7 @@
 package io.toonformat.toon4s.decode
 
 import scala.annotation.tailrec
+import scala.util.Try
 
 import io.toonformat.toon4s._
 import io.toonformat.toon4s.{Constants => C}
@@ -24,47 +25,59 @@ object Streaming {
       onRow: (Option[String], List[String], Vector[String]) => Unit
   ): Either[error.DecodeError, Unit] = {
     val isStrict = options.strictness == Strictness.Strict
-    val scan = Scanner.toParsedLines(in, options.indent, isStrict)
-    val lines = scan.lines
-
-    @tailrec
-    def streamRows(
-        idx: Int,
-        baseDepth: Int,
-        header: ArrayHeaderInfo,
-        seen: Int,
-    ): Either[error.DecodeError, Int] = {
-      val rowDepth = baseDepth + 1
-      if (seen >= header.length || idx >= lines.length) Right(idx)
-      else
-        lines.lift(idx) match {
-        case Some(pl) if pl.depth == rowDepth =>
-          val values = Parser.parseDelimitedValues(pl.content, header.delimiter)
-          onRow(header.key, header.fields, values)
-          streamRows(idx + 1, baseDepth, header, seen + 1)
-        case Some(pl) if pl.depth < rowDepth => Right(idx)
-        case Some(_)                         => Right(idx)
-        case None                            => Right(idx)
+    Try(Scanner.toParsedLines(in, options.indent, isStrict).lines)
+      .toEither
+      .left
+      .map(ex => error.DecodeError.Unexpected(s"Failed to parse streaming input: ${ex.getMessage}"))
+      .flatMap { lines =>
+        @tailrec
+        def streamRows(
+            idx: Int,
+            baseDepth: Int,
+            header: ArrayHeaderInfo,
+            seen: Int,
+        ): Either[error.DecodeError, Int] = {
+          val rowDepth = baseDepth + 1
+          if (seen >= header.length || idx >= lines.length) Right(idx)
+          else
+            lines.lift(idx) match {
+            case Some(pl) if pl.depth == rowDepth =>
+              Try(Parser.parseDelimitedValues(pl.content, header.delimiter)).toEither.left
+                .map(ex =>
+                  error.DecodeError.Unexpected(
+                    s"Failed to parse tabular row: ${ex.getMessage}",
+                    Some(error.ErrorLocation(idx + 1, 1, pl.content)),
+                  )
+                ) match {
+              case Right(values) =>
+                onRow(header.key, header.fields, values)
+                streamRows(idx + 1, baseDepth, header, seen + 1)
+              case Left(err) => Left(err)
+              }
+            case Some(pl) if pl.depth < rowDepth => Right(idx)
+            case Some(_)                         => Right(idx)
+            case None                            => Right(idx)
+            }
         }
-    }
 
-    @tailrec
-    def loop(idx: Int): Either[error.DecodeError, Unit] = {
-      if (idx >= lines.length) Right(())
-      else {
-        val pl = lines(idx)
-        Parser.parseArrayHeaderLine(pl.content, Delimiter.Comma) match {
-        case Some((h, inline)) if h.fields.nonEmpty && inline.isEmpty =>
-          streamRows(idx + 1, pl.depth, h, 0) match {
-          case Right(next) => loop(next)
-          case Left(e)     => Left(e)
+        @tailrec
+        def loop(idx: Int): Either[error.DecodeError, Unit] = {
+          if (idx >= lines.length) Right(())
+          else {
+            val pl = lines(idx)
+            Parser.parseArrayHeaderLine(pl.content, Delimiter.Comma) match {
+            case Some((h, inline)) if h.fields.nonEmpty && inline.isEmpty =>
+              streamRows(idx + 1, pl.depth, h, 0) match {
+              case Right(next) => loop(next)
+              case Left(e)     => Left(e)
+              }
+            case _ => loop(idx + 1)
+            }
           }
-        case _ => loop(idx + 1)
         }
-      }
-    }
 
-    loop(0)
+        loop(0)
+      }
   }
 
   /**
@@ -80,59 +93,83 @@ object Streaming {
       onRow: (Vector[String], ArrayHeaderInfo, Vector[String]) => Unit,
   ): Either[error.DecodeError, Unit] = {
     val isStrict = options.strictness == Strictness.Strict
-    val scan = Scanner.toParsedLines(in, options.indent, isStrict)
-    val lines = scan.lines
-
-    @tailrec
-    def streamRows(
-        idx: Int,
-        baseDepth: Int,
-        header: ArrayHeaderInfo,
-        path: Vector[String],
-        seen: Int,
-    ): Either[error.DecodeError, Int] = {
-      val rowDepth = baseDepth + 1
-      if (seen >= header.length || idx >= lines.length) Right(idx)
-      else
-        lines.lift(idx) match {
-        case Some(pl) if pl.depth == rowDepth =>
-          val values = Parser.parseDelimitedValues(pl.content, header.delimiter)
-          onRow(path, header, values)
-          streamRows(idx + 1, baseDepth, header, path, seen + 1)
-        case Some(pl) if pl.depth < rowDepth => Right(idx)
-        case Some(_)                         => Right(idx)
-        case None                            => Right(idx)
-        }
-    }
-
-    @tailrec
-    def loop(idx: Int): Either[error.DecodeError, Unit] = {
-      if (idx >= lines.length) Right(())
-      else {
-        lines.lift(idx) match {
-        case Some(pl)
-            if pl.content.startsWith(C.ListItemPrefix) || pl.content == C.ListItemMarker =>
-          val after =
-            if (pl.content.startsWith(C.ListItemPrefix)) pl.content.drop(C.ListItemPrefix.length)
-            else ""
-          scala.util.Try(Parser.parseKeyToken(after, 0)).toEither match {
-          case Right((key, restIdx)) =>
-            val rest = after.substring(restIdx).trim
-            Parser.parseArrayHeaderLine(rest, Delimiter.Comma) match {
-            case Some((h, inline)) if inline.isEmpty && h.fields.nonEmpty =>
-              val header = h.copy(key = Some(key))
-              onHeader(Vector.empty, header)
-              streamRows(idx + 1, pl.depth, header, Vector.empty, 0) match {
-              case Right(next) => loop(next)
-              case Left(err)   => Left(err)
+    Try(Scanner.toParsedLines(in, options.indent, isStrict).lines)
+      .toEither
+      .left
+      .map(ex => error.DecodeError.Unexpected(s"Failed to parse streaming input: ${ex.getMessage}"))
+      .flatMap { lines =>
+        @tailrec
+        def streamRows(
+            idx: Int,
+            baseDepth: Int,
+            header: ArrayHeaderInfo,
+            path: Vector[String],
+            seen: Int,
+        ): Either[error.DecodeError, Int] = {
+          val rowDepth = baseDepth + 1
+          if (seen >= header.length || idx >= lines.length) Right(idx)
+          else
+            lines.lift(idx) match {
+            case Some(pl) if pl.depth == rowDepth =>
+              Try(Parser.parseDelimitedValues(pl.content, header.delimiter)).toEither.left
+                .map(ex =>
+                  error.DecodeError.Unexpected(
+                    s"Failed to parse array row: ${ex.getMessage}",
+                    Some(error.ErrorLocation(idx + 1, 1, pl.content)),
+                  )
+                ) match {
+              case Right(values) =>
+                onRow(path, header, values)
+                streamRows(idx + 1, baseDepth, header, path, seen + 1)
+              case Left(err) => Left(err)
               }
-            case _ => loop(idx + 1)
+            case Some(pl) if pl.depth < rowDepth => Right(idx)
+            case Some(_)                         => Right(idx)
+            case None                            => Right(idx)
             }
-          case _ =>
-            // also support bare header after hyphen
-            if (Parser.isArrayHeaderAfterHyphen(after))
-              Parser.parseArrayHeaderLine(after, Delimiter.Comma) match {
-              case Some((header, inline)) if inline.isEmpty =>
+        }
+
+        @tailrec
+        def loop(idx: Int): Either[error.DecodeError, Unit] = {
+          if (idx >= lines.length) Right(())
+          else {
+            lines.lift(idx) match {
+            case Some(pl)
+                if pl.content.startsWith(C.ListItemPrefix) || pl.content == C.ListItemMarker =>
+              val after =
+                if (pl.content.startsWith(C.ListItemPrefix))
+                  pl.content.drop(C.ListItemPrefix.length)
+                else ""
+              scala.util.Try(Parser.parseKeyToken(after, 0)).toEither match {
+              case Right((key, restIdx)) =>
+                val rest = after.substring(restIdx).trim
+                Parser.parseArrayHeaderLine(rest, Delimiter.Comma) match {
+                case Some((h, inline)) if inline.isEmpty && h.fields.nonEmpty =>
+                  val header = h.copy(key = Some(key))
+                  onHeader(Vector.empty, header)
+                  streamRows(idx + 1, pl.depth, header, Vector.empty, 0) match {
+                  case Right(next) => loop(next)
+                  case Left(err)   => Left(err)
+                  }
+                case _ => loop(idx + 1)
+                }
+              case _ =>
+                if (Parser.isArrayHeaderAfterHyphen(after))
+                  Parser.parseArrayHeaderLine(after, Delimiter.Comma) match {
+                  case Some((header, inline)) if inline.isEmpty =>
+                    onHeader(Vector.empty, header)
+                    streamRows(idx + 1, pl.depth, header, Vector.empty, 0) match {
+                    case Right(next) => loop(next)
+                    case Left(err)   => Left(err)
+                    }
+                  case _ => loop(idx + 1)
+                  }
+                else loop(idx + 1)
+              }
+            case Some(pl) =>
+              Parser.parseArrayHeaderLine(pl.content, Delimiter.Comma) match {
+              case Some((h, inline)) if inline.isEmpty && h.fields.nonEmpty =>
+                val header = h
                 onHeader(Vector.empty, header)
                 streamRows(idx + 1, pl.depth, header, Vector.empty, 0) match {
                 case Right(next) => loop(next)
@@ -140,25 +177,13 @@ object Streaming {
                 }
               case _ => loop(idx + 1)
               }
-            else loop(idx + 1)
-          }
-        case Some(pl) =>
-          Parser.parseArrayHeaderLine(pl.content, Delimiter.Comma) match {
-          case Some((h, inline)) if inline.isEmpty && h.fields.nonEmpty =>
-            val header = h
-            onHeader(Vector.empty, header)
-            streamRows(idx + 1, pl.depth, header, Vector.empty, 0) match {
-            case Right(next) => loop(next)
-            case Left(err)   => Left(err)
+            case None => Right(())
             }
-          case _ => loop(idx + 1)
           }
-        case None => Right(())
         }
-      }
-    }
 
-    loop(0)
+        loop(0)
+      }
   }
 
 }
