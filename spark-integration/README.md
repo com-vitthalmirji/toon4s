@@ -104,7 +104,6 @@ Detailed docs:
 - `spark-integration/docs/COMPATIBILITY_MATRIX.md`
 - `spark-integration/docs/MIGRATION_GUIDE.md`
 - `spark-integration/docs/RELEASE_NOTES_TEMPLATE.md`
-- `spark-integration/docs/THIRD_PARTY_ADOPTION_PLAN.md`
 - `spark-integration/docs/BENCHMARK_WORKFLOW.md`
 - `spark-integration/docs/BENCHMARK_REPORT_TEMPLATE.md`
 - `spark-integration/docs/CLAIMS_TRACEABILITY.md`
