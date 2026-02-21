@@ -138,6 +138,9 @@ Detailed docs:
 - `spark-integration/docs/PIPELINE_LESSONS.md`
 - `spark-integration/docs/case-studies.md`
 - `spark-integration/docs/WORKLOAD_MEASUREMENT_TEMPLATE.md`
+- `spark-integration/docs/UPSTREAM_PROPOSAL_PREP.md`
+- `spark-integration/docs/OUTREACH_ASSETS.md`
+- `spark-integration/docs/REVIEW_OUTCOME_CLOSURE.md`
 
 Core TOON docs:
 - [toon4s README](../README.md)
