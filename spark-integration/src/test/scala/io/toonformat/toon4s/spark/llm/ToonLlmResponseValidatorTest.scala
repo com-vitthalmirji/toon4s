@@ -31,4 +31,20 @@ class ToonLlmResponseValidatorTest extends FunSuite {
     assert(result.hasRawJsonEcho)
   }
 
+  test("validate: handles null response as empty") {
+    val result = ToonLlmResponseValidator.validate(null)
+    assert(!result.valid)
+    assert(
+      result.issues.exists(_.isInstanceOf[ToonLlmResponseValidator.ValidationIssue.EmptyResponse])
+    )
+  }
+
+  test("validate: flags confusion and raw json together") {
+    val result = ToonLlmResponseValidator.validate("""{"note":"Please provide JSON"}""")
+    assert(!result.valid)
+    assert(result.hasConfusion)
+    assert(result.hasRawJsonEcho)
+    assertEquals(result.issues.size, 2)
+  }
+
 }

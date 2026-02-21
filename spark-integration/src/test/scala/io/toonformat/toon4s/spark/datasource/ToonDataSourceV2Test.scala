@@ -5,6 +5,9 @@ import java.nio.file.Files
 import scala.util.Using
 
 import io.toonformat.toon4s.spark.testkit.SparkTestSuite
+import org.apache.hadoop.conf.Configuration
+import org.apache.hadoop.fs.{LocalFileSystem, Path}
+import org.apache.spark.sql.types.{IntegerType, StructField, StructType}
 
 class ToonDataSourceV2Test extends SparkTestSuite {
 
@@ -106,8 +109,53 @@ class ToonDataSourceV2Test extends SparkTestSuite {
     }
   }
 
+  test("format(toon): commit fails when rename cannot replace existing file") {
+    assume(!isWindows, "TOON datasource write tests need winutils on Windows CI")
+    Using.resource(tempDirectory("toon-ds-v2-commit-failure")) { tempDir =>
+      val outputDir = tempDir.file.toPath.resolve("output").toFile
+      assert(outputDir.mkdirs())
+
+      val queryId = "query-commit-failure"
+      val tempQueryDir = outputDir.toPath.resolve("_temporary").resolve(queryId)
+      Files.createDirectories(tempQueryDir)
+
+      val partFileName = "part-0-0-0.toon"
+      val tempPart = tempQueryDir.resolve(partFileName)
+      val finalPart = outputDir.toPath.resolve(partFileName)
+
+      Files.writeString(tempPart, """{"users":[]}""")
+      Files.writeString(finalPart, "existing-destination")
+
+      val conf = new Configuration(spark.sparkContext.hadoopConfiguration)
+      conf.set("fs.defaultFS", "failrename:///")
+      conf.set("fs.failrename.impl", classOf[FailRenameLocalFileSystem].getName)
+
+      val writer = new ToonBatchWrite(
+        queryId = queryId,
+        outputPath = s"failrename://${outputDir.getAbsolutePath}",
+        key = "users",
+        maxRowsPerFile = 10,
+        schema = StructType(Seq(StructField("id", IntegerType))),
+        conf = conf,
+      )
+
+      val ex = intercept[IllegalArgumentException] {
+        writer.commit(Array.empty)
+      }
+      assert(Option(ex.getMessage).exists(_.nonEmpty))
+    }
+  }
+
   private def tempDirectory(prefix: String): TempDirectory =
     TempDirectory(Files.createTempDirectory(prefix).toFile)
+
+}
+
+final private[datasource] class FailRenameLocalFileSystem extends LocalFileSystem {
+
+  override def getScheme: String = "failrename"
+
+  override def rename(src: Path, dst: Path): Boolean = false
 
 }
 
