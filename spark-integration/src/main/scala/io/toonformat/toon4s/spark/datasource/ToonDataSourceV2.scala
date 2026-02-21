@@ -5,6 +5,7 @@ import java.nio.charset.StandardCharsets
 import java.util
 
 import scala.jdk.CollectionConverters._
+import scala.util.{Try, Using}
 
 import io.toonformat.toon4s.{EncodeOptions, Toon}
 import io.toonformat.toon4s.JsonValue
@@ -86,6 +87,29 @@ private[datasource] object ToonDataSourceV2 {
 
   val WriterFilePrefix = "part-"
 
+  sealed trait DataSourceError {
+
+    def message: String
+
+  }
+
+  final case class MissingRequiredOption(name: String) extends DataSourceError {
+
+    override def message: String = s"Option '$name' is required for format(\"toon\")"
+
+  }
+
+  final case class InvalidOption(name: String, reason: String) extends DataSourceError {
+
+    override def message: String = s"Option '$name' is invalid for format(\"toon\"): $reason"
+
+  }
+
+  final case class CommitFailure(message: String) extends DataSourceError
+
+  def toException(error: DataSourceError): IllegalArgumentException =
+    new IllegalArgumentException(error.message)
+
 }
 
 final private[datasource] class ToonTable(
@@ -126,7 +150,8 @@ final private[datasource] class ToonScanBuilder(options: CaseInsensitiveStringMa
   override def toBatch: Batch = this
 
   override def planInputPartitions(): Array[InputPartition] = {
-    val path = requirePath(options)
+    val path =
+      requirePath(options).fold(error => throw ToonDataSourceV2.toException(error), identity)
     val fs = path.getFileSystem(activeHadoopConf())
     val files = listVisibleFiles(fs, path)
     files.map(f => ToonInputPartition(f.toUri.toString)).toArray
@@ -136,11 +161,12 @@ final private[datasource] class ToonScanBuilder(options: CaseInsensitiveStringMa
     new ToonPartitionReaderFactory(new SerializableConfiguration(activeHadoopConf()))
   }
 
-  private def requirePath(map: CaseInsensitiveStringMap): Path = {
+  private def requirePath(
+      map: CaseInsensitiveStringMap
+  ): Either[ToonDataSourceV2.DataSourceError, Path] = {
     Option(map.get(PathOption)) match {
-    case Some(v) if v.nonEmpty => new Path(v)
-    case _                     =>
-      throw new IllegalArgumentException(s"Option '$PathOption' is required for format(\"toon\")")
+    case Some(v) if v.nonEmpty => Right(new Path(v))
+    case _                     => Left(ToonDataSourceV2.MissingRequiredOption(PathOption))
     }
   }
 
@@ -178,8 +204,13 @@ final private[datasource] class ToonPartitionReaderFactory(conf: SerializableCon
     extends PartitionReaderFactory {
 
   override def createReader(partition: InputPartition): PartitionReader[InternalRow] = {
-    val input = partition.asInstanceOf[ToonInputPartition]
-    val path = new Path(input.path)
+    val path = partition match {
+    case ToonInputPartition(value) => new Path(value)
+    case _                         =>
+      throw ToonDataSourceV2.toException(
+        ToonDataSourceV2.InvalidOption("partition", "unsupported partition type")
+      )
+    }
     val fs = path.getFileSystem(conf.value)
 
     new PartitionReader[InternalRow] {
@@ -210,8 +241,10 @@ final private[datasource] class ToonPartitionReaderFactory(conf: SerializableCon
       override def get(): InternalRow = InternalRow(UTF8String.fromString(content))
 
       override def close(): Unit = {
-        try reader.close()
-        finally stream.close()
+        val readerClose = Try(reader.close())
+        val streamClose = Try(stream.close())
+        readerClose.failed.foreach(throw _)
+        streamClose.failed.foreach(throw _)
       }
     }
   }
@@ -232,44 +265,53 @@ final private[datasource] class ToonWriteBuilder(
   }
 
   override def build(): Write = {
-    val outputPath = requirePath(sourceOptions)
-    val key = Option(sourceOptions.get(ToonDataSourceV2.KeyOption))
-      .filter(_.nonEmpty)
-      .getOrElse(ToonDataSourceV2.DefaultTopLevelKey)
-    val maxRowsPerFile = parsePositiveInt(
-      sourceOptions,
-      ToonDataSourceV2.MaxRowsPerFileOption,
-      ToonDataSourceV2.DefaultMaxRowsPerFile,
-    )
-    val schema = info.schema()
-    val queryId = info.queryId()
-    val hadoopConf = SparkSession.active.sparkContext.hadoopConfiguration
+    val buildResult = for {
+      outputPath <- requirePath(sourceOptions)
+      maxRowsPerFile <- parsePositiveInt(
+        sourceOptions,
+        ToonDataSourceV2.MaxRowsPerFileOption,
+        ToonDataSourceV2.DefaultMaxRowsPerFile,
+      )
+    } yield (outputPath, maxRowsPerFile)
 
-    new Write {
-      override def toBatch: BatchWrite = {
-        val fs = outputPath.getFileSystem(hadoopConf)
-        if (truncateTarget) {
-          fs.delete(outputPath, true)
+    buildResult match {
+    case Left(error) =>
+      new Write {
+        override def toBatch: BatchWrite = throw ToonDataSourceV2.toException(error)
+      }
+    case Right((outputPath, maxRowsPerFile)) =>
+      val key = Option(sourceOptions.get(ToonDataSourceV2.KeyOption))
+        .filter(_.nonEmpty)
+        .getOrElse(ToonDataSourceV2.DefaultTopLevelKey)
+      val schema = info.schema()
+      val queryId = info.queryId()
+      val hadoopConf = SparkSession.active.sparkContext.hadoopConfiguration
+
+      new Write {
+        override def toBatch: BatchWrite = {
+          val fs = outputPath.getFileSystem(hadoopConf)
+          if (truncateTarget) {
+            fs.delete(outputPath, true)
+          }
+          new ToonBatchWrite(
+            queryId = queryId,
+            outputPath = outputPath.toUri.toString,
+            key = key,
+            maxRowsPerFile = maxRowsPerFile,
+            schema = schema,
+            conf = hadoopConf,
+          )
         }
-        new ToonBatchWrite(
-          queryId = queryId,
-          outputPath = outputPath.toUri.toString,
-          key = key,
-          maxRowsPerFile = maxRowsPerFile,
-          schema = schema,
-          conf = hadoopConf,
-        )
       }
     }
   }
 
-  private def requirePath(map: CaseInsensitiveStringMap): Path = {
+  private def requirePath(
+      map: CaseInsensitiveStringMap
+  ): Either[ToonDataSourceV2.DataSourceError, Path] = {
     Option(map.get(ToonDataSourceV2.PathOption)) match {
-    case Some(v) if v.nonEmpty => new Path(v)
-    case _                     =>
-      throw new IllegalArgumentException(
-        s"Option '${ToonDataSourceV2.PathOption}' is required for format(\"toon\")"
-      )
+    case Some(v) if v.nonEmpty => Right(new Path(v))
+    case _ => Left(ToonDataSourceV2.MissingRequiredOption(ToonDataSourceV2.PathOption))
     }
   }
 
@@ -277,16 +319,13 @@ final private[datasource] class ToonWriteBuilder(
       map: CaseInsensitiveStringMap,
       key: String,
       defaultValue: Int,
-  ): Int = {
+  ): Either[ToonDataSourceV2.DataSourceError, Int] = {
     Option(map.get(key)).filter(_.nonEmpty) match {
-    case None      => defaultValue
+    case None      => Right(defaultValue)
     case Some(raw) =>
       raw.toIntOption match {
-      case Some(value) if value > 0 => value
-      case _                        =>
-        throw new IllegalArgumentException(
-          s"Option '$key' must be a positive integer for format(\"toon\")"
-        )
+      case Some(value) if value > 0 => Right(value)
+      case _ => Left(ToonDataSourceV2.InvalidOption(key, "must be a positive integer"))
       }
     }
   }
@@ -319,23 +358,30 @@ final private[datasource] class ToonBatchWrite(
     val fs = finalPath.getFileSystem(conf)
     if (!fs.exists(tempPath)) return
 
-    try {
+    val moveResult = Try {
       fs.listStatus(tempPath).foreach { part =>
         val src = part.getPath
         val dst = new Path(finalPath, src.getName)
         if (!fs.rename(src, dst)) {
-          throw new RuntimeException(s"Failed to rename $src to $dst")
+          throw ToonDataSourceV2.toException(
+            ToonDataSourceV2.CommitFailure(s"Failed to rename $src to $dst")
+          )
         }
       }
-    } finally {
+    }.toEither
+
+    val cleanupResult = Try {
       fs.delete(tempPath, true)
-    }
+    }.toEither
+
+    moveResult.left.foreach(throw _)
+    cleanupResult.left.foreach(throw _)
   }
 
   override def abort(messages: Array[WriterCommitMessage]): Unit = {
     val tempPath = new Path(new Path(outputPath, "_temporary"), queryId)
     val fs = tempPath.getFileSystem(conf)
-    fs.delete(tempPath, true)
+    Try(fs.delete(tempPath, true)).failed.foreach(throw _)
   }
 
 }
@@ -380,10 +426,16 @@ final private[datasource] class ToonDataWriter(
   private var chunkIndex = 0
 
   override def write(record: InternalRow): Unit = {
-    val row = scalaConverter(record).asInstanceOf[org.apache.spark.sql.Row]
-    rows += SparkJsonInterop.rowToJsonValue(row, schema)
-    if (rows.size >= maxRowsPerFile) {
-      flushChunk()
+    scalaConverter(record) match {
+    case row: org.apache.spark.sql.Row =>
+      rows += SparkJsonInterop.rowToJsonValue(row, schema)
+      if (rows.size >= maxRowsPerFile) {
+        flushChunk()
+      }
+    case _ =>
+      throw ToonDataSourceV2.toException(
+        ToonDataSourceV2.InvalidOption("row", "unsupported row conversion result")
+      )
     }
   }
 
@@ -405,15 +457,12 @@ final private[datasource] class ToonDataWriter(
     } else {
       val file = nextFilePath()
       chunkIndex += 1
-      val out = fs.create(file, true)
-      try {
+      Using.resource(fs.create(file, true)) { out =>
         val payload = JObj(scala.collection.immutable.VectorMap(key -> JArray(rows.toVector)))
         val encoded = Toon.encode(payload, EncodeOptions()).fold(throw _, identity)
         out.write(encoded.getBytes(StandardCharsets.UTF_8))
         createdFiles += file
         rows.clear()
-      } finally {
-        out.close()
       }
     }
   }

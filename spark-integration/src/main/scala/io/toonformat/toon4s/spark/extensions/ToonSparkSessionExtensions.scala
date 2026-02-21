@@ -5,7 +5,7 @@ import io.toonformat.toon4s.JsonValue.JString
 import io.toonformat.toon4s.spark.ToonMetrics
 import org.apache.spark.sql.{SparkSessionExtensions, SparkSessionExtensionsProvider}
 import org.apache.spark.sql.catalyst.FunctionIdentifier
-import org.apache.spark.sql.catalyst.expressions.{Expression, ExpressionInfo, ScalaUDF}
+import org.apache.spark.sql.catalyst.expressions.{Expression, ExpressionInfo, Literal, ScalaUDF}
 import org.apache.spark.sql.types.{IntegerType, StringType}
 
 /**
@@ -27,11 +27,12 @@ private object ToonSparkSessionExtensions {
     (FunctionIdentifier, ExpressionInfo, Seq[Expression] => Expression)
 
   private val functions: Seq[FunctionDescription] = Seq(
-    unaryStringFunction("toon_encode_row")(value => if (value == null) null else value.toString),
+    unaryStringFunction("toon_encode_row")(value => Option(value).map(_.toString).orNull),
     unaryStringFunction("toon_decode_row")(value => decodeToString(value)),
     unaryStringFunction("toon_encode_string") { value =>
-      if (value == null) "null"
-      else Toon.encode(JString(value.toString), EncodeOptions()).getOrElse(s"\"$value\"")
+      Option(value)
+        .map(v => Toon.encode(JString(v.toString), EncodeOptions()).getOrElse(s"\"$v\""))
+        .getOrElse("null")
     },
     unaryStringFunction("toon_decode_string")(value => decodeToString(value)),
     unaryIntFunction("toon_estimate_tokens") { value =>
@@ -59,36 +60,35 @@ private object ToonSparkSessionExtensions {
       FunctionIdentifier(name),
       new ExpressionInfo(classOf[ToonSparkSessionExtensions].getName, name),
       { children: Seq[Expression] =>
-        if (children.lengthCompare(1) != 0) {
-          throw new IllegalArgumentException(s"$name expects exactly one argument")
+        children.headOption match {
+        case Some(input) =>
+          val function: AnyRef = (value: Any) => fn(value)
+          ScalaUDF(
+            function = function,
+            dataType = returnType,
+            children = Seq(input),
+            inputEncoders = Seq(None),
+            outputEncoder = None,
+            udfName = Some(name),
+            nullable = nullable,
+          )
+        case None =>
+          Literal.create(null, returnType)
         }
-        val function: AnyRef = ((value: Any) => fn(value)).asInstanceOf[AnyRef]
-        ScalaUDF(
-          function = function,
-          dataType = returnType,
-          children = children,
-          inputEncoders = Seq(None),
-          outputEncoder = None,
-          udfName = Some(name),
-          nullable = nullable,
-        )
       },
     )
   }
 
   private def decodeToString(value: Any): String = {
     val input = Option(value).map(_.toString).orNull
-    if (input == null) {
-      null
-    } else {
-      Toon.decode(input, DecodeOptions()).fold(
-        _ => null,
-        {
+    Option(input)
+      .flatMap(text =>
+        Toon.decode(text, DecodeOptions()).toOption.map {
           case JString(s) => s
           case json       => json.toString
-        },
+        }
       )
-    }
+      .orNull
   }
 
 }
