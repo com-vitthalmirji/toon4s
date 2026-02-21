@@ -5,7 +5,7 @@ import java.util.concurrent.ConcurrentHashMap
 
 import scala.util.Try
 
-import org.llm4s.error.LLMError
+import org.llm4s.error.{LLMError, UnknownError}
 import org.llm4s.llmconnect.LLMClient
 import org.llm4s.llmconnect.model.{
   CompletionOptions => Llm4sCompletionOptions,
@@ -113,6 +113,49 @@ object LlmPartitionWriterFactory {
         }
       }
     }
+
+  def fromLegacyClientFactory(
+      clientFactory: () => LlmClient,
+      idempotencyStore: IdempotencyStore = IdempotencyStore.Noop,
+      systemPrompt: String = "Analyze this TOON payload.",
+      completionOptions: CompletionOptions = CompletionOptions(),
+  ): LlmPartitionWriterFactory =
+    new LlmPartitionWriterFactory {
+      def create(): LlmPartitionWriter = {
+        val client = clientFactory()
+        new LlmPartitionWriter {
+          def send(request: LlmChunkRequest): Either[LLMError, LlmSendStatus] = {
+            val prompt = s"idempotency_key=${request.idempotencyKey}\n${request.toonChunk}"
+            idempotencyStore.isSent(request.idempotencyKey).flatMap {
+              case true  => Right(LlmSendStatus.Duplicate)
+              case false =>
+                client
+                  .complete(
+                    Conversation(Vector(
+                      SystemMessage(systemPrompt),
+                      UserMessage(prompt),
+                    )),
+                    completionOptions,
+                  )
+                  .left
+                  .map(toLlm4sError)
+                  .flatMap(_ => idempotencyStore.markSent(request.idempotencyKey))
+                  .map(_ => LlmSendStatus.Sent)
+            }
+          }
+          override def close(): Unit = client.close()
+        }
+      }
+    }
+
+  private def toLlm4sError(error: LlmError): LLMError =
+    UnknownError(
+      error.formatted,
+      error match {
+      case LlmError.UnknownError(_, Some(cause)) => cause
+      case _                                     => new RuntimeException(error.formatted)
+      },
+    )
 
 }
 

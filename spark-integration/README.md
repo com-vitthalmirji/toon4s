@@ -428,6 +428,14 @@ Use `LlmPartitionSink` with llm4s clients for production pipelines.
 For legacy local tests, standalone helpers remain under `io.toonformat.toon4s.spark.llm`,
 but new integrations should prefer the partition sink path above.
 
+If you still have a legacy `LlmClient`, adapt it instead of building a second send path:
+
+```scala
+val writerFactory = LlmPartitionWriterFactory.fromLegacyClientFactory(
+  clientFactory = () => legacyClient,
+)
+```
+
 ## API reference
 
 ### Extension methods on DataFrame

@@ -216,4 +216,25 @@ class LlmClientTest extends FunSuite {
     assertEquals(HeadroomPercent.High.value, 0.20)
   }
 
+  test("LlmPartitionWriterFactory: fromLegacyClientFactory sends chunks") {
+    val writerFactory = LlmPartitionWriterFactory.fromLegacyClientFactory(
+      clientFactory = () => MockLlmClient(Map.empty),
+      idempotencyStore = IdempotencyStore.Noop,
+    )
+
+    val writer = writerFactory.create()
+    try {
+      val sendResult = writer.send(
+        LlmChunkRequest(
+          idempotencyKey = "k1",
+          partitionId = 0,
+          chunkIndex = 0,
+          toonChunk = "{users:id,name\n1,Alice\n}",
+        )
+      )
+      assert(sendResult.isRight)
+      sendResult.foreach(status => assertEquals(status, LlmSendStatus.Sent))
+    } finally writer.close()
+  }
+
 }

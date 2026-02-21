@@ -30,3 +30,4 @@ Thanks for your interest in contributing to toon4s.
 ## Helpful guide
 
 - https://opensource.guide/
+- See `MAINTAINERS.md` for maintainer coverage and continuity notes.
