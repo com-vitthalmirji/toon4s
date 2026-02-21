@@ -111,11 +111,11 @@ object ToonMonitoring {
 
   final case class EncodingMetrics(
       encodingTimeMs: Long,
-      jsonTokenCount: Int,
-      toonTokenCount: Int,
+      jsonTokenCount: Long,
+      toonTokenCount: Long,
       savingsPercent: Double,
       chunkCount: Int,
-      avgChunkSize: Int,
+      avgChunkSize: Long,
       success: Boolean,
       errorType: Option[String],
   )

@@ -506,14 +506,14 @@ if (!check.valid) logger.warn(check.issues.map(_.message).mkString("; "))
 ### ToonMetrics
 
 ```scala
-case class ToonMetrics(jsonTokenCount: Int, toonTokenCount: Int,
-                       savingsPercent: Double, rowCount: Int,
+case class ToonMetrics(jsonTokenCount: Long, toonTokenCount: Long,
+                       savingsPercent: Double, rowCount: Long,
                        columnCount: Int)
 ```
 
 Methods:
 
-- `absoluteSavings: Int` - Token count difference
+- `absoluteSavings: Long` - Token count difference
 - `compressionRatio: Double` - TOON/JSON ratio
 - `estimatedCostSavings(costPer1kTokens: Double): Double` - Cost savings estimate
 - `hasMeaningfulSavings(threshold: Double): Boolean` - Check if savings exceed threshold

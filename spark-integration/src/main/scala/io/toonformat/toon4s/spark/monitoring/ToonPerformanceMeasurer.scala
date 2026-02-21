@@ -35,7 +35,7 @@ private[monitoring] object ToonPerformanceMeasurer {
           toonTokenCount = toonMetrics.toonTokenCount,
           savingsPercent = toonMetrics.savingsPercent,
           chunkCount = chunks.size,
-          avgChunkSize = if (chunks.nonEmpty) toonMetrics.rowCount / chunks.size else 0,
+          avgChunkSize = if (chunks.nonEmpty) toonMetrics.rowCount / chunks.size.toLong else 0L,
           success = true,
           errorType = None,
         )
@@ -47,7 +47,7 @@ private[monitoring] object ToonPerformanceMeasurer {
           toonTokenCount = toonMetrics.toonTokenCount,
           savingsPercent = toonMetrics.savingsPercent,
           chunkCount = 0,
-          avgChunkSize = 0,
+          avgChunkSize = 0L,
           success = false,
           errorType = Some(error.getClass.getSimpleName),
         )
@@ -57,11 +57,11 @@ private[monitoring] object ToonPerformanceMeasurer {
       val endTime = System.currentTimeMillis()
       ToonMonitoring.EncodingMetrics(
         encodingTimeMs = endTime - startTime,
-        jsonTokenCount = 0,
-        toonTokenCount = 0,
+        jsonTokenCount = 0L,
+        toonTokenCount = 0L,
         savingsPercent = 0.0,
         chunkCount = 0,
-        avgChunkSize = 0,
+        avgChunkSize = 0L,
         success = false,
         errorType = Some(error.getClass.getSimpleName),
       )

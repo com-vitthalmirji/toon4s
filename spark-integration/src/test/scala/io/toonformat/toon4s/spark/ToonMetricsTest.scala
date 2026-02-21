@@ -48,7 +48,7 @@ class ToonMetricsTest extends FunSuite {
 
     assert(metrics.jsonTokenCount > 0)
     assert(metrics.toonTokenCount > 0)
-    assertEquals(metrics.rowCount, 1)
+    assertEquals(metrics.rowCount, 1L)
     assertEquals(metrics.columnCount, 3)
   }
 
@@ -63,8 +63,8 @@ class ToonMetricsTest extends FunSuite {
       columnCount = 1,
     )
 
-    assertEquals(metrics.jsonTokenCount, 10)
-    assertEquals(metrics.toonTokenCount, 50)
+    assertEquals(metrics.jsonTokenCount, 10L)
+    assertEquals(metrics.toonTokenCount, 50L)
     assert(metrics.savingsPercent < 0.0)
   }
 
@@ -88,7 +88,7 @@ class ToonMetricsTest extends FunSuite {
       columnCount = 5,
     )
 
-    assertEquals(metrics.absoluteSavings, 30)
+    assertEquals(metrics.absoluteSavings, 30L)
   }
 
   test("compressionRatio: compute ratio") {
@@ -179,7 +179,7 @@ class ToonMetricsTest extends FunSuite {
       columnCount = 0,
     )
 
-    assertEquals(metrics.absoluteSavings, 0)
+    assertEquals(metrics.absoluteSavings, 0L)
     assertEquals(metrics.savingsPercent, 0.0)
     assertEquals(metrics.compressionRatio, 1.0) // We handle 0/0 as 1.0 in the def
   }
@@ -192,7 +192,7 @@ class ToonMetricsTest extends FunSuite {
       columnCount = 3,
     )
 
-    assertEquals(metrics.absoluteSavings, -20)
+    assertEquals(metrics.absoluteSavings, -20L)
     assert(!metrics.hasMeaningfulSavings())
     assert(metrics.compressionRatio > 1.0)
   }

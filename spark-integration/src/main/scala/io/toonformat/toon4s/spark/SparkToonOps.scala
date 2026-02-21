@@ -407,9 +407,9 @@ object SparkToonOps {
   // ========== Private Helper Functions ==========
 
   final case class PartitionMetrics(
-      jsonTokenCount: Int,
-      toonTokenCount: Int,
-      rowCount: Int,
+      jsonTokenCount: Long,
+      toonTokenCount: Long,
+      rowCount: Long,
       columnCount: Int,
       errorMessage: Option[String],
   )
@@ -557,9 +557,9 @@ object SparkToonOps {
       )
       val partitionMetricsDs = df.mapPartitions { rows =>
         val chunkRows = scala.collection.mutable.ArrayBuffer.empty[JsonValue]
-        var jsonTokenCount = 0
-        var toonTokenCount = 0
-        var rowCount = 0
+        var jsonTokenCount = 0L
+        var toonTokenCount = 0L
+        var rowCount = 0L
         var error: Option[String] = None
 
         def flush(force: Boolean): Unit = {
@@ -572,13 +572,13 @@ object SparkToonOps {
               val chunkMetrics = ToonMetrics.fromEncodedStrings(
                 jsonEncoded = jsonBaseline,
                 toonEncoded = toonEncoded,
-                rowCount = chunkRows.size,
+                rowCount = chunkRows.size.toLong,
                 columnCount = schema.fields.length,
                 tokenEstimator = tokenEstimator,
               )
               jsonTokenCount += chunkMetrics.jsonTokenCount
               toonTokenCount += chunkMetrics.toonTokenCount
-              rowCount += chunkRows.size
+              rowCount += chunkRows.size.toLong
               chunkRows.clear()
             case Left(err) =>
               error = Some(err.message)
@@ -639,44 +639,16 @@ object SparkToonOps {
           case Some(message) =>
             Left(SparkToonError.ConversionError(s"Failed to compute TOON metrics: $message"))
           case None =>
-            for {
-              jsonTokens <- boundedLongToInt(
-                totalsRow.getLong(0),
-                "jsonTokenCount",
-                "Use smaller chunks or compute metrics on a narrower dataset slice.",
-              )
-              toonTokens <- boundedLongToInt(
-                totalsRow.getLong(1),
-                "toonTokenCount",
-                "Use smaller chunks or compute metrics on a narrower dataset slice.",
-              )
-              rows <- boundedLongToInt(
-                totalsRow.getLong(2),
-                "rowCount",
-                "Use partitioned metrics flow with bounded input size.",
-              )
-            } yield ToonMetrics(
-              jsonTokenCount = jsonTokens,
-              toonTokenCount = toonTokens,
-              rowCount = rows,
+            Right(ToonMetrics(
+              jsonTokenCount = totalsRow.getLong(0),
+              toonTokenCount = totalsRow.getLong(1),
+              rowCount = totalsRow.getLong(2),
               columnCount = schema.fields.length,
-            )
+            ))
           }
         }
       }
     }
-  }
-
-  private def boundedLongToInt(
-      value: Long,
-      field: String,
-      guidance: String,
-  ): Either[SparkToonError, Int] = {
-    if (value > Int.MaxValue.toLong || value < Int.MinValue.toLong) {
-      Left(SparkToonError.CollectionError(
-        s"$field overflowed Int range while aggregating distributed metrics (value=$value). $guidance"
-      ))
-    } else Right(value.toInt)
   }
 
   private def writeChunksToLlmPartitions(
