@@ -44,7 +44,7 @@ class ToonSparkSessionExtensionsTest extends FunSuite {
       assert(toonDoc.nonEmpty)
       assert(toonDoc.contains("Alice"))
       assert(toonRowDoc.nonEmpty)
-      assert(toonRowDoc != "Alice")
+      assert(toonRowDoc.contains("Alice"))
       assert(row.getAs[String]("decoded_row").contains("Alice"))
       assert(row.getAs[Int]("token_count") > 0)
     }

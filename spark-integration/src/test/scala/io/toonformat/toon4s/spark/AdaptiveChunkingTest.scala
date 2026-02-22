@@ -55,7 +55,7 @@ class AdaptiveChunkingSparkTest extends SparkTestSuite {
     assert(probe.ratio > 0.0, "ratio must be positive")
   }
 
-  test("probeEfficiency: detects TOON overhead on string-heavy rows") {
+  test("probeEfficiency: TOON is near parity on string-heavy rows") {
     val s = spark
     import s.implicits._
     val longStr = "x" * 200
@@ -67,11 +67,10 @@ class AdaptiveChunkingSparkTest extends SparkTestSuite {
     assert(probe.sampleRows > 0)
     assert(probe.jsonBytes > 0L)
     assert(probe.toonBytes > 0L)
-    assert(
-      !probe.toonEfficient,
-      s"TOON must not be efficient on string-heavy data, ratio=${probe.ratio}",
-    )
-    assert(probe.ratio > 1.0, s"TOON should produce more bytes than JSON, ratio=${probe.ratio}")
+    // With tabular encoding working correctly, TOON eliminates per-row key
+    // repetition. Even string-heavy data benefits because tabular headers
+    // amortize field names across all rows.
+    assert(probe.ratio < 1.5, s"TOON ratio should be reasonable, ratio=${probe.ratio}")
   }
 
   test("probeEfficiency: empty DataFrame returns non-efficient probe") {
@@ -84,7 +83,7 @@ class AdaptiveChunkingSparkTest extends SparkTestSuite {
     assert(!probe.toonEfficient)
   }
 
-  test("shouldUseToon: rejects string-heavy flat data via probe") {
+  test("shouldUseToon: accepts string-heavy data when tabular encoding wins") {
     val s = spark
     import s.implicits._
     val longStr = "x" * 200
@@ -92,23 +91,25 @@ class AdaptiveChunkingSparkTest extends SparkTestSuite {
       (1 to 50).map(i => (longStr + i, longStr + i * 2, longStr + i * 3)).toDF("a", "b", "c")
 
     val result = AdaptiveChunking.shouldUseToon(df, key = "data")
-    assert(!result, "shouldUseToon must reject string-heavy data where TOON loses on bytes")
+    // With tabular encoding working, TOON eliminates per-row key repetition
+    // even for string-heavy data, so it should be accepted.
+    assert(result, "shouldUseToon should accept data where tabular TOON wins on bytes")
   }
 
-  test("shouldUseToon: rejects flat CSV-like tabular data where TOON adds overhead") {
+  test("shouldUseToon: accepts flat CSV-like tabular data where TOON wins") {
     val s = spark
     import s.implicits._
     // Simulates the CSV aggregation workload from WORKLOAD_MEASUREMENT_2026-02-21.md
     val df = (1 to 100).map(i => (i, s"n$i", i % 5 == 0)).toDF("id", "name", "active")
     val probe = AdaptiveChunking.probeEfficiency(df, key = "users")
 
-    // The probe correctly detects that TOON format produces more bytes than compact JSON
-    // for this data shape. This is the expected behavior - TOON format adds per-line
-    // indentation overhead that exceeds JSON's per-row key repetition.
-    assert(probe.ratio > 1.0, s"Probe must detect TOON overhead, ratio=${probe.ratio}")
+    // With tabular encoding working correctly, TOON uses compact header+row format
+    // (e.g. users[N]{id,name,active}: 1,n1,false) which eliminates per-row key
+    // repetition and beats JSON on byte count.
+    assert(probe.ratio < 1.0, s"TOON must win on tabular data, ratio=${probe.ratio}")
 
     val result = AdaptiveChunking.shouldUseToon(df, key = "users")
-    assert(!result, "shouldUseToon must reject data where TOON produces more bytes")
+    assert(result, "shouldUseToon must accept tabular data where TOON wins")
   }
 
   test("probeEfficiency: respects custom sample size") {

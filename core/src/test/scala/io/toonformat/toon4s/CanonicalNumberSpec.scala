@@ -228,13 +228,9 @@ class CanonicalNumberSpec extends FunSuite {
     assert(encoded.contains("1000"), s"Should contain expanded 1e3 = 1000 in:\n$encoded")
     assert(encoded.contains("1.5"), s"Should contain 1.5 without trailing zero in:\n$encoded")
 
-    // Verify -0 is normalized
-    val lines = encoded.split('\n').map(_.trim).filter(_.nonEmpty)
-    val numberLines = lines.filter(line =>
-      line.headOption.exists(c => c.isDigit || c == '-')
-    )
+    // Verify -0 is normalized to 0 (works for both inline and multi-line formats)
     assert(
-      numberLines.exists(_.contains("0")) && !numberLines.exists(_.contains("-0")),
+      encoded.contains("0") && !encoded.contains("-0"),
       s"Should normalize -0 to 0 in:\n$encoded",
     )
   }
