@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.8.1] - 2026-02-22
+
+
+### Bug fixes
+- fix UDF correctness, remove duplicate conf helper, optimize array ([`1deb36f`](https://github.com/com-vitthalmirji/toon4s/commit/1deb36f477bcbf440fea4573f94d1fc8a166d81f)) by @vim89
+- fix Normalize.toJson to pass through JsonValue types ([`f0ff5b1`](https://github.com/com-vitthalmirji/toon4s/commit/f0ff5b1722ad244a701453aee3354396a1d57381)) by @vim89
+- spark encoding performance bottlenecks ([`297f9da`](https://github.com/com-vitthalmirji/toon4s/commit/297f9da0e77c34a498f95d1fc50dca049eabbdb5)) [#68](https://github.com/com-vitthalmirji/toon4s/pull/68) by @vim89
+
+
+
+### Documentation
+- update CHANGELOG.md for main [skip ci] ([`28e777d`](https://github.com/com-vitthalmirji/toon4s/commit/28e777dca76f90e984e591ba5b9e6f3b735cd0d0)) by @github-actions[bot]
+
+
 ## [0.8.0] - 2026-02-21
 
 
