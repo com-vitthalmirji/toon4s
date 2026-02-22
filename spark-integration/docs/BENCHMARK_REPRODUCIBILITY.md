@@ -90,6 +90,20 @@ Reference example note:
 - Do not update public benchmark claims without rerunning benchmarks.
 - Keep command lines and environment details with results.
 
+## Parse run output to reusable format
+
+Use the parser script to convert a run log or measurement note into JSON and one markdown table row.
+
+```bash
+scripts/parse-workload-measurement.sh /path/to/WORKLOAD_MEASUREMENT_<date>_<owner>.md
+```
+
+If you run from a raw `spark-submit` log, keep the measurement lines and parse that log file directly:
+
+```bash
+scripts/parse-workload-measurement.sh /path/to/workload-run.log
+```
+
 ## Independent reproduction protocol
 
 Use this when an external engineer reruns the benchmark.
