@@ -837,47 +837,8 @@ object SparkToonOps {
   }
 
   /** Encode a JsonValue as a minimal JSON string (used in decode path). */
-  private def encodeAsJson(value: JsonValue): String = {
-    def escapeString(s: String): String = {
-      val sb = new StringBuilder(s.length + 16)
-      var i = 0
-      while (i < s.length) {
-        val c = s.charAt(i)
-        c match {
-        case '"'              => sb.append("\\\"")
-        case '\\'             => sb.append("\\\\")
-        case '\b'             => sb.append("\\b")
-        case '\f'             => sb.append("\\f")
-        case '\n'             => sb.append("\\n")
-        case '\r'             => sb.append("\\r")
-        case '\t'             => sb.append("\\t")
-        case _ if c.isControl =>
-          sb.append("\\u")
-          sb.append(String.format("%04x", Int.box(c.toInt)))
-        case _ =>
-          sb.append(c)
-        }
-        i += 1
-      }
-      sb.result()
-    }
-
-    def encode(value: JsonValue): String = value match {
-    case JsonValue.JNull          => "null"
-    case JsonValue.JBool(b)       => if (b) "true" else "false"
-    case JsonValue.JNumber(n)     => n.bigDecimal.stripTrailingZeros.toPlainString
-    case JsonValue.JString(s)     => "\"" + escapeString(s) + "\""
-    case JsonValue.JArray(values) =>
-      values.iterator.map(encode).mkString("[", ",", "]")
-    case JsonValue.JObj(fields) =>
-      fields
-        .iterator
-        .map { case (k, v) => "\"" + escapeString(k) + "\":" + encode(v) }
-        .mkString("{", ",", "}")
-    }
-
-    encode(value)
-  }
+  private def encodeAsJson(value: JsonValue): String =
+    SparkJsonInterop.encodeAsJson(value)
 
   /**
    * Estimate JSON character count from a JsonValue without materializing the string.

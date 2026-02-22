@@ -456,6 +456,54 @@ object SparkJsonInterop {
   }
 
   /**
+   * Encode a JsonValue as a compact JSON string.
+   *
+   * Package-visible so that both SparkToonOps and AdaptiveChunking can share this without
+   * duplicating serialization logic.
+   */
+  private[spark] def encodeAsJson(value: JsonValue): String = {
+    def escapeString(s: String): String = {
+      val sb = new StringBuilder(s.length + 16)
+      var i = 0
+      while (i < s.length) {
+        val c = s.charAt(i)
+        c match {
+        case '"'              => sb.append("\\\"")
+        case '\\'             => sb.append("\\\\")
+        case '\b'             => sb.append("\\b")
+        case '\f'             => sb.append("\\f")
+        case '\n'             => sb.append("\\n")
+        case '\r'             => sb.append("\\r")
+        case '\t'             => sb.append("\\t")
+        case _ if c.isControl =>
+          sb.append("\\u")
+          sb.append(String.format("%04x", Int.box(c.toInt)))
+        case _ =>
+          sb.append(c)
+        }
+        i += 1
+      }
+      sb.result()
+    }
+
+    def encode(v: JsonValue): String = v match {
+    case JsonValue.JNull          => "null"
+    case JsonValue.JBool(b)       => if (b) "true" else "false"
+    case JsonValue.JNumber(n)     => n.bigDecimal.stripTrailingZeros.toPlainString
+    case JsonValue.JString(s)     => "\"" + escapeString(s) + "\""
+    case JsonValue.JArray(values) =>
+      values.iterator.map(encode).mkString("[", ",", "]")
+    case JsonValue.JObj(fields) =>
+      fields
+        .iterator
+        .map { case (k, v) => "\"" + escapeString(k) + "\":" + encode(v) }
+        .mkString("{", ",", "}")
+    }
+
+    encode(value)
+  }
+
+  /**
    * Safe row reconstruction with Either error handling.
    *
    * @param json
