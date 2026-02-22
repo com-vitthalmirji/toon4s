@@ -167,7 +167,7 @@ object ArrayHeaderParser {
   }
 
   /**
-   * Parse the bracket segment to extract length, delimiter, and marker flag.
+   * Parse the bracket segment to extract length and delimiter.
    *
    * ==Pattern matching for configuration parsing==
    *
@@ -181,7 +181,7 @@ object ArrayHeaderParser {
    * @param defaultDelim
    *   Default delimiter to use
    * @return
-   *   Tuple of (length, delimiter, has marker flag)
+   *   Tuple of (length, delimiter)
    * @throws io.toonformat.toon4s.error.DecodeError.InvalidHeader
    *   if length is not a valid integer
    *
@@ -201,7 +201,7 @@ object ArrayHeaderParser {
     var content = seg
 
     if (content.startsWith("#")) {
-      throw DecodeError.InvalidHeader("Length marker syntax [#N] is not supported in TOON v2.x")
+      content = content.drop(1)
     }
 
     // Check for delimiter suffix
@@ -215,6 +215,9 @@ object ArrayHeaderParser {
     }
 
     // Parse length
+    if (content.isEmpty) {
+      throw DecodeError.InvalidHeader(s"Invalid array length: $seg")
+    }
     val len = content.toIntOption.getOrElse {
       throw DecodeError.InvalidHeader(s"Invalid array length: $seg")
     }

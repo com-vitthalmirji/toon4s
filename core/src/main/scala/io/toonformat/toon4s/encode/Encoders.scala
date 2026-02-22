@@ -64,12 +64,15 @@ object Encoders {
       fields: List[String],
       delimiter: Delimiter,
   ): String = {
+    val useLengthMarker = Delimiter.usesLengthMarker(delimiter)
+    val baseDelimiter = Delimiter.base(delimiter)
+
     // Fast path: empty array with no key
-    if (key.isEmpty && fields.isEmpty && length <= 10) {
-      return delimiter match {
-      case Delimiter.Comma => emptyHeadersComma(length)
-      case Delimiter.Tab   => emptyHeadersTab(length)
-      case Delimiter.Pipe  => emptyHeadersPipe(length)
+    if (!useLengthMarker && key.isEmpty && fields.isEmpty && length <= 10) {
+      return baseDelimiter match {
+      case Delimiter.Comma | Delimiter.CommaWithLengthMarker => emptyHeadersComma(length)
+      case Delimiter.Tab | Delimiter.TabWithLengthMarker     => emptyHeadersTab(length)
+      case Delimiter.Pipe | Delimiter.PipeWithLengthMarker   => emptyHeadersPipe(length)
       }
     }
 
@@ -78,11 +81,13 @@ object Encoders {
 
     key.foreach(k => builder.append(encodeKey(k)))
 
-    builder.append('[').append(length)
-    delimiter match {
-    case Delimiter.Tab   => builder.append('\t')
-    case Delimiter.Pipe  => builder.append('|')
-    case Delimiter.Comma => // no suffix
+    builder.append('[')
+    if (useLengthMarker) builder.append('#')
+    builder.append(length)
+    baseDelimiter match {
+    case Delimiter.Tab | Delimiter.TabWithLengthMarker     => builder.append('\t')
+    case Delimiter.Pipe | Delimiter.PipeWithLengthMarker   => builder.append('|')
+    case Delimiter.Comma | Delimiter.CommaWithLengthMarker => // no suffix
     }
     builder.append(']')
 

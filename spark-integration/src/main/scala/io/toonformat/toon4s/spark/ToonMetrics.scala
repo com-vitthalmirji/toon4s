@@ -107,6 +107,10 @@ object ToonMetrics {
 
     def estimate(text: String): Int
 
+    /** Estimate tokens from a pre-computed character count. */
+    def estimate(charCount: Long): Int =
+      estimate("x" * math.min(charCount, Int.MaxValue.toLong).toInt)
+
   }
 
   /**
@@ -126,10 +130,12 @@ object ToonMetrics {
 
     require(minTokensWhenNonEmpty >= 0, "minTokensWhenNonEmpty must be >= 0")
 
-    override def estimate(text: String): Int = {
-      if (text.isEmpty) 0
+    override def estimate(text: String): Int = estimate(text.length.toLong)
+
+    override def estimate(charCount: Long): Int = {
+      if (charCount <= 0L) 0
       else {
-        val rough = math.round(text.length.toDouble / charsPerToken).toInt
+        val rough = math.round(charCount.toDouble / charsPerToken).toInt
         math.max(rough, minTokensWhenNonEmpty)
       }
     }

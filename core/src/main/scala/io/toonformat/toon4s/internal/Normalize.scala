@@ -15,6 +15,7 @@ private[toon4s] object Normalize {
 
   // TODO: Check feasibility for tailrec
   def toJson(value: Any): JsonValue = value match {
+  case jv: JsonValue           => jv
   case null                    => JNull
   case s: String               => JString(s)
   case b: Boolean              => JBool(b)

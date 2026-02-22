@@ -1,6 +1,13 @@
 package io.toonformat.toon4s.spark
 
+import scala.collection.immutable.VectorMap
+import scala.util.Try
+
+import io.toonformat.toon4s.{EncodeOptions, Toon}
+import io.toonformat.toon4s.JsonValue._
+import io.toonformat.toon4s.spark.internal.SparkConfUtils
 import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.Dataset
 import org.apache.spark.sql.types._
 
 /**
@@ -82,7 +89,9 @@ object AdaptiveChunking {
    *   }}}
    */
   def calculateOptimalChunkSize(df: DataFrame): ChunkingStrategy = {
-    val rowCount = df.count()
+    // Use logical plan stats when available to avoid a full count() scan.
+    val stats = df.queryExecution.optimizedPlan.stats
+    val rowCount = stats.rowCount.map(_.toLong).getOrElse(df.count())
     val avgRowSize = estimateAvgRowSize(df.schema)
 
     calculateOptimalChunkSize(rowCount, avgRowSize)
@@ -240,20 +249,133 @@ object AdaptiveChunking {
   /**
    * Quick check: Should we use TOON for this DataFrame?
    *
-   * Combines alignment analysis and size analysis for fast go/no-go decision.
+   * Combines alignment analysis, size analysis, and a sample-based efficiency probe. The probe
+   * encodes a small sample in both JSON and TOON and compares byte counts. This catches cases where
+   * the schema looks aligned but the actual data produces larger TOON output than JSON (e.g., flat
+   * CSV aggregations with long string values).
    *
    * @param df
    *   DataFrame to analyze
+   * @param key
+   *   TOON document key (used for the probe encoding)
+   * @param options
+   *   TOON encoding options
    * @return
    *   True if TOON recommended, false if JSON recommended
    */
-  def shouldUseToon(df: DataFrame): Boolean = {
+  def shouldUseToon(
+      df: DataFrame,
+      key: String = "data",
+      options: EncodeOptions = EncodeOptions(),
+  ): Boolean = {
     import ToonAlignmentAnalyzer._
 
     val alignment = analyzeSchema(df.schema)
-    val chunking = calculateOptimalChunkSize(df)
+    if (!alignment.aligned) return false
 
-    alignment.aligned && chunking.useToon
+    val chunking = calculateOptimalChunkSize(df)
+    if (!chunking.useToon) return false
+
+    val probe = probeEfficiency(df, key = key, options = options)
+    probe.toonEfficient
+  }
+
+  /** Binary-compat overload retained for callers passing Dataset directly. */
+  def shouldUseToon(df: Dataset[_]): Boolean =
+    shouldUseToon(df.toDF(), key = "data", options = EncodeOptions())
+
+  /**
+   * Result of encoding a small sample in both JSON and TOON.
+   *
+   * @param sampleRows
+   *   Number of rows in the sample
+   * @param jsonBytes
+   *   UTF-8 byte count of the JSON-encoded sample
+   * @param toonBytes
+   *   UTF-8 byte count of the TOON-encoded sample
+   * @param toonEfficient
+   *   True if TOON produced fewer or equal bytes than JSON
+   * @param ratio
+   *   toonBytes / jsonBytes. Values below 1.0 mean TOON wins.
+   */
+  final case class EfficiencyProbe(
+      sampleRows: Int,
+      jsonBytes: Long,
+      toonBytes: Long,
+      toonEfficient: Boolean,
+      ratio: Double,
+  )
+
+  /** Default number of rows to sample when probing efficiency. */
+  val DefaultProbeSampleSize = 20
+
+  /**
+   * Encode a small sample of rows in both JSON and TOON, then compare byte counts.
+   *
+   * This is a driver-side operation that takes a bounded sample. It should be called once per
+   * DataFrame decision, not per partition.
+   *
+   * @param df
+   *   DataFrame to probe
+   * @param key
+   *   TOON document key
+   * @param sampleSize
+   *   Maximum rows to sample (default 20)
+   * @param options
+   *   TOON encoding options
+   * @return
+   *   EfficiencyProbe with byte comparison
+   */
+  def probeEfficiency(
+      df: DataFrame,
+      key: String = "data",
+      sampleSize: Int = DefaultProbeSampleSize,
+      options: EncodeOptions = EncodeOptions(),
+  ): EfficiencyProbe = {
+    val effectiveSample = math.max(1, sampleSize)
+    val collectedRows = Try(df.limit(effectiveSample).take(effectiveSample)).getOrElse(Array.empty)
+    if (collectedRows.isEmpty) {
+      return EfficiencyProbe(
+        sampleRows = 0,
+        jsonBytes = 0L,
+        toonBytes = 0L,
+        toonEfficient = false,
+        ratio = 1.0,
+      )
+    }
+
+    val schema = df.schema
+    val fieldsWithIndex = schema.fields.zipWithIndex
+    val jsonValues = collectedRows.map(row =>
+      SparkJsonInterop.rowToJsonValueWithFields(row, fieldsWithIndex)
+    )
+    val wrapped = JObj(VectorMap(key -> JArray(jsonValues.toVector)))
+
+    // JSON encoding from the same JsonValue tree
+    val jsonEncoded = SparkJsonInterop.encodeAsJson(wrapped)
+    val jsonBytes = SparkConfUtils.utf8ByteLength(jsonEncoded)
+
+    // TOON encoding
+    Toon.encode(wrapped, options) match {
+    case Right(toonEncoded) =>
+      val toonBytes = SparkConfUtils.utf8ByteLength(toonEncoded)
+      val ratio = if (jsonBytes > 0L) toonBytes.toDouble / jsonBytes.toDouble else 1.0
+      EfficiencyProbe(
+        sampleRows = collectedRows.length,
+        jsonBytes = jsonBytes,
+        toonBytes = toonBytes,
+        toonEfficient = ratio <= 1.0,
+        ratio = ratio,
+      )
+    case Left(_) =>
+      EfficiencyProbe(
+        sampleRows = collectedRows.length,
+        jsonBytes = jsonBytes,
+        toonBytes = Long.MaxValue,
+        toonEfficient = false,
+        ratio = Double.MaxValue,
+      )
+    }
   }
 
 }

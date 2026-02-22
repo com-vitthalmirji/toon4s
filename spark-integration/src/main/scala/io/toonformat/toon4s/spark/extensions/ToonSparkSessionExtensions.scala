@@ -27,7 +27,7 @@ private object ToonSparkSessionExtensions {
     (FunctionIdentifier, ExpressionInfo, Seq[Expression] => Expression)
 
   private val functions: Seq[FunctionDescription] = Seq(
-    unaryStringFunction("toon_encode_row")(value => encodeToToonString(value)),
+    unaryStringFunction("toon_encode_row")(value => encodeJsonToToon(value)),
     unaryStringFunction("toon_decode_row")(value => decodeToString(value)),
     unaryStringFunction("toon_encode_string")(value => encodeToToonString(value)),
     unaryStringFunction("toon_decode_string")(value => decodeToString(value)),
@@ -87,6 +87,18 @@ private object ToonSparkSessionExtensions {
       )
       .getOrElse("")
   }
+
+  private def encodeJsonToToon(value: Any): String =
+    Option(value)
+      .map(_.toString)
+      .flatMap { text =>
+        Toon
+          .decode(text, DecodeOptions())
+          .toOption
+          .flatMap(json => Toon.encode(json, EncodeOptions()).toOption)
+          .orElse(Toon.encode(JString(text), EncodeOptions()).toOption)
+      }
+      .getOrElse("null")
 
   private def encodeToToonString(value: Any): String =
     Option(value)

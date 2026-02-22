@@ -71,6 +71,38 @@ object Delimiter {
    */
   case object Pipe extends Delimiter('|')
 
+  private[toon4s] case object CommaWithLengthMarker extends Delimiter(',')
+
+  private[toon4s] case object TabWithLengthMarker extends Delimiter('\t')
+
+  private[toon4s] case object PipeWithLengthMarker extends Delimiter('|')
+
+  private def markerVariant(delimiter: Delimiter): Delimiter = delimiter match {
+  case Comma                 => CommaWithLengthMarker
+  case Tab                   => TabWithLengthMarker
+  case Pipe                  => PipeWithLengthMarker
+  case CommaWithLengthMarker => CommaWithLengthMarker
+  case TabWithLengthMarker   => TabWithLengthMarker
+  case PipeWithLengthMarker  => PipeWithLengthMarker
+  }
+
+  private def baseVariant(delimiter: Delimiter): Delimiter = delimiter match {
+  case CommaWithLengthMarker => Comma
+  case TabWithLengthMarker   => Tab
+  case PipeWithLengthMarker  => Pipe
+  case other                 => other
+  }
+
+  def withLengthMarker(delimiter: Delimiter, enabled: Boolean): Delimiter =
+    if (enabled) markerVariant(delimiter) else baseVariant(delimiter)
+
+  def usesLengthMarker(delimiter: Delimiter): Boolean = delimiter match {
+  case CommaWithLengthMarker | TabWithLengthMarker | PipeWithLengthMarker => true
+  case _                                                                  => false
+  }
+
+  def base(delimiter: Delimiter): Delimiter = baseVariant(delimiter)
+
   /** All available delimiter values. */
   val values: List[Delimiter] = List(Comma, Tab, Pipe)
 

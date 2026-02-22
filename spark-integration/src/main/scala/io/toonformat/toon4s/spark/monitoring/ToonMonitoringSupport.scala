@@ -7,6 +7,7 @@ import scala.util.Try
 import io.toonformat.toon4s.spark.ToonMetrics
 import io.toonformat.toon4s.spark.error.SparkToonError
 import io.toonformat.toon4s.spark.internal.SparkConfUtils
+import io.toonformat.toon4s.spark.internal.SparkConfUtils.utf8ByteLength
 import org.apache.spark.sql.{DataFrame, Encoders}
 import org.apache.spark.sql.functions._
 
@@ -26,7 +27,9 @@ private[monitoring] object ToonMonitoringSupport {
 
   def computeSchemaHash(schema: org.apache.spark.sql.types.StructType): String = {
     val schemaStr = schema.fields.map(f => s"${f.name}:${f.dataType.typeName}").mkString(",")
-    val hash = MessageDigest.getInstance("MD5").digest(schemaStr.getBytes("UTF-8"))
+    val hash = MessageDigest.getInstance(
+      "MD5"
+    ).digest(schemaStr.getBytes(java.nio.charset.StandardCharsets.UTF_8))
     hash.map("%02x".format(_)).mkString.take(8)
   }
 
@@ -52,7 +55,7 @@ private[monitoring] object ToonMonitoringSupport {
         avgEstimatedTokensPerChunk = 0.0,
       )
     } else {
-      val chunkSizes = chunks.map(_.getBytes("UTF-8").length.toLong)
+      val chunkSizes = chunks.map(c => utf8ByteLength(c))
       val estimatedTokens = chunks.map(ToonMetrics.estimateTokens)
       val avgRows = rowCount.toDouble / chunks.size.toDouble
 
@@ -95,7 +98,7 @@ private[monitoring] object ToonMonitoringSupport {
           var maxBytes = 0L
 
           values.foreach { value =>
-            val bytes = value.getBytes("UTF-8").length.toLong
+            val bytes = utf8ByteLength(value)
             rowCount += 1L
             totalBytes += bytes
             totalTokens += ToonMetrics.estimateTokens(value).toLong

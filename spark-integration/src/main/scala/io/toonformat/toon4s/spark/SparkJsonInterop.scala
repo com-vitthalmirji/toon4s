@@ -58,15 +58,30 @@ object SparkJsonInterop {
    *   }}}
    */
   def rowToJsonValue(row: Row, schema: StructType): JsonValue = {
-    val fields = schema.fields.zipWithIndex.map {
-      case (field, idx) =>
-        val value =
-          if (row.isNullAt(idx)) JNull
-          else fieldToJsonValue(row.get(idx), field.dataType)
+    rowToJsonValueWithFields(row, schema.fields.zipWithIndex)
+  }
 
-        field.name -> value
+  /**
+   * Convert Spark Row to JsonValue using pre-computed field index pairs.
+   *
+   * Avoids re-computing `schema.fields.zipWithIndex` on every row when called inside a partition
+   * loop. Callers should compute the indexed fields once per partition and reuse.
+   */
+  def rowToJsonValueWithFields(
+      row: Row,
+      fieldsWithIndex: Array[(StructField, Int)],
+  ): JsonValue = {
+    val pairs = new Array[(String, JsonValue)](fieldsWithIndex.length)
+    var i = 0
+    while (i < fieldsWithIndex.length) {
+      val (field, idx) = fieldsWithIndex(i)
+      val value =
+        if (row.isNullAt(idx)) JNull
+        else fieldToJsonValue(row.get(idx), field.dataType)
+      pairs(i) = (field.name, value)
+      i += 1
     }
-    JObj(VectorMap.from(fields))
+    JObj(VectorMap.from(pairs))
   }
 
   /**
@@ -122,18 +137,19 @@ object SparkJsonInterop {
   case ArrayType(elementType, _) =>
     val seq: scala.collection.Seq[_] = value match {
     case s: scala.collection.Seq[_] => s
-    case a: Array[_]                => a.toSeq
+    case a: Array[_]                => a.toIndexedSeq
     case l: java.util.List[_]       => l.asScala.toSeq
     case other                      =>
       throw new IllegalArgumentException(
         s"Unsupported array value type: ${other.getClass.getName}"
       )
     }
-    val jsonValues = seq.map { elem =>
-      if (elem == null) JNull
-      else fieldToJsonValue(elem, elementType)
-    }.toVector
-    JArray(jsonValues)
+    val builder = Vector.newBuilder[JsonValue]
+    builder.sizeHint(seq.size)
+    seq.foreach { elem =>
+      builder += (if (elem == null) JNull else fieldToJsonValue(elem, elementType))
+    }
+    JArray(builder.result())
 
   case structType: StructType =>
     val row = value.asInstanceOf[Row]
@@ -424,6 +440,67 @@ object SparkJsonInterop {
         Some(ex),
       )
     }
+  }
+
+  /** Safe conversion using pre-computed field index pairs. */
+  def rowToJsonValueSafe(
+      row: Row,
+      fieldsWithIndex: Array[(StructField, Int)],
+  ): Either[SparkToonError, JsonValue] = {
+    Try(rowToJsonValueWithFields(row, fieldsWithIndex)).toEither.left.map { ex =>
+      SparkToonError.ConversionError(
+        s"Failed to convert Row to JsonValue: ${ex.getMessage}",
+        Some(ex),
+      )
+    }
+  }
+
+  /**
+   * Encode a JsonValue as a compact JSON string.
+   *
+   * Package-visible so that both SparkToonOps and AdaptiveChunking can share this without
+   * duplicating serialization logic.
+   */
+  private[spark] def encodeAsJson(value: JsonValue): String = {
+    def escapeString(s: String): String = {
+      val sb = new StringBuilder(s.length + 16)
+      var i = 0
+      while (i < s.length) {
+        val c = s.charAt(i)
+        c match {
+        case '"'              => sb.append("\\\"")
+        case '\\'             => sb.append("\\\\")
+        case '\b'             => sb.append("\\b")
+        case '\f'             => sb.append("\\f")
+        case '\n'             => sb.append("\\n")
+        case '\r'             => sb.append("\\r")
+        case '\t'             => sb.append("\\t")
+        case _ if c.isControl =>
+          sb.append("\\u")
+          sb.append(String.format("%04x", Int.box(c.toInt)))
+        case _ =>
+          sb.append(c)
+        }
+        i += 1
+      }
+      sb.result()
+    }
+
+    def encode(v: JsonValue): String = v match {
+    case JsonValue.JNull          => "null"
+    case JsonValue.JBool(b)       => if (b) "true" else "false"
+    case JsonValue.JNumber(n)     => n.bigDecimal.stripTrailingZeros.toPlainString
+    case JsonValue.JString(s)     => "\"" + escapeString(s) + "\""
+    case JsonValue.JArray(values) =>
+      values.iterator.map(encode).mkString("[", ",", "]")
+    case JsonValue.JObj(fields) =>
+      fields
+        .iterator
+        .map { case (k, v) => "\"" + escapeString(k) + "\":" + encode(v) }
+        .mkString("{", ",", "}")
+    }
+
+    encode(value)
   }
 
   /**
