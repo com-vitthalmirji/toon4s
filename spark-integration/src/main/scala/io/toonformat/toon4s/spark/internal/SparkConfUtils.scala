@@ -15,4 +15,15 @@ private[spark] object SparkConfUtils {
       .filter(_ > 0)
       .getOrElse(defaultValue)
 
+  def readPositiveLong(
+      spark: SparkSession,
+      key: String,
+      defaultValue: Long,
+  ): Long =
+    spark.conf
+      .getOption(key)
+      .flatMap(_.trim.toLongOption)
+      .filter(_ > 0L)
+      .getOrElse(defaultValue)
+
 }

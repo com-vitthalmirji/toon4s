@@ -482,7 +482,7 @@ object SparkToonOps {
       MaxCollectedChunksConfKey,
       DefaultMaxCollectedChunks,
     )
-    val maxPayloadBytes = readPositiveLongConf(
+    val maxPayloadBytes = SparkConfUtils.readPositiveLong(
       chunksDataset.sparkSession,
       MaxCollectedPayloadBytesConfKey,
       DefaultMaxCollectedPayloadBytes,
@@ -521,18 +521,6 @@ object SparkToonOps {
         encodeSafe(wrappedChunk, options).map(encoded => Vector(encoded))
       }
     }
-  }
-
-  private def readPositiveLongConf(
-      spark: SparkSession,
-      key: String,
-      defaultValue: Long,
-  ): Long = {
-    spark.conf
-      .getOption(key)
-      .flatMap(_.trim.toLongOption)
-      .filter(_ > 0L)
-      .getOrElse(defaultValue)
   }
 
   /**

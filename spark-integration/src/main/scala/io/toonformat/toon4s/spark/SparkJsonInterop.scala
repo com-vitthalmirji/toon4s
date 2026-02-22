@@ -137,18 +137,19 @@ object SparkJsonInterop {
   case ArrayType(elementType, _) =>
     val seq: scala.collection.Seq[_] = value match {
     case s: scala.collection.Seq[_] => s
-    case a: Array[_]                => a.toSeq
+    case a: Array[_]                => a.toIndexedSeq
     case l: java.util.List[_]       => l.asScala.toSeq
     case other                      =>
       throw new IllegalArgumentException(
         s"Unsupported array value type: ${other.getClass.getName}"
       )
     }
-    val jsonValues = seq.map { elem =>
-      if (elem == null) JNull
-      else fieldToJsonValue(elem, elementType)
-    }.toVector
-    JArray(jsonValues)
+    val builder = Vector.newBuilder[JsonValue]
+    builder.sizeHint(seq.size)
+    seq.foreach { elem =>
+      builder += (if (elem == null) JNull else fieldToJsonValue(elem, elementType))
+    }
+    JArray(builder.result())
 
   case structType: StructType =>
     val row = value.asInstanceOf[Row]

@@ -82,7 +82,9 @@ object AdaptiveChunking {
    *   }}}
    */
   def calculateOptimalChunkSize(df: DataFrame): ChunkingStrategy = {
-    val rowCount = df.count()
+    // Use logical plan stats when available to avoid a full count() scan.
+    val stats = df.queryExecution.optimizedPlan.stats
+    val rowCount = stats.rowCount.map(_.toLong).getOrElse(df.count())
     val avgRowSize = estimateAvgRowSize(df.schema)
 
     calculateOptimalChunkSize(rowCount, avgRowSize)
