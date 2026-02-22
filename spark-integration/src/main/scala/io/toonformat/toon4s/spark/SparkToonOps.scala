@@ -390,7 +390,7 @@ object SparkToonOps {
         case Right(value) =>
           extractRowsFromValue(value).iterator.map(encodeAsJson)
         case Left(err) =>
-          throw new IllegalStateException(err.message, err.cause.orNull)
+          throw new SparkToonEncodingException(err)
         }
       }
     }(Encoders.STRING)
