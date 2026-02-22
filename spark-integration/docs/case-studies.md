@@ -65,6 +65,10 @@ This page documents usage stories and reproducible outcomes for `toon4s-spark`.
 - Spark runtime: 4.1.1 local mode
 - Workload mode: `agg` via `examples.WorkloadMeasurementRunner`
 
+Full independent run note:
+
+- `spark-integration/docs/WORKLOAD_MEASUREMENT_2026-02-22_independent.md`
+
 ### Result summary
 
 - Rows after aggregation: 881

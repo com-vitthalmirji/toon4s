@@ -84,6 +84,7 @@ Store findings in `spark-integration/docs/WORKLOAD_MEASUREMENT_TEMPLATE.md`.
 Reference example note:
 
 - `spark-integration/docs/WORKLOAD_MEASUREMENT_2026-02-21.md`
+- `spark-integration/docs/WORKLOAD_MEASUREMENT_2026-02-22_independent.md`
 
 ## Rules for claim updates
 
