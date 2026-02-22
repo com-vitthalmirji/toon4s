@@ -1,15 +1,15 @@
 package io.toonformat.toon4s
 
 import scala.collection.immutable.VectorMap
-import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.concurrent.duration._
 
 import io.toonformat.toon4s.JsonValue._
 import munit.FunSuite
 
 class ThreadSafetySpec extends FunSuite {
 
-  private implicit val executionContext: ExecutionContext = ExecutionContext.global
+  implicit private val executionContext: ExecutionContext = ExecutionContext.global
 
   private val sample = JObj(
     VectorMap(

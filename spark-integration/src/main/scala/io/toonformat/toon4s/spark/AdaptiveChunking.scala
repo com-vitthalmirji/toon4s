@@ -307,7 +307,7 @@ object AdaptiveChunking {
   /**
    * Encode a small sample of rows in both JSON and TOON, then compare byte counts.
    *
-   * This is a driver-side operation that collects a bounded sample. It should be called once per
+   * This is a driver-side operation that takes a bounded sample. It should be called once per
    * DataFrame decision, not per partition.
    *
    * @param df
@@ -328,7 +328,7 @@ object AdaptiveChunking {
       options: EncodeOptions = EncodeOptions(),
   ): EfficiencyProbe = {
     val effectiveSample = math.max(1, sampleSize)
-    val collectedRows = Try(df.limit(effectiveSample).collect()).getOrElse(Array.empty)
+    val collectedRows = Try(df.limit(effectiveSample).take(effectiveSample)).getOrElse(Array.empty)
     if (collectedRows.isEmpty) {
       return EfficiencyProbe(
         sampleRows = 0,
