@@ -15,6 +15,8 @@ This project is maintained under `com-vitthalmirji`.
 
 ## Backup and continuity
 
+- Spark integration backup reviewer: [@rorygraves](https://github.com/rorygraves) for non-blocking review coverage.
 - If the primary maintainer is unavailable for more than 14 days, active contributors may request maintainer access through a GitHub issue.
 - Small, scoped pull requests with tests are preferred so review can be shared across contributors.
 - Use `good first issue` and `help wanted` labels to grow maintainer coverage.
+- Track first external issue-to-merge flow in `#74`.

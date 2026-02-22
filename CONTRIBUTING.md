@@ -26,6 +26,10 @@ Thanks for your interest in contributing to toon4s.
 - Include Spark version, Scala version, and a minimal repro.
 - Maintainers triage new issues and follow up through issue threads.
 - Look for `good first issue` and `help wanted` labels if you want a small starter task.
+- Current starter tasks:
+  - `#71` spark add benchmark result parser script
+  - `#72` spark add usage docs for writeToLlmPartitions idempotency key
+  - `#73` spark add sample DataSource V2 write failure test
 
 ## Helpful guide
 
