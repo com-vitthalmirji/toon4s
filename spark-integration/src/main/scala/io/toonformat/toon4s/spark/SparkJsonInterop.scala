@@ -58,15 +58,30 @@ object SparkJsonInterop {
    *   }}}
    */
   def rowToJsonValue(row: Row, schema: StructType): JsonValue = {
-    val fields = schema.fields.zipWithIndex.map {
-      case (field, idx) =>
-        val value =
-          if (row.isNullAt(idx)) JNull
-          else fieldToJsonValue(row.get(idx), field.dataType)
+    rowToJsonValueWithFields(row, schema.fields.zipWithIndex)
+  }
 
-        field.name -> value
+  /**
+   * Convert Spark Row to JsonValue using pre-computed field index pairs.
+   *
+   * Avoids re-computing `schema.fields.zipWithIndex` on every row when called inside a partition
+   * loop. Callers should compute the indexed fields once per partition and reuse.
+   */
+  def rowToJsonValueWithFields(
+      row: Row,
+      fieldsWithIndex: Array[(StructField, Int)],
+  ): JsonValue = {
+    val pairs = new Array[(String, JsonValue)](fieldsWithIndex.length)
+    var i = 0
+    while (i < fieldsWithIndex.length) {
+      val (field, idx) = fieldsWithIndex(i)
+      val value =
+        if (row.isNullAt(idx)) JNull
+        else fieldToJsonValue(row.get(idx), field.dataType)
+      pairs(i) = (field.name, value)
+      i += 1
     }
-    JObj(VectorMap.from(fields))
+    JObj(VectorMap.from(pairs))
   }
 
   /**
@@ -419,6 +434,19 @@ object SparkJsonInterop {
    */
   def rowToJsonValueSafe(row: Row, schema: StructType): Either[SparkToonError, JsonValue] = {
     Try(rowToJsonValue(row, schema)).toEither.left.map { ex =>
+      SparkToonError.ConversionError(
+        s"Failed to convert Row to JsonValue: ${ex.getMessage}",
+        Some(ex),
+      )
+    }
+  }
+
+  /** Safe conversion using pre-computed field index pairs. */
+  def rowToJsonValueSafe(
+      row: Row,
+      fieldsWithIndex: Array[(StructField, Int)],
+  ): Either[SparkToonError, JsonValue] = {
+    Try(rowToJsonValueWithFields(row, fieldsWithIndex)).toEither.left.map { ex =>
       SparkToonError.ConversionError(
         s"Failed to convert Row to JsonValue: ${ex.getMessage}",
         Some(ex),

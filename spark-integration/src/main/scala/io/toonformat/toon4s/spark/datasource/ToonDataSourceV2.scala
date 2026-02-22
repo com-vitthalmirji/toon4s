@@ -452,7 +452,9 @@ final private[datasource] class ToonDataWriter(
 
   private val scalaConverter = CatalystTypeConverters.createToScalaConverter(schema)
 
-  private val rows = scala.collection.mutable.ArrayBuffer.empty[JsonValue]
+  private val fieldsWithIndex = schema.fields.zipWithIndex
+
+  private val rows = new scala.collection.mutable.ArrayBuffer[JsonValue](maxRowsPerFile)
 
   private val createdFiles = scala.collection.mutable.ArrayBuffer.empty[Path]
 
@@ -461,7 +463,7 @@ final private[datasource] class ToonDataWriter(
   override def write(record: InternalRow): Unit = {
     scalaConverter(record) match {
     case row: org.apache.spark.sql.Row =>
-      rows += SparkJsonInterop.rowToJsonValue(row, schema)
+      rows += SparkJsonInterop.rowToJsonValueWithFields(row, fieldsWithIndex)
       if (rows.size >= maxRowsPerFile) {
         flushChunk()
       }

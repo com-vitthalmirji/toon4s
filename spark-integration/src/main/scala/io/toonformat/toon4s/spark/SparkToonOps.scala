@@ -439,7 +439,8 @@ object SparkToonOps {
 
     val schema = df.schema
     df.mapPartitions { rows =>
-      val chunkRows = scala.collection.mutable.ArrayBuffer.empty[JsonValue]
+      val fieldsWithIndex = schema.fields.zipWithIndex
+      val chunkRows = new scala.collection.mutable.ArrayBuffer[JsonValue](maxRowsPerChunk)
       val encodedChunks = scala.collection.mutable.ArrayBuffer.empty[String]
 
       def flush(force: Boolean): Unit = {
@@ -457,7 +458,7 @@ object SparkToonOps {
       }
 
       rows.foreach { row =>
-        SparkJsonInterop.rowToJsonValueSafe(row, schema) match {
+        SparkJsonInterop.rowToJsonValueSafe(row, fieldsWithIndex) match {
         case Right(jsonRow) =>
           chunkRows += jsonRow
           flush(force = false)
@@ -504,7 +505,7 @@ object SparkToonOps {
         )
       } else if (chunks.nonEmpty) {
         val totalBytes =
-          chunks.foldLeft(0L)((acc, chunk) => acc + chunk.getBytes("UTF-8").length.toLong)
+          chunks.foldLeft(0L)((acc, chunk) => acc + utf8ByteLength(chunk))
         if (totalBytes > maxPayloadBytes) {
           Left(
             SparkToonError.CollectionError(
@@ -556,7 +557,8 @@ object SparkToonOps {
         DefaultMaxCollectedPartitionMetrics,
       )
       val partitionMetricsDs = df.mapPartitions { rows =>
-        val chunkRows = scala.collection.mutable.ArrayBuffer.empty[JsonValue]
+        val fieldsWithIndex = schema.fields.zipWithIndex
+        val chunkRows = new scala.collection.mutable.ArrayBuffer[JsonValue](maxRowsPerChunk)
         var jsonTokenCount = 0
         var toonTokenCount = 0
         var rowCount = 0
@@ -566,18 +568,11 @@ object SparkToonOps {
           val shouldFlush = chunkRows.nonEmpty && (force || chunkRows.size >= maxRowsPerChunk)
           if (error.isEmpty && shouldFlush) {
             val wrappedChunk = JObj(VectorMap(key -> JArray(chunkRows.toVector)))
-            val jsonBaseline = encodeAsJson(wrappedChunk)
+            val jsonCharEstimate = jsonCharCount(wrappedChunk)
             encodeSafe(wrappedChunk, options) match {
             case Right(toonEncoded) =>
-              val chunkMetrics = ToonMetrics.fromEncodedStrings(
-                jsonEncoded = jsonBaseline,
-                toonEncoded = toonEncoded,
-                rowCount = chunkRows.size,
-                columnCount = schema.fields.length,
-                tokenEstimator = tokenEstimator,
-              )
-              jsonTokenCount += chunkMetrics.jsonTokenCount
-              toonTokenCount += chunkMetrics.toonTokenCount
+              jsonTokenCount += tokenEstimator.estimate(jsonCharEstimate)
+              toonTokenCount += tokenEstimator.estimate(toonEncoded)
               rowCount += chunkRows.size
               chunkRows.clear()
             case Left(err) =>
@@ -588,7 +583,7 @@ object SparkToonOps {
 
         rows.foreach { row =>
           if (error.isEmpty) {
-            SparkJsonInterop.rowToJsonValueSafe(row, schema) match {
+            SparkJsonInterop.rowToJsonValueSafe(row, fieldsWithIndex) match {
             case Right(jsonRow) =>
               chunkRows += jsonRow
               flush(force = false)
@@ -709,7 +704,7 @@ object SparkToonOps {
           while (chunkIterator.hasNext && (!llmOptions.failOnError || firstError.isEmpty)) {
             val chunk = chunkIterator.next()
             attemptedChunks += 1L
-            totalBytes += chunk.getBytes("UTF-8").length.toLong
+            totalBytes += utf8ByteLength(chunk)
             totalEstimatedTokens += ToonMetrics.estimateTokens(chunk).toLong
 
             val idempotencyKey = LlmPartitionIdempotency.build(
@@ -853,11 +848,14 @@ object SparkToonOps {
     findRowArray(value).getOrElse(Vector.empty)
   }
 
-  /** Encode a JsonValue as a minimal JSON string for baseline token estimates. */
+  /** Encode a JsonValue as a minimal JSON string (used in decode path). */
   private def encodeAsJson(value: JsonValue): String = {
     def escapeString(s: String): String = {
       val sb = new StringBuilder(s.length + 16)
-      s.foreach {
+      var i = 0
+      while (i < s.length) {
+        val c = s.charAt(i)
+        c match {
         case '"'              => sb.append("\\\"")
         case '\\'             => sb.append("\\\\")
         case '\b'             => sb.append("\\b")
@@ -865,10 +863,13 @@ object SparkToonOps {
         case '\n'             => sb.append("\\n")
         case '\r'             => sb.append("\\r")
         case '\t'             => sb.append("\\t")
-        case c if c.isControl =>
-          sb.append(f"\\u${c.toInt}%04x")
-        case c =>
+        case _ if c.isControl =>
+          sb.append("\\u")
+          sb.append(String.format("%04x", Int.box(c.toInt)))
+        case _ =>
           sb.append(c)
+        }
+        i += 1
       }
       sb.result()
     }
@@ -888,6 +889,63 @@ object SparkToonOps {
     }
 
     encode(value)
+  }
+
+  /**
+   * Estimate JSON character count from a JsonValue without materializing the string.
+   *
+   * Avoids allocating the full JSON string when only the length matters for token estimation.
+   */
+  private def jsonCharCount(value: JsonValue): Long = value match {
+  case JsonValue.JNull          => 4L
+  case JsonValue.JBool(b)       => if (b) 4L else 5L
+  case JsonValue.JNumber(n)     => n.bigDecimal.stripTrailingZeros.toPlainString.length.toLong
+  case JsonValue.JString(s)     => s.length.toLong + 2L
+  case JsonValue.JArray(values) =>
+    if (values.isEmpty) 2L
+    else {
+      var total = 2L // brackets
+      total += (values.size - 1).toLong // commas
+      var i = 0
+      while (i < values.size) {
+        total += jsonCharCount(values(i))
+        i += 1
+      }
+      total
+    }
+  case JsonValue.JObj(fields) =>
+    if (fields.isEmpty) 2L
+    else {
+      var total = 2L // braces
+      total += (fields.size - 1).toLong // commas
+      fields.foreach {
+        case (k, v) =>
+          total += k.length.toLong + 3L // key quotes + colon
+          total += jsonCharCount(v)
+      }
+      total
+    }
+  }
+
+  /**
+   * Compute UTF-8 byte length without allocating a byte array.
+   *
+   * Walks the string character-by-character to count bytes accurately.
+   */
+  private def utf8ByteLength(s: String): Long = {
+    var bytes = 0L
+    var i = 0
+    while (i < s.length) {
+      val c = s.charAt(i)
+      if (c <= 0x7F) bytes += 1L
+      else if (c <= 0x7FF) bytes += 2L
+      else if (Character.isHighSurrogate(c)) {
+        bytes += 4L
+        i += 1 // skip low surrogate
+      } else bytes += 3L
+      i += 1
+    }
+    bytes
   }
 
 }
