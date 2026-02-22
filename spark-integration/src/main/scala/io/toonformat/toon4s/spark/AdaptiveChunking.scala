@@ -7,6 +7,7 @@ import io.toonformat.toon4s.{EncodeOptions, Toon}
 import io.toonformat.toon4s.JsonValue._
 import io.toonformat.toon4s.spark.internal.SparkConfUtils
 import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.Dataset
 import org.apache.spark.sql.types._
 
 /**
@@ -278,6 +279,10 @@ object AdaptiveChunking {
     val probe = probeEfficiency(df, key = key, options = options)
     probe.toonEfficient
   }
+
+  /** Binary-compat overload retained for callers passing Dataset directly. */
+  def shouldUseToon(df: Dataset[_]): Boolean =
+    shouldUseToon(df.toDF(), key = "data", options = EncodeOptions())
 
   /**
    * Result of encoding a small sample in both JSON and TOON.
