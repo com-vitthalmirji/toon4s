@@ -915,25 +915,6 @@ object SparkToonOps {
     }
   }
 
-  /**
-   * Compute UTF-8 byte length without allocating a byte array.
-   *
-   * Walks the string character-by-character to count bytes accurately.
-   */
-  private def utf8ByteLength(s: String): Long = {
-    var bytes = 0L
-    var i = 0
-    while (i < s.length) {
-      val c = s.charAt(i)
-      if (c <= 0x7F) bytes += 1L
-      else if (c <= 0x7FF) bytes += 2L
-      else if (Character.isHighSurrogate(c)) {
-        bytes += 4L
-        i += 1 // skip low surrogate
-      } else bytes += 3L
-      i += 1
-    }
-    bytes
-  }
+  private def utf8ByteLength(s: String): Long = SparkConfUtils.utf8ByteLength(s)
 
 }

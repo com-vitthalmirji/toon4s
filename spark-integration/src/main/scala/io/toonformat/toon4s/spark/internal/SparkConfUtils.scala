@@ -26,4 +26,21 @@ private[spark] object SparkConfUtils {
       .filter(_ > 0L)
       .getOrElse(defaultValue)
 
+  /** Compute UTF-8 byte length without allocating a byte array. */
+  def utf8ByteLength(s: String): Long = {
+    var bytes = 0L
+    var i = 0
+    while (i < s.length) {
+      val c = s.charAt(i)
+      if (c <= 0x7F) bytes += 1L
+      else if (c <= 0x7FF) bytes += 2L
+      else if (Character.isHighSurrogate(c)) {
+        bytes += 4L
+        i += 1
+      } else bytes += 3L
+      i += 1
+    }
+    bytes
+  }
+
 }
