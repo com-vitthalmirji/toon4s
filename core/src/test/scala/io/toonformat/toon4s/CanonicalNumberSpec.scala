@@ -256,6 +256,29 @@ class CanonicalNumberSpec extends FunSuite {
     }
   }
 
+  // Spec §2 v3.3: canonical-decimal MUST for n=0 or 1e-6 <= |n| < 1e21;
+  // outside that range encoders MAY use exponent. toon4s always uses plain decimal.
+  test("canonical-decimal range boundaries (spec §2 v3.3)") {
+    val mustBePlain = List(
+      BigDecimal("1e-6") -> "0.000001", // lower bound: MUST be plain
+      BigDecimal("9.99e20") -> "999000000000000000000", // near upper bound: MUST be plain
+    )
+    val mayBePlainOrExponent = List(
+      BigDecimal("1e-7") -> "0.0000001", // below range: toon4s uses plain
+      BigDecimal("1e21") -> "1000000000000000000000", // at/above upper bound: toon4s uses plain
+    )
+    (mustBePlain ++ mayBePlainOrExponent).foreach {
+      case (input, expected) =>
+        val json = JObj(VectorMap("n" -> JNumber(input)))
+        val encoded = Toon.encode(json).getOrElse("")
+        assert(encoded.contains(expected), s"$input: expected '$expected' in:\n$encoded")
+        assert(
+          !encoded.exists(c => c == 'e' || c == 'E'),
+          s"$input: toon4s must not emit exponent notation, got:\n$encoded",
+        )
+    }
+  }
+
   test("no leading zeros are produced") {
     // Since we're encoding from BigDecimal, leading zeros shouldn't be possible
     val testCases = List(

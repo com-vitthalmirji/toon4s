@@ -47,6 +47,54 @@ the first field of list-item objects, and uses `key: []` for empty arrays per v3
 `toon4s` implements the Scala/JVM interpretation of that spec (encoding, decoding, CLI) while
 maintaining deterministic behavior, strict mode validation, and zero-dependency core.
 
+## JVM host-type normalization policies (spec §3, Appendix F.5)
+
+The spec requires implementations to document how host-specific types map to the JSON data model
+before encoding. toon4s policies are listed below.
+
+### GAP-S01: `BigDecimal` numeric precision
+
+`JNumber` wraps a `scala.math.BigDecimal`. Construct it from a **string** literal to preserve
+full precision:
+
+```scala
+JNumber(BigDecimal("0.1"))   // lossless: exact decimal 0.1
+JNumber(BigDecimal(0.1))     // lossy: IEEE 754 double 0.1000000000000000055...
+```
+
+For out-of-range or arbitrary-precision values the encoder emits a quoted decimal string
+(plain decimal form, per spec §2). toon4s does not expose a `stringifyOutOfRange` option;
+callers must wrap the value in `JString` manually when lossless string representation is needed.
+
+### GAP-S02: `java.time.ZonedDateTime`
+
+`ZonedDateTime.toString()` appends a zone-id suffix (e.g. `[Europe/Berlin]`) that is not valid
+ISO 8601 for interchange. Always convert before encoding:
+
+```scala
+zdt.toOffsetDateTime().toString   // correct: "2026-06-02T15:00:00+02:00"
+zdt.toString                      // wrong:   "2026-06-02T15:00:00+02:00[Europe/Berlin]"
+```
+
+### GAP-S03: `Option` / `java.util.Optional`
+
+- `None` / `Optional.empty()` → **omit the key entirely** (do not emit `null`).
+- `Some(x)` / `Optional.of(x)` → encode `x` directly.
+
+There is no built-in typeclass for `Option`; apply the convention when constructing `JObj`.
+
+### GAP-S04: `Map[K, V]` with non-String keys
+
+Keys are coerced to `String` via `.toString`. For numeric or structured key types, define a
+custom `KeyEncoder` typeclass in your application layer to control the coercion. Encoded key
+order follows `VectorMap` insertion order (encounter order is preserved).
+
+### GAP-S05: `Set[T]` iteration order
+
+`scala.collection.Set` has **undefined** iteration order on the JVM. Encoding a `Set` produces
+non-deterministic field/element order across JVM runs. If deterministic output is required,
+sort the set before encoding or use a sorted collection type.
+
 ## Upgrading from earlier versions (1.4 / 2.x)
 
 - `[#N]` length markers: removed in spec v2.0; decoder now rejects them, encoder does not emit them.
