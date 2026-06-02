@@ -1,17 +1,11 @@
 # Changelog
 
-## [Unreleased] - spec v3.3 alignment
+## [0.8.2] - 2026-06-02
 
-### Spec conformance (v3.1-v3.3)
-- Decoder accepts `\uXXXX` escape sequences in quoted strings and keys; rejects lone surrogates (U+D800-U+DFFF) and truncated `\u` escapes (spec §7.1, v3.1)
-- Encoder emits `key: []` for empty arrays (canonical form); decoder accepts `key: []` and `[]` as empty arrays (spec §9.1, v3.1)
-- Strict mode rejects duplicate sibling keys; non-strict applies last-write-wins silently (spec §14.4, v3.2)
-- Strict mode rejects malformed bracket lengths (`[03]`, `[-1]`), content between bracket and colon, and whitespace before field-list `{` (spec §6, §14.2, v3.2)
-- Strict mode errors on header delimiter mismatch between bracket and field-list segments (spec §14.2, v3.2)
-- `[#N]` length-marker syntax removed: decoder rejects it, encoder does not emit it (spec v2.0 breaking change)
-- Control characters below U+0020 force quoting on encode (spec §7.2)
-- Single empty token in delimited values decodes to empty string not dropped (spec §9.1, §11.2)
-- Conformance fixtures synced to spec v3.3 release (commit `07161ccc`); all 389 tests pass
+
+### Documentation
+- update CHANGELOG.md for main [skip ci] ([`5bccd03`](https://github.com/com-vitthalmirji/toon4s/commit/5bccd037ecf9477589876e1ba2051e9dc08aeedc)) by @github-actions[bot]
+
 
 ## [0.8.1] - 2026-02-22
 
