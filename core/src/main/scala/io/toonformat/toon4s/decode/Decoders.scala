@@ -14,7 +14,7 @@ import io.toonformat.toon4s.error.{DecodeError, ErrorLocation}
 
 object Decoders {
 
-  private val QuotedKeyPrefix = "\u0001"
+  // Quoting metadata is embedded via InternalKeyEncoding; see that object for the invariant.
 
   def decode(input: String, options: DecodeOptions): JsonValue = {
     val isStrict = options.strictness == Strictness.Strict
@@ -98,7 +98,7 @@ object Decoders {
           cursor.advance()
           val KeyValueParse(key, value, _, quoted) =
             decodeKeyValue(line.content, cursor, line.depth, options)
-          val storedKey = if (quoted) QuotedKeyPrefix + key else key
+          val storedKey = InternalKeyEncoding.encode(key, quoted)
           if (isStrict && seenKeys.contains(storedKey))
             throw DecodeError.Syntax(
               s"Duplicate key '${if (quoted) "\"" + key + "\"" else key}' at the same depth"
@@ -294,15 +294,18 @@ object Decoders {
       primaryOffset: Int,
       allowFallback: Boolean,
   ): Vector[JsonValue] = {
-    try decodeTabularArray(header, cursor, baseDepth, options, primaryOffset)
-    catch {
-      case err: DecodeError if allowFallback =>
-        val candidateOffset = cursor.peek.map(_.depth - baseDepth).getOrElse(primaryOffset)
-        val fallbackOffset =
-          if (candidateOffset > 0 && candidateOffset != primaryOffset) candidateOffset
-          else math.max(1, primaryOffset - 1)
-        decodeTabularArray(header, cursor, baseDepth, options, fallbackOffset)
-    }
+    // When allowFallback is true (tabular-as-first-field of list item per spec §10),
+    // rows may be at baseDepth+1 (pre-v3.0 layout) rather than the declared baseDepth+2.
+    // Detect the actual row depth from the cursor position BEFORE decoding instead of
+    // catching DecodeError and retrying, which would silently swallow unrelated errors.
+    val effectiveOffset =
+      if (!allowFallback) primaryOffset
+      else
+        cursor.peek.map(_.depth) match {
+        case Some(d) if d > baseDepth && d != baseDepth + primaryOffset => d - baseDepth
+        case _                                                          => primaryOffset
+        }
+    decodeTabularArray(header, cursor, baseDepth, options, effectiveOffset)
   }
 
   private def decodeListItem(
@@ -364,7 +367,7 @@ object Decoders {
     val afterHyphen = firstLine.content.drop(C.ListItemPrefix.length)
     val KeyValueParse(firstKey, firstValue, followDepth, firstQuoted) =
       decodeKeyValue(afterHyphen, cursor, baseDepth, options)
-    val storedHeadKey = if (firstQuoted) QuotedKeyPrefix + firstKey else firstKey
+    val storedHeadKey = InternalKeyEncoding.encode(firstKey, firstQuoted)
     val builder = Vector.newBuilder[(String, JsonValue)]
     var seenKeys = Set(storedHeadKey)
     builder += ((storedHeadKey, firstValue))
@@ -379,7 +382,7 @@ object Decoders {
         cursor.advance()
         val KeyValueParse(k, v, _, quoted) =
           decodeKeyValue(line.content, cursor, followDepth, options)
-        val storedKey = if (quoted) QuotedKeyPrefix + k else k
+        val storedKey = InternalKeyEncoding.encode(k, quoted)
         if (isStrict && seenKeys.contains(storedKey))
           throw DecodeError.Syntax(
             s"Duplicate key '${if (quoted) "\"" + k + "\"" else k}' in list-item object"

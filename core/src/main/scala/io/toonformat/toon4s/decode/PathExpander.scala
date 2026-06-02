@@ -11,8 +11,6 @@ private[decode] object PathExpander {
 
   private val IdentifierSegmentPattern = "^[A-Za-z_][A-Za-z0-9_]*$".r
 
-  private val QuotedKeyPrefix = "\u0001"
-
   def expand(value: JsonValue, options: DecodeOptions): JsonValue = {
     if (options.expandPaths != PathExpansion.Safe) stripQuoted(value)
     else expandValue(value, options.strictness == Strictness.Strict)
@@ -22,7 +20,7 @@ private[decode] object PathExpander {
   case JObj(fields) =>
     val cleaned = fields.map {
       case (k, v) =>
-        val key = if (k.startsWith(QuotedKeyPrefix)) k.drop(1) else k
+        val (key, _) = InternalKeyEncoding.decode(k)
         key -> stripQuoted(v)
     }
     JObj(VectorMap.from(cleaned))
@@ -47,7 +45,7 @@ private[decode] object PathExpander {
       case (key, rawValue) =>
         val value = expandValue(rawValue, strict)
         val (rawKey, wasQuoted) =
-          if (key.startsWith(QuotedKeyPrefix)) (key.drop(1), true) else (key, false)
+          InternalKeyEncoding.decode(key)
         if (wasQuoted) acc = acc + (rawKey -> value)
         else {
           val segments =
