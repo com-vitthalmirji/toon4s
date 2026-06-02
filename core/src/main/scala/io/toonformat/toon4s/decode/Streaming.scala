@@ -65,7 +65,7 @@ object Streaming {
           if (idx >= lines.length) Right(())
           else {
             val pl = lines(idx)
-            Parser.parseArrayHeaderLine(pl.content, Delimiter.Comma) match {
+            Parser.parseArrayHeaderLine(pl.content, Delimiter.Comma, isStrict) match {
             case Some((h, inline)) if h.fields.nonEmpty && inline.isEmpty =>
               streamRows(idx + 1, pl.depth, h, 0) match {
               case Right(next) => loop(next)
@@ -143,7 +143,7 @@ object Streaming {
               scala.util.Try(Parser.parseKeyToken(after, 0)).toEither match {
               case Right((key, restIdx)) =>
                 val rest = after.substring(restIdx).trim
-                Parser.parseArrayHeaderLine(rest, Delimiter.Comma) match {
+                Parser.parseArrayHeaderLine(rest, Delimiter.Comma, isStrict) match {
                 case Some((h, inline)) if inline.isEmpty && h.fields.nonEmpty =>
                   val header = h.copy(key = Some(key))
                   onHeader(Vector.empty, header)
@@ -155,7 +155,7 @@ object Streaming {
                 }
               case _ =>
                 if (Parser.isArrayHeaderAfterHyphen(after))
-                  Parser.parseArrayHeaderLine(after, Delimiter.Comma) match {
+                  Parser.parseArrayHeaderLine(after, Delimiter.Comma, isStrict) match {
                   case Some((header, inline)) if inline.isEmpty =>
                     onHeader(Vector.empty, header)
                     streamRows(idx + 1, pl.depth, header, Vector.empty, 0) match {
@@ -167,7 +167,7 @@ object Streaming {
                 else loop(idx + 1)
               }
             case Some(pl) =>
-              Parser.parseArrayHeaderLine(pl.content, Delimiter.Comma) match {
+              Parser.parseArrayHeaderLine(pl.content, Delimiter.Comma, isStrict) match {
               case Some((h, inline)) if inline.isEmpty && h.fields.nonEmpty =>
                 val header = h
                 onHeader(Vector.empty, header)

@@ -811,6 +811,8 @@ See also: [Token benchmarks](./SCALA-TOON-SPECIFICATION.md#token-benchmarks)
 libraryDependencies += "com.vitthalmirji" %% "toon4s-core" % "<toon4s-version>"
 ```
 
+**Media type:** `text/toon` (provisional, spec §17). File extension: `.toon`. Charset: always UTF-8.
+
 Prefer CLI only? Ship the staged script (diagram below):
 
 ```bash

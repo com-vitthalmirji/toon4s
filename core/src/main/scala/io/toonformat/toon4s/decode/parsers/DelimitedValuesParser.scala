@@ -105,7 +105,8 @@ object DelimitedValuesParser {
     }
 
     // Add final value if present (trim trailing whitespace)
-    if (builder.nonEmpty || out.nonEmpty) {
+    // input.nonEmpty handles the single empty-string input case: "" -> Vector("")
+    if (builder.nonEmpty || out.nonEmpty || input.nonEmpty) {
       while (builder.nonEmpty && Character.isWhitespace(builder.last)) {
         builder.setLength(builder.length - 1)
       }

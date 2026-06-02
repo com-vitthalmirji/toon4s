@@ -14,7 +14,7 @@ import io.toonformat.toon4s.error.{DecodeError, ErrorLocation}
 
 object Decoders {
 
-  private val QuotedKeyPrefix = "\u0001"
+  // Quoting metadata is embedded via InternalKeyEncoding; see that object for the invariant.
 
   def decode(input: String, options: DecodeOptions): JsonValue = {
     val isStrict = options.strictness == Strictness.Strict
@@ -39,11 +39,12 @@ object Decoders {
     else {
       val cursor = new LineCursor(scan.lines, scan.blanks)
       implicit val strictness: Strictness = options.strictness
+      val isStrict = options.strictness == Strictness.Strict
 
       val rootArray = cursor.peek.flatMap {
         first =>
           if (isArrayHeaderAfterHyphen(first.content)) {
-            parseArrayHeaderLine(first.content, Delimiter.Comma).map {
+            parseArrayHeaderLine(first.content, Delimiter.Comma, isStrict).map {
               case (header, inline) =>
                 cursor.advance()
                 decodeArrayFromHeader(header, inline, cursor, 0, options)
@@ -82,7 +83,9 @@ object Decoders {
       options: DecodeOptions,
   ): JsonValue = {
     validateDepth(baseDepth, options)
+    val isStrict = options.strictness == Strictness.Strict
     val builder = Vector.newBuilder[(String, JsonValue)]
+    val seenKeys = if (isStrict) new scala.collection.mutable.HashSet[String]() else null
     var targetDepth = Option.empty[Int]
     var continue = true
     while (continue) {
@@ -95,7 +98,14 @@ object Decoders {
           cursor.advance()
           val KeyValueParse(key, value, _, quoted) =
             decodeKeyValue(line.content, cursor, line.depth, options)
-          val storedKey = if (quoted) QuotedKeyPrefix + key else key
+          val storedKey = InternalKeyEncoding.encode(key, quoted)
+          if (isStrict) {
+            if (seenKeys.contains(storedKey))
+              throw DecodeError.Syntax(
+                s"Duplicate key '${if (quoted) "\"" + key + "\"" else key}' at the same depth"
+              )
+            seenKeys += storedKey
+          }
           builder += ((storedKey, value))
           targetDepth = td
         } else continue = false
@@ -110,8 +120,9 @@ object Decoders {
       baseDepth: Int,
       options: DecodeOptions,
   ): KeyValueParse = {
+    val isStrict = options.strictness == Strictness.Strict
     val keyQuoted = content.dropWhile(_.isWhitespace).headOption.contains('"')
-    parseArrayHeaderLine(content, Delimiter.Comma) match {
+    parseArrayHeaderLine(content, Delimiter.Comma, isStrict) match {
     case Some((header, inline)) if header.key.nonEmpty =>
       val arrayValue = decodeArrayFromHeader(header, inline, cursor, baseDepth, options)
       KeyValueParse(header.key.get, arrayValue, baseDepth + 1, keyQuoted)
@@ -285,15 +296,18 @@ object Decoders {
       primaryOffset: Int,
       allowFallback: Boolean,
   ): Vector[JsonValue] = {
-    try decodeTabularArray(header, cursor, baseDepth, options, primaryOffset)
-    catch {
-      case err: DecodeError if allowFallback =>
-        val candidateOffset = cursor.peek.map(_.depth - baseDepth).getOrElse(primaryOffset)
-        val fallbackOffset =
-          if (candidateOffset > 0 && candidateOffset != primaryOffset) candidateOffset
-          else math.max(1, primaryOffset - 1)
-        decodeTabularArray(header, cursor, baseDepth, options, fallbackOffset)
-    }
+    // When allowFallback is true (tabular-as-first-field of list item per spec §10),
+    // rows may be at baseDepth+1 (pre-v3.0 layout) rather than the declared baseDepth+2.
+    // Detect the actual row depth from the cursor position BEFORE decoding instead of
+    // catching DecodeError and retrying, which would silently swallow unrelated errors.
+    val effectiveOffset =
+      if (!allowFallback) primaryOffset
+      else
+        cursor.peek.map(_.depth) match {
+        case Some(d) if d > baseDepth && d != baseDepth + primaryOffset => d - baseDepth
+        case _                                                          => primaryOffset
+        }
+    decodeTabularArray(header, cursor, baseDepth, options, effectiveOffset)
   }
 
   private def decodeListItem(
@@ -301,6 +315,7 @@ object Decoders {
       baseDepth: Int,
       options: DecodeOptions,
   ): JsonValue = {
+    val isStrict = options.strictness == Strictness.Strict
     validateDepth(baseDepth, options)
     val line = cursor.next().getOrElse(throw new NoSuchElementException("Expected list item"))
     val content = line.content
@@ -319,7 +334,7 @@ object Decoders {
       else {
         val arrayValue =
           if (isArrayHeaderAfterHyphen(afterHyphen))
-            parseArrayHeaderLine(afterHyphen, Delimiter.Comma).map {
+            parseArrayHeaderLine(afterHyphen, Delimiter.Comma, isStrict).map {
               case (header, inline) =>
                 decodeArrayFromHeader(
                   header,
@@ -350,11 +365,14 @@ object Decoders {
       baseDepth: Int,
       options: DecodeOptions,
   ): JsonValue = {
+    val isStrict = options.strictness == Strictness.Strict
     val afterHyphen = firstLine.content.drop(C.ListItemPrefix.length)
     val KeyValueParse(firstKey, firstValue, followDepth, firstQuoted) =
       decodeKeyValue(afterHyphen, cursor, baseDepth, options)
-    val storedHeadKey = if (firstQuoted) QuotedKeyPrefix + firstKey else firstKey
+    val storedHeadKey = InternalKeyEncoding.encode(firstKey, firstQuoted)
     val builder = Vector.newBuilder[(String, JsonValue)]
+    val seenKeys = if (isStrict) new scala.collection.mutable.HashSet[String]() else null
+    if (isStrict) seenKeys += storedHeadKey
     builder += ((storedHeadKey, firstValue))
     var continue = true
 
@@ -367,7 +385,14 @@ object Decoders {
         cursor.advance()
         val KeyValueParse(k, v, _, quoted) =
           decodeKeyValue(line.content, cursor, followDepth, options)
-        val storedKey = if (quoted) QuotedKeyPrefix + k else k
+        val storedKey = InternalKeyEncoding.encode(k, quoted)
+        if (isStrict) {
+          if (seenKeys.contains(storedKey))
+            throw DecodeError.Syntax(
+              s"Duplicate key '${if (quoted) "\"" + k + "\"" else k}' in list-item object"
+            )
+          seenKeys += storedKey
+        }
         builder += ((storedKey, v))
       case _ =>
         continue = false

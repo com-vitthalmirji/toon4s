@@ -55,8 +55,11 @@ object PrimitiveParser {
   def parsePrimitiveToken(token: String): JsonValue = {
     val trimmed = token.trim
 
+    // Empty array canonical form: key: [] or root []
+    if (trimmed == "[]") JsonValue.JArray(Vector.empty)
+
     // Empty string case
-    if (trimmed.isEmpty) JsonValue.JString("")
+    else if (trimmed.isEmpty) JsonValue.JString("")
 
     // Quoted string case
     else if (trimmed.headOption.contains('"'))

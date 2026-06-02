@@ -47,15 +47,7 @@ final case class EncodeOptions(
 
 }
 
-object EncodeOptions {
-
-  def withLengthMarker(options: EncodeOptions, enabled: Boolean): EncodeOptions =
-    options.copy(delimiter = Delimiter.withLengthMarker(options.delimiter, enabled))
-
-  def usesLengthMarker(options: EncodeOptions): Boolean =
-    Delimiter.usesLengthMarker(options.delimiter)
-
-}
+object EncodeOptions {}
 
 sealed trait KeyFolding
 

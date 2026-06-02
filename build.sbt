@@ -1,6 +1,7 @@
 import sbt._
 import sbt.Keys._
 import sbtdynver.DynVerPlugin.autoImport._
+import com.typesafe.tools.mima.core._
 
 lazy val Scala3Latest = "3.3.3"
 
@@ -115,9 +116,12 @@ lazy val core = (project in file("core"))
     mimaPreviousArtifacts := Set(
       organization.value %% moduleName.value % "0.7.0"
     ),
-    // Exclude known binary incompatible changes (add as needed)
+    // Internal parsing methods gained an isStrict parameter in v3.3 conformance work.
+    // These are implementation utilities, not part of the documented public API.
     mimaBinaryIssueFilters := Seq(
-      // Example: ProblemFilters.exclude[Problem]("io.toonformat.toon4s.InternalClass")
+      ProblemFilters.exclude[DirectMissingMethodProblem]("io.toonformat.toon4s.decode.Parser.parseArrayHeaderLine"),
+      ProblemFilters.exclude[DirectMissingMethodProblem]("io.toonformat.toon4s.decode.parsers.ArrayHeaderParser.parseArrayHeaderLine"),
+      ProblemFilters.exclude[DirectMissingMethodProblem]("io.toonformat.toon4s.decode.parsers.ArrayHeaderParser.parseBracketSegment"),
     ),
   )
 
