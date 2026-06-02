@@ -39,11 +39,12 @@ object Decoders {
     else {
       val cursor = new LineCursor(scan.lines, scan.blanks)
       implicit val strictness: Strictness = options.strictness
+      val isStrict = options.strictness == Strictness.Strict
 
       val rootArray = cursor.peek.flatMap {
         first =>
           if (isArrayHeaderAfterHyphen(first.content)) {
-            parseArrayHeaderLine(first.content, Delimiter.Comma).map {
+            parseArrayHeaderLine(first.content, Delimiter.Comma, isStrict).map {
               case (header, inline) =>
                 cursor.advance()
                 decodeArrayFromHeader(header, inline, cursor, 0, options)
@@ -82,7 +83,9 @@ object Decoders {
       options: DecodeOptions,
   ): JsonValue = {
     validateDepth(baseDepth, options)
+    val isStrict = options.strictness == Strictness.Strict
     val builder = Vector.newBuilder[(String, JsonValue)]
+    var seenKeys = Set.empty[String]
     var targetDepth = Option.empty[Int]
     var continue = true
     while (continue) {
@@ -96,6 +99,11 @@ object Decoders {
           val KeyValueParse(key, value, _, quoted) =
             decodeKeyValue(line.content, cursor, line.depth, options)
           val storedKey = if (quoted) QuotedKeyPrefix + key else key
+          if (isStrict && seenKeys.contains(storedKey))
+            throw DecodeError.Syntax(
+              s"Duplicate key '${if (quoted) "\"" + key + "\"" else key}' at the same depth"
+            )
+          seenKeys += storedKey
           builder += ((storedKey, value))
           targetDepth = td
         } else continue = false
@@ -110,8 +118,9 @@ object Decoders {
       baseDepth: Int,
       options: DecodeOptions,
   ): KeyValueParse = {
+    val isStrict = options.strictness == Strictness.Strict
     val keyQuoted = content.dropWhile(_.isWhitespace).headOption.contains('"')
-    parseArrayHeaderLine(content, Delimiter.Comma) match {
+    parseArrayHeaderLine(content, Delimiter.Comma, isStrict) match {
     case Some((header, inline)) if header.key.nonEmpty =>
       val arrayValue = decodeArrayFromHeader(header, inline, cursor, baseDepth, options)
       KeyValueParse(header.key.get, arrayValue, baseDepth + 1, keyQuoted)
@@ -301,6 +310,7 @@ object Decoders {
       baseDepth: Int,
       options: DecodeOptions,
   ): JsonValue = {
+    val isStrict = options.strictness == Strictness.Strict
     validateDepth(baseDepth, options)
     val line = cursor.next().getOrElse(throw new NoSuchElementException("Expected list item"))
     val content = line.content
@@ -319,7 +329,7 @@ object Decoders {
       else {
         val arrayValue =
           if (isArrayHeaderAfterHyphen(afterHyphen))
-            parseArrayHeaderLine(afterHyphen, Delimiter.Comma).map {
+            parseArrayHeaderLine(afterHyphen, Delimiter.Comma, isStrict).map {
               case (header, inline) =>
                 decodeArrayFromHeader(
                   header,
@@ -350,11 +360,13 @@ object Decoders {
       baseDepth: Int,
       options: DecodeOptions,
   ): JsonValue = {
+    val isStrict = options.strictness == Strictness.Strict
     val afterHyphen = firstLine.content.drop(C.ListItemPrefix.length)
     val KeyValueParse(firstKey, firstValue, followDepth, firstQuoted) =
       decodeKeyValue(afterHyphen, cursor, baseDepth, options)
     val storedHeadKey = if (firstQuoted) QuotedKeyPrefix + firstKey else firstKey
     val builder = Vector.newBuilder[(String, JsonValue)]
+    var seenKeys = Set(storedHeadKey)
     builder += ((storedHeadKey, firstValue))
     var continue = true
 
@@ -368,6 +380,11 @@ object Decoders {
         val KeyValueParse(k, v, _, quoted) =
           decodeKeyValue(line.content, cursor, followDepth, options)
         val storedKey = if (quoted) QuotedKeyPrefix + k else k
+        if (isStrict && seenKeys.contains(storedKey))
+          throw DecodeError.Syntax(
+            s"Duplicate key '${if (quoted) "\"" + k + "\"" else k}' in list-item object"
+          )
+        seenKeys += storedKey
         builder += ((storedKey, v))
       case _ =>
         continue = false

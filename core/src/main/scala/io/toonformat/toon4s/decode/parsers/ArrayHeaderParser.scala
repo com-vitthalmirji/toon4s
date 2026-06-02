@@ -66,6 +66,7 @@ object ArrayHeaderParser {
   def parseArrayHeaderLine(
       content: String,
       defaultDelim: Delimiter,
+      isStrict: Boolean = false,
   ): Option[(ArrayHeaderInfo, Option[String])] = {
     val trimmed = content.dropWhile(_.isWhitespace)
     if (trimmed.isEmpty) None
@@ -101,9 +102,10 @@ object ArrayHeaderParser {
         // No key, starts with bracket
         true
       case _ =>
-        // Unquoted key
+        // Unquoted key: bracket must appear before any colon
         val bracketPos = trimmed.indexOf('[')
-        if (bracketPos < 0) false
+        val colonPos = trimmed.indexOf(':')
+        if (bracketPos < 0 || (colonPos >= 0 && colonPos < bracketPos)) false
         else {
           val rawKey = trimmed.substring(0, bracketPos).trim
           if (rawKey.nonEmpty) keyOpt = Some(rawKey)
@@ -126,41 +128,69 @@ object ArrayHeaderParser {
         ) None
         else {
           val bracketSegment = content.substring(bracketStart + 1, bracketEnd)
-          val (length, delimiter) = parseBracketSegment(bracketSegment, defaultDelim)
-          cursor = skipWhitespace(bracketEnd + 1)
+          val bracketResult =
+            try Some(parseBracketSegment(bracketSegment, defaultDelim, isStrict))
+            catch { case e: DecodeError.InvalidHeader => if (isStrict) throw e else None }
+          bracketResult.flatMap {
+            case (length, delimiter) =>
+              val rawAfterBracket = bracketEnd + 1
+              cursor = skipWhitespace(rawAfterBracket)
+              if (
+                  isStrict &&
+                  cursor < content.length &&
+                  ((rawAfterBracket != cursor && content.charAt(cursor) == '{') ||
+                    (content.charAt(cursor) != '{' && content.charAt(cursor) != ':'))
+              )
+                throw DecodeError.InvalidHeader(
+                  s"Content between bracket segment and colon is not allowed in strict mode"
+                )
 
-          // Phase 3: Parse optional field list {field1,field2,...}
-          def parseFieldsSection(start: Int): Option[(List[String], Int)] = {
-            if (start < content.length && content.charAt(start) == '{') {
-              val braceEnd = content.indexOf('}', start)
-              if (braceEnd < 0) None
-              else {
-                val fieldsSegment = content.substring(start + 1, braceEnd)
-                val fields =
-                  if (fieldsSegment.nonEmpty)
-                    DelimitedValuesParser
-                      .parseDelimitedValues(fieldsSegment, delimiter)
-                      .map(token => StringLiteralParser.parseStringLiteral(token.trim))
-                      .toList
-                  else Nil
-                Some(fields -> skipWhitespace(braceEnd + 1))
+              // Phase 3: Parse optional field list {field1,field2,...}
+              def parseFieldsSection(start: Int): Option[(List[String], Int)] = {
+                if (start < content.length && content.charAt(start) == '{') {
+                  val braceEnd = content.indexOf('}', start)
+                  if (braceEnd < 0) None
+                  else {
+                    val fieldsSegment = content.substring(start + 1, braceEnd)
+                    // Spec §14.2: bracket delimiter must match field-list delimiter.
+                    // Detect mismatch by checking for unquoted occurrences of other delimiter
+                    // chars.
+                    if (isStrict && fieldsSegment.nonEmpty) {
+                      val otherDelims = Set(',', '\t', '|') - delimiter.char
+                      val hasMismatch = otherDelims.exists { d =>
+                        StringLiteralParser.findUnquotedChar(fieldsSegment, d) >= 0
+                      }
+                      if (hasMismatch)
+                        throw DecodeError.InvalidHeader(
+                          "Delimiter mismatch: bracket and field-list segments must use the same delimiter"
+                        )
+                    }
+                    val fields =
+                      if (fieldsSegment.nonEmpty)
+                        DelimitedValuesParser
+                          .parseDelimitedValues(fieldsSegment, delimiter)
+                          .map(token => StringLiteralParser.parseStringLiteral(token.trim))
+                          .toList
+                      else Nil
+                    Some(fields -> skipWhitespace(braceEnd + 1))
+                  }
+                } else Some(Nil -> skipWhitespace(start))
               }
-            } else Some(Nil -> skipWhitespace(start))
-          }
 
-          // Phase 4: Parse colon and optional inline values
-          parseFieldsSection(cursor).flatMap {
-            case (fields, nextCursor) =>
-              val colonCursor = skipWhitespace(nextCursor)
-              if (colonCursor >= content.length || content.charAt(colonCursor) != ':') None
-              else {
-                val inline = content.substring(colonCursor + 1).trim match {
-                case ""    => None
-                case other => Some(other)
-                }
-                Some(ArrayHeaderInfo(keyOpt, length, delimiter, fields) -> inline)
+              // Phase 4: Parse colon and optional inline values
+              parseFieldsSection(cursor).flatMap {
+                case (fields, nextCursor) =>
+                  val colonCursor = skipWhitespace(nextCursor)
+                  if (colonCursor >= content.length || content.charAt(colonCursor) != ':') None
+                  else {
+                    val inline = content.substring(colonCursor + 1).trim match {
+                    case ""    => None
+                    case other => Some(other)
+                    }
+                    Some(ArrayHeaderInfo(keyOpt, length, delimiter, fields) -> inline)
+                  }
               }
-          }
+          } // close bracketResult.flatMap
         }
       }
     }
@@ -197,12 +227,18 @@ object ArrayHeaderParser {
    * // (7, Delimiter.Pipe)
    *   }}}
    */
-  def parseBracketSegment(seg: String, defaultDelim: Delimiter): (Int, Delimiter) = {
+  def parseBracketSegment(
+      seg: String,
+      defaultDelim: Delimiter,
+      isStrict: Boolean = false,
+  ): (Int, Delimiter) = {
     var content = seg
 
-    if (content.startsWith("#")) {
-      content = content.drop(1)
-    }
+    // [#N] syntax was removed in spec v2.0; decoders MUST reject it
+    if (content.startsWith("#"))
+      throw DecodeError.InvalidHeader(
+        "[#N] length-marker syntax was removed in spec v2.0 and is not valid"
+      )
 
     // Check for delimiter suffix
     var delimiter = defaultDelim
@@ -218,6 +254,9 @@ object ArrayHeaderParser {
     if (content.isEmpty) {
       throw DecodeError.InvalidHeader(s"Invalid array length: $seg")
     }
+    // Leading zeros are invalid per spec §6 (single "0" is allowed)
+    if (content.length > 1 && content.charAt(0) == '0' && content.charAt(1).isDigit)
+      throw DecodeError.InvalidHeader(s"Array length with leading zeros is not allowed: [$seg]")
     val len = content.toIntOption.getOrElse {
       throw DecodeError.InvalidHeader(s"Invalid array length: $seg")
     }

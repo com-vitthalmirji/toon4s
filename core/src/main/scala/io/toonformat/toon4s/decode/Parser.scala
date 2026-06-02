@@ -54,8 +54,9 @@ object Parser {
   def parseArrayHeaderLine(
       content: String,
       defaultDelim: Delimiter,
+      isStrict: Boolean = false,
   ): Option[(ArrayHeaderInfo, Option[String])] =
-    ArrayHeaderParser.parseArrayHeaderLine(content, defaultDelim)
+    ArrayHeaderParser.parseArrayHeaderLine(content, defaultDelim, isStrict)
 
   /**
    * Parse bracket segment for array length and delimiter.

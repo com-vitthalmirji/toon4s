@@ -2,37 +2,57 @@
 
 The canonical, language-agnostic specification now lives at
 [toon-format/spec](https://github.com/toon-format/spec). `toon4s` tracks that
-source of truth and targets **TOON v3.0.x** (latest tag: v3.0.1), while keeping
+source of truth and targets **TOON v3.3** (2026-05-21), while keeping
 the decoder lenient for legacy v2.x layouts where safe.
 
-## What changed since v1.4
+## Spec version history
 
-- Removed legacy `[#N]` length markers; only `[N]` headers are valid.
-- Added optional key folding (`keyFolding="safe"` with `flattenDepth`) for dotted paths.
-- Added optional path expansion on decode (`expandPaths="safe"`) with strict/LWW conflict rules.
-- Clarified canonical number formatting and delimiter scoping per spec sections 2 & 11.
+| Version | Key changes in toon4s |
+|---|---|
+| v3.3 (current) | Lowercase bool/null MUST; canonical-decimal range scoped; `indentSize` option name |
+| v3.2 | Duplicate-key strict error; header delimiter mismatch error; malformed bracket rejection; `{}` arrays use expanded list; nested array-of-objects list form |
+| v3.1 | `\uXXXX` escape (encoder emits, decoder accepts); empty array canonical form `key: []` |
+| v3.0 | Tabular-first-field list-item depth rules; `[#N]` removed |
+| v2.x | Key folding, path expansion, strict mode |
+
+## Option name mapping (spec §13)
+
+The spec uses concept-handle names; toon4s uses Scala-idiomatic field names (allowed by §13):
+
+| Spec name | toon4s field | Notes |
+|---|---|---|
+| `indentSize` | `indent` | `EncodeOptions.indent`, `DecodeOptions.indent` |
+| `strict` | `strictness` | `DecodeOptions.strictness = Strictness.Strict` (default) |
+| `delimiter` | `delimiter` | `EncodeOptions.delimiter`, `Delimiter.Comma/Tab/Pipe` |
+| `keyFolding` | `keyFolding` | `EncodeOptions.keyFolding = KeyFolding.Safe` |
+| `flattenDepth` | `flattenDepth` | `EncodeOptions.flattenDepth` |
+| `expandPaths` | `expandPaths` | `DecodeOptions.expandPaths = PathExpansion.Safe` |
+
+## Media type
+
+The provisional IANA media type for TOON is `text/toon` (spec §17). File extension: `.toon`.
+Charset is always UTF-8; `charset=utf-8` may be specified and is assumed if absent.
 
 ## Compatibility note
 
 toon4s emits the v3.0-required row depth (`+2`) for tabular arrays placed as
-the first field of list-item objects and accepts legacy v2.x depths on decode.
+the first field of list-item objects, and uses `key: []` for empty arrays per v3.1.
 
 ## Where to look
 
-- Full spec: https://github.com/toon-format/spec/blob/v3.0.1/SPEC.md
-- Changelog: https://github.com/toon-format/spec/blob/v3.0.1/CHANGELOG.md
-- Conformance fixtures: synced from `tests/fixtures` in the spec repo.
+- Full spec: https://github.com/toon-format/spec/blob/main/SPEC.md
+- Changelog: https://github.com/toon-format/spec/blob/main/CHANGELOG.md
+- Conformance fixtures: synced from `tests/fixtures` at commit `07161ccc` (v3.3 release).
 
 `toon4s` implements the Scala/JVM interpretation of that spec (encoding, decoding, CLI) while
-maintaining deterministic behavior, strict mode validation, and zero-dependency core. Use the
-Options in the README to enable folding/expansion features across v2/v3.
+maintaining deterministic behavior, strict mode validation, and zero-dependency core.
 
 ## Upgrading from earlier versions (1.4 / 2.x)
 
-- CLI: `--strict` is deprecated; use `--strictness strict|lenient` (defaults to strict). The old flag remains temporarily.
-- Length markers: legacy `[#N]` headers are no longer produced; decoders stay lenient to legacy files.
-- Row depth: list-item tabular arrays emit rows at depth `+2` (v3 layout) while decoders accept legacy depths.
+- `[#N]` length markers: removed in spec v2.0; decoder now rejects them, encoder does not emit them.
+- Row depth: list-item tabular arrays emit rows at depth `+2` (v3 layout).
 - New optional features: key folding (`keyFolding="safe"`, `flattenDepth`) and path expansion (`expandPaths="safe"`) are off by default for backward compatibility.
+- Empty arrays: canonical form is now `key: []` (encoder) and `key: []` is accepted on decode (v3.1).
 
 ## Scala implementation architecture
 

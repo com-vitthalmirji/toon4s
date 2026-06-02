@@ -64,15 +64,12 @@ object Encoders {
       fields: List[String],
       delimiter: Delimiter,
   ): String = {
-    val useLengthMarker = Delimiter.usesLengthMarker(delimiter)
-    val baseDelimiter = Delimiter.base(delimiter)
-
     // Fast path: empty array with no key
-    if (!useLengthMarker && key.isEmpty && fields.isEmpty && length <= 10) {
-      return baseDelimiter match {
-      case Delimiter.Comma | Delimiter.CommaWithLengthMarker => emptyHeadersComma(length)
-      case Delimiter.Tab | Delimiter.TabWithLengthMarker     => emptyHeadersTab(length)
-      case Delimiter.Pipe | Delimiter.PipeWithLengthMarker   => emptyHeadersPipe(length)
+    if (key.isEmpty && fields.isEmpty && length <= 10) {
+      return delimiter match {
+      case Delimiter.Comma => emptyHeadersComma(length)
+      case Delimiter.Tab   => emptyHeadersTab(length)
+      case Delimiter.Pipe  => emptyHeadersPipe(length)
       }
     }
 
@@ -82,12 +79,11 @@ object Encoders {
     key.foreach(k => builder.append(encodeKey(k)))
 
     builder.append('[')
-    if (useLengthMarker) builder.append('#')
     builder.append(length)
-    baseDelimiter match {
-    case Delimiter.Tab | Delimiter.TabWithLengthMarker     => builder.append('\t')
-    case Delimiter.Pipe | Delimiter.PipeWithLengthMarker   => builder.append('|')
-    case Delimiter.Comma | Delimiter.CommaWithLengthMarker => // no suffix
+    delimiter match {
+    case Delimiter.Tab   => builder.append('\t')
+    case Delimiter.Pipe  => builder.append('|')
+    case Delimiter.Comma => // no suffix
     }
     builder.append(']')
 
@@ -279,7 +275,9 @@ object Encoders {
       allowFolding: Boolean = true,
   ): Unit = {
     if (values.isEmpty) {
-      writer.push(depth, formatHeader(0, key, Nil, options.delimiter))
+      // Spec v3.1: canonical empty array form is "key: []" (object-field) or "[]" (root/list)
+      val line = key.fold("[]")(k => s"${encodeKey(k)}: []")
+      writer.push(depth, line)
     } else if (isArrayOfPrimitives(values)) {
       val header = formatHeader(values.length, key, Nil, options.delimiter)
       writer match {
@@ -389,24 +387,24 @@ object Encoders {
           s"${encodeKey(firstKey)}: ${encodePrimitive(firstVal, options.delimiter)}",
         )
       case JArray(arr) if isArrayOfPrimitives(arr) =>
-        val header =
-          formatHeader(arr.length, Some(firstKey), Nil, options.delimiter)
-        writer match {
-        case sw: StreamLineWriter =>
-          sw.pushListItemDelimitedPrimitives(depth, header, arr, options.delimiter)
-        case _ =>
-          // Pre-allocate StringBuilder capacity to avoid resizing
-          val estimatedSize = arr.length * 11
-          val sb = new StringBuilder(estimatedSize)
-          var i = 0
-          while (i < arr.length) {
-            if (i > 0) sb.append(options.delimiter.char)
-            sb.append(encodePrimitive(arr(i), options.delimiter))
-            i += 1
+        if (arr.isEmpty) {
+          writer.pushListItem(depth, s"${encodeKey(firstKey)}: []")
+        } else {
+          val header = formatHeader(arr.length, Some(firstKey), Nil, options.delimiter)
+          writer match {
+          case sw: StreamLineWriter =>
+            sw.pushListItemDelimitedPrimitives(depth, header, arr, options.delimiter)
+          case _ =>
+            val estimatedSize = arr.length * 11
+            val sb = new StringBuilder(estimatedSize)
+            var i = 0
+            while (i < arr.length) {
+              if (i > 0) sb.append(options.delimiter.char)
+              sb.append(encodePrimitive(arr(i), options.delimiter))
+              i += 1
+            }
+            writer.pushListItem(depth, s"$header ${sb.result()}")
           }
-          val joined = sb.result()
-          val line = if (arr.isEmpty) header else s"$header $joined"
-          writer.pushListItem(depth, line)
         }
       case JArray(arr) if isArrayOfObjects(arr) =>
         val objectRows = arr.collect {

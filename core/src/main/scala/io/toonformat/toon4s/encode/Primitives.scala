@@ -74,7 +74,8 @@ private[toon4s] object Primitives {
     passesBasicChecks &&
     !isBooleanOrNull(value) &&
     !isNumericLike(value) &&
-    !value.exists(structuralChars.contains)
+    !value.exists(structuralChars.contains) &&
+    !value.exists(_ < ' ')
   }
 
   private def isBooleanOrNull(value: String): Boolean =

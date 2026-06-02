@@ -24,7 +24,7 @@ class ThreadSafetySpec extends FunSuite {
   )
 
   test("concurrent encode and decode remain deterministic") {
-    val options = EncodeOptions.withLengthMarker(EncodeOptions(), enabled = true)
+    val options = EncodeOptions(delimiter = Delimiter.Pipe)
     val expectedEncoded = Toon.encode(sample, options).getOrElse("")
     val tasks = Vector.fill(200) {
       Future {
@@ -42,13 +42,13 @@ class ThreadSafetySpec extends FunSuite {
     }
   }
 
-  test("concurrent decode supports both [N] and [#N] headers") {
-    val baseToon =
+  test("concurrent decode rejects removed [#N] syntax") {
+    val validToon =
       """users[2]{id,name}:
         |  1,Alice
         |  2,Bob
         |""".stripMargin
-    val markedToon =
+    val removedToon =
       """users[#2]{id,name}:
         |  1,Alice
         |  2,Bob
@@ -56,13 +56,17 @@ class ThreadSafetySpec extends FunSuite {
 
     val tasks = Vector.tabulate(200) { index =>
       Future {
-        val input = if (index % 2 == 0) baseToon else markedToon
-        Toon.decode(input)
+        val input = if (index % 2 == 0) validToon else removedToon
+        (index % 2 == 0, Toon.decode(input))
       }
     }
 
     val results = Await.result(Future.sequence(tasks), 30.seconds)
-    assert(results.forall(_.isRight))
+    results.foreach {
+      case (isValid, result) =>
+        if (isValid) assert(result.isRight)
+        else assert(result.isLeft, s"[#N] syntax should be rejected but got: $result")
+    }
   }
 
 }

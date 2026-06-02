@@ -23,7 +23,7 @@ jobs:
 
       - name: Verify conformance fixtures match spec
         env:
-          SPEC_REF: f9af6faa7d4fb1f82bda6b847f7a46065bb4d35f
+          SPEC_REF: 07161ccc84242a5571f14d33504fc0b4b84da0b2
         run: |
           chmod +x scripts/check-spec-fixtures-sync.sh
           ./scripts/check-spec-fixtures-sync.sh

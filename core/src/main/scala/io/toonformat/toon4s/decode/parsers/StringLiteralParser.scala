@@ -65,11 +65,27 @@ object StringLiteralParser {
       trimmed.charAt(i) match {
       case '\\' if i + 1 < trimmed.length =>
         trimmed.charAt(i + 1) match {
-        case '"'   => builder.append('"'); i += 2
-        case '\\'  => builder.append('\\'); i += 2
-        case 'n'   => builder.append('\n'); i += 2
-        case 'r'   => builder.append('\r'); i += 2
-        case 't'   => builder.append('\t'); i += 2
+        case '"'  => builder.append('"'); i += 2
+        case '\\' => builder.append('\\'); i += 2
+        case 'n'  => builder.append('\n'); i += 2
+        case 'r'  => builder.append('\r'); i += 2
+        case 't'  => builder.append('\t'); i += 2
+        case 'u'  =>
+          if (i + 5 >= trimmed.length)
+            throw DecodeError.Syntax(
+              s"Invalid \\u escape: fewer than 4 hex digits before end of string"
+            )
+          val hex = trimmed.substring(i + 2, i + 6)
+          if (
+              !hex.forall(c =>
+                (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')
+              )
+          )
+            throw DecodeError.Syntax(s"Invalid \\u escape: expected 4 hex digits, got '$hex'")
+          val cp = Integer.parseInt(hex, 16)
+          if (cp >= 0xD800 && cp <= 0xDFFF)
+            throw DecodeError.Syntax(s"Invalid \\u$hex: lone surrogate is not permitted")
+          builder.append(cp.toChar); i += 6
         case other => throw DecodeError.Syntax(s"Invalid escape sequence: \\$other")
         }
       case '\\' =>
@@ -148,15 +164,30 @@ object StringLiteralParser {
       s.charAt(i) match {
       case '\\' if i + 1 < s.length =>
         s.charAt(i + 1) match {
-        case '"'   => builder.append('"')
-        case '\\'  => builder.append('\\')
-        case 'n'   => builder.append('\n')
-        case 'r'   => builder.append('\r')
-        case 't'   => builder.append('\t')
+        case '"'  => builder.append('"'); i += 2
+        case '\\' => builder.append('\\'); i += 2
+        case 'n'  => builder.append('\n'); i += 2
+        case 'r'  => builder.append('\r'); i += 2
+        case 't'  => builder.append('\t'); i += 2
+        case 'u'  =>
+          if (i + 5 >= s.length)
+            throw DecodeError.Syntax(
+              "Invalid \\u escape: fewer than 4 hex digits before end of string"
+            )
+          val hex = s.substring(i + 2, i + 6)
+          if (
+              !hex.forall(c =>
+                (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')
+              )
+          )
+            throw DecodeError.Syntax(s"Invalid \\u escape: expected 4 hex digits, got '$hex'")
+          val cp = Integer.parseInt(hex, 16)
+          if (cp >= 0xD800 && cp <= 0xDFFF)
+            throw DecodeError.Syntax(s"Invalid \\u$hex: lone surrogate is not permitted")
+          builder.append(cp.toChar); i += 6
         case other =>
           throw DecodeError.Syntax(s"Invalid escape sequence: \\$other")
         }
-        i += 2
       case '\\' =>
         throw DecodeError.Syntax("Unterminated escape sequence in string literal")
       case c =>

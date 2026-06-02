@@ -1,7 +1,7 @@
 {
-  "version": "1.4",
+  "version": "3.1",
   "category": "decode",
-  "description": "Object decoding - simple objects, nested objects, key parsing, quoted values",
+  "description": "Object decoding - fields, nested objects, key parsing, §6 fall-through (non-strict), and §14.4 duplicate-key LWW",
   "tests": [
     {
       "name": "parses objects with primitive values",
@@ -29,6 +29,26 @@
         "user": {}
       },
       "specSection": "8"
+    },
+    {
+      "name": "bare key: with no children decodes as empty object, not array",
+      "input": "matches:",
+      "expected": {
+        "matches": {}
+      },
+      "specSection": "8"
+    },
+    {
+      "name": "applies last-write-wins for duplicate sibling keys in non-strict mode",
+      "input": "name: Ada\nname: Bob",
+      "expected": {
+        "name": "Bob"
+      },
+      "options": {
+        "strict": false
+      },
+      "specSection": "14.4",
+      "minSpecVersion": "3.2"
     },
     {
       "name": "parses quoted object value with colon",
@@ -111,12 +131,64 @@
       "specSection": "8"
     },
     {
+      "name": "decodes \\uXXXX in quoted key (U+0004 control character)",
+      "input": "\"a\\u0004b\": 1",
+      "expected": {
+        "a\u0004b": 1
+      },
+      "specSection": "7.1"
+    },
+    {
+      "name": "decodes \\uXXXX in quoted key (case-insensitive hex)",
+      "input": "\"x\\u00E9y\": 2",
+      "expected": {
+        "xéy": 2
+      },
+      "specSection": "7.1"
+    },
+    {
       "name": "parses quoted key with brackets",
       "input": "\"[index]\": 5",
       "expected": {
         "[index]": 5
       },
       "specSection": "8"
+    },
+    {
+      "name": "treats extra brackets after valid array segment as literal key (non-strict)",
+      "input": "foo[1][bar]: 10",
+      "options": {
+        "strict": false
+      },
+      "expected": {
+        "foo[1][bar]": 10
+      },
+      "specSection": "6",
+      "note": "Non-whitespace [bar] between ] and : prevents array header interpretation; non-strict fall-through produces a literal key not constrained by §7.3"
+    },
+    {
+      "name": "treats non-integer bracket content as literal key (non-strict)",
+      "input": "foo[bar][1]: 20",
+      "options": {
+        "strict": false
+      },
+      "expected": {
+        "foo[bar][1]": 20
+      },
+      "specSection": "6",
+      "note": "[bar] fails integer parsing; non-strict fall-through produces a literal key not constrained by §7.3"
+    },
+    {
+      "name": "treats text between bracket segment and colon as literal key (non-strict)",
+      "input": "foo[2]extra: a,b",
+      "options": {
+        "strict": false
+      },
+      "expected": {
+        "foo[2]extra": "a,b"
+      },
+      "specSection": "6",
+      "note": "Non-whitespace content between ] and : prevents array header interpretation; non-strict fall-through produces a literal key"
     },
     {
       "name": "parses quoted key with braces",
@@ -233,6 +305,36 @@
         }
       },
       "specSection": "8"
+    },
+    {
+      "name": "applies LWW for nested duplicate sibling keys in non-strict mode",
+      "input": "outer:\n  name: Ada\n  name: Bob",
+      "expected": {
+        "outer": {
+          "name": "Bob"
+        }
+      },
+      "options": {
+        "strict": false
+      },
+      "specSection": "14.4",
+      "minSpecVersion": "3.2"
+    },
+    {
+      "name": "applies LWW for duplicate keys within a list-item object in non-strict mode",
+      "input": "items[1]:\n  - id: 1\n    id: 2",
+      "expected": {
+        "items": [
+          {
+            "id": 2
+          }
+        ]
+      },
+      "options": {
+        "strict": false
+      },
+      "specSection": "14.4",
+      "minSpecVersion": "3.2"
     }
   ]
 }

@@ -77,12 +77,13 @@ object ImmutableDecoders {
     if (scan.lines.isEmpty) JObj(VectorMap.empty)
     else {
       val cursor = ImmutableLineCursor.fromScanResult(scan)
+      val isStrict = options.strictness == Strictness.Strict
       implicit val strictness: Strictness = options.strictness
 
       // Check for root array
       cursor.peek match {
       case Some(first) if isArrayHeaderAfterHyphen(first.content) =>
-        Parser.parseArrayHeaderLine(first.content, Delimiter.Comma) match {
+        Parser.parseArrayHeaderLine(first.content, Delimiter.Comma, isStrict) match {
         case Some((header, inline)) =>
           val (result, _) =
             decodeArrayFromHeader(
@@ -274,6 +275,7 @@ object ImmutableDecoders {
       options: DecodeOptions,
       listContext: Boolean = false,
   )(implicit strictness: Strictness): (JsonValue, ImmutableLineCursor) = {
+    val isStrict = strictness == Strictness.Strict
     cursor.peek match {
     case Some(line) if line.depth < depth =>
       // Empty value
@@ -283,7 +285,7 @@ object ImmutableDecoders {
       val content = line.content
 
       // Check for array header
-      Parser.parseArrayHeaderLine(content, Delimiter.Comma) match {
+      Parser.parseArrayHeaderLine(content, Delimiter.Comma, isStrict) match {
       case Some((header, inline)) =>
         val rowOffset = if (listContext && header.fields.nonEmpty) 2 else 1
         val allowFallback = listContext && rowOffset > 1

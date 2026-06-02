@@ -1,5 +1,5 @@
 {
-  "version": "1.4",
+  "version": "3.1",
   "category": "encode",
   "description": "Primitive array encoding - inline arrays of strings, numbers, booleans",
   "tests": [
@@ -32,7 +32,23 @@
       "input": {
         "items": []
       },
-      "expected": "items[0]:",
+      "expected": "items: []",
+      "specSection": "9.1"
+    },
+    {
+      "name": "encodes empty string keys for inline arrays",
+      "input": {
+        "": [1, 2, 3]
+      },
+      "expected": "\"\"[3]: 1,2,3",
+      "specSection": "9.1"
+    },
+    {
+      "name": "encodes empty string keys for empty arrays",
+      "input": {
+        "": []
+      },
+      "expected": "\"\": []",
       "specSection": "9.1"
     },
     {

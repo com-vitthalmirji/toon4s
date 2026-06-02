@@ -20,14 +20,6 @@
       "specSection": "11"
     },
     {
-      "name": "parses primitive arrays with comma delimiter",
-      "input": "tags[3]: reading,gaming,coding",
-      "expected": {
-        "tags": ["reading", "gaming", "coding"]
-      },
-      "specSection": "11"
-    },
-    {
       "name": "parses tabular arrays with tab delimiter",
       "input": "items[2\t]{sku\tqty\tprice}:\n  A1\t2\t9.99\n  B2\t1\t14.5",
       "expected": {
@@ -179,7 +171,7 @@
       "note": "Active delimiter is tab, but object values use document delimiter for quoting"
     },
     {
-      "name": "object values with comma must be quoted when document delimiter is comma",
+      "name": "parses quoted comma in object values",
       "input": "items[2]:\n  - status: \"a,b\"\n  - status: \"c,d\"",
       "expected": {
         "items": [{ "status": "a,b" }, { "status": "c,d" }]

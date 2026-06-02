@@ -10,33 +10,29 @@ final class EncodeOptionsBuilder[HasIndent, HasDelimiter] private (
     private val delimiterOpt: Option[Delimiter],
     private val keyFolding: KeyFolding,
     private val flattenDepth: Int,
-    private val lengthMarker: Boolean,
 ) {
 
   def indent(n: Int): EncodeOptionsBuilder[Present, HasDelimiter] = {
     require(n > 0, s"Indent must be positive, got: $n")
     require(n <= 32, s"Indent must be <= 32 for readability, got: $n")
-    new EncodeOptionsBuilder(Some(n), delimiterOpt, keyFolding, flattenDepth, lengthMarker)
+    new EncodeOptionsBuilder(Some(n), delimiterOpt, keyFolding, flattenDepth)
   }
 
   def delimiter(d: Delimiter): EncodeOptionsBuilder[HasIndent, Present] =
-    new EncodeOptionsBuilder(indentOpt, Some(d), keyFolding, flattenDepth, lengthMarker)
+    new EncodeOptionsBuilder(indentOpt, Some(d), keyFolding, flattenDepth)
 
   def withKeyFolding(mode: KeyFolding): EncodeOptionsBuilder[HasIndent, HasDelimiter] =
-    new EncodeOptionsBuilder(indentOpt, delimiterOpt, mode, flattenDepth, lengthMarker)
+    new EncodeOptionsBuilder(indentOpt, delimiterOpt, mode, flattenDepth)
 
   def withFlattenDepth(n: Int): EncodeOptionsBuilder[HasIndent, HasDelimiter] = {
     require(n >= 0, s"flattenDepth must be non-negative, got: $n")
-    new EncodeOptionsBuilder(indentOpt, delimiterOpt, keyFolding, n, lengthMarker)
+    new EncodeOptionsBuilder(indentOpt, delimiterOpt, keyFolding, n)
   }
-
-  def withLengthMarker(enabled: Boolean): EncodeOptionsBuilder[HasIndent, HasDelimiter] =
-    new EncodeOptionsBuilder(indentOpt, delimiterOpt, keyFolding, flattenDepth, enabled)
 
   def build(implicit ev1: HasIndent =:= Present, ev2: HasDelimiter =:= Present): EncodeOptions =
     EncodeOptions(
       indent = indentOpt.get,
-      delimiter = Delimiter.withLengthMarker(delimiterOpt.get, lengthMarker),
+      delimiter = delimiterOpt.get,
       keyFolding = keyFolding,
       flattenDepth = flattenDepth,
     )
@@ -55,7 +51,6 @@ object EncodeOptionsBuilder {
       None,
       keyFolding = KeyFolding.Off,
       flattenDepth = Int.MaxValue,
-      lengthMarker = false,
     )
 
   def defaults: EncodeOptions = EncodeOptions()

@@ -96,17 +96,15 @@ class DecodeSpec extends FunSuite {
     assert(result.left.exists(_.isInstanceOf[DecodeError.Syntax]))
   }
 
-  test("unicode escapes are rejected (TOON v2.1 spec compliance)") {
-    // Avoid a literal \uXXXX sequence in source to prevent the Scala 2.13
-    // unicode preprocessor from interpreting it at compile time.
+  test("unicode escapes are accepted and decoded (spec v3.1)") {
+    // A is 'A' — should decode successfully per spec v3.1
     val input = "name: \"test\\u004" + "1value\""
-
     val result = Toon.decode(input)
-    assert(result.isLeft, "Unicode escape \\u0041 should be rejected")
-    result.left.foreach {
-      err =>
-        assert(err.isInstanceOf[DecodeError.Syntax])
-        assert(err.message.contains("Invalid escape sequence: \\u"))
+    assert(result.isRight, s"Unicode escape \\u0041 should be accepted, got: $result")
+    result.foreach {
+      case JObj(fields) =>
+        assertEquals(fields.get("name"), Some(JString("testAvalue")))
+      case other => fail(s"Expected object, got $other")
     }
   }
 
