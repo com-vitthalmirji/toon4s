@@ -85,7 +85,7 @@ object Decoders {
     validateDepth(baseDepth, options)
     val isStrict = options.strictness == Strictness.Strict
     val builder = Vector.newBuilder[(String, JsonValue)]
-    var seenKeys = Set.empty[String]
+    val seenKeys = if (isStrict) new scala.collection.mutable.HashSet[String]() else null
     var targetDepth = Option.empty[Int]
     var continue = true
     while (continue) {
@@ -99,11 +99,13 @@ object Decoders {
           val KeyValueParse(key, value, _, quoted) =
             decodeKeyValue(line.content, cursor, line.depth, options)
           val storedKey = InternalKeyEncoding.encode(key, quoted)
-          if (isStrict && seenKeys.contains(storedKey))
-            throw DecodeError.Syntax(
-              s"Duplicate key '${if (quoted) "\"" + key + "\"" else key}' at the same depth"
-            )
-          seenKeys += storedKey
+          if (isStrict) {
+            if (seenKeys.contains(storedKey))
+              throw DecodeError.Syntax(
+                s"Duplicate key '${if (quoted) "\"" + key + "\"" else key}' at the same depth"
+              )
+            seenKeys += storedKey
+          }
           builder += ((storedKey, value))
           targetDepth = td
         } else continue = false
@@ -369,7 +371,8 @@ object Decoders {
       decodeKeyValue(afterHyphen, cursor, baseDepth, options)
     val storedHeadKey = InternalKeyEncoding.encode(firstKey, firstQuoted)
     val builder = Vector.newBuilder[(String, JsonValue)]
-    var seenKeys = Set(storedHeadKey)
+    val seenKeys = if (isStrict) new scala.collection.mutable.HashSet[String]() else null
+    if (isStrict) seenKeys += storedHeadKey
     builder += ((storedHeadKey, firstValue))
     var continue = true
 
@@ -383,11 +386,13 @@ object Decoders {
         val KeyValueParse(k, v, _, quoted) =
           decodeKeyValue(line.content, cursor, followDepth, options)
         val storedKey = InternalKeyEncoding.encode(k, quoted)
-        if (isStrict && seenKeys.contains(storedKey))
-          throw DecodeError.Syntax(
-            s"Duplicate key '${if (quoted) "\"" + k + "\"" else k}' in list-item object"
-          )
-        seenKeys += storedKey
+        if (isStrict) {
+          if (seenKeys.contains(storedKey))
+            throw DecodeError.Syntax(
+              s"Duplicate key '${if (quoted) "\"" + k + "\"" else k}' in list-item object"
+            )
+          seenKeys += storedKey
+        }
         builder += ((storedKey, v))
       case _ =>
         continue = false
