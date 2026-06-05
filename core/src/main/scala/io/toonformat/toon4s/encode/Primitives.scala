@@ -51,8 +51,16 @@ private[toon4s] object Primitives {
   }
 
   private def normalizeNumber(n: BigDecimal): String = {
-    val normalized = n.bigDecimal.stripTrailingZeros.toPlainString
-    if (normalized == "-0") "0" else normalized
+    val bd = n.bigDecimal
+    // Fast path: integral value (no fractional digits) that fits in a long. The canonical form of
+    // such a value is just its digits, so skip stripTrailingZeros and toPlainString. The digit
+    // bound keeps the long conversion exact (a value with at most 18 digits cannot overflow long).
+    if (bd.scale() <= 0 && (bd.precision() - bd.scale()) <= 18) {
+      java.lang.Long.toString(bd.longValue())
+    } else {
+      val normalized = bd.stripTrailingZeros.toPlainString
+      if (normalized == "-0") "0" else normalized
+    }
   }
 
   // Raw-value primitive formatting. Lets typed callers (such as the Spark integration) emit
