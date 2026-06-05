@@ -31,6 +31,49 @@ All examples are based on [TOON Generation Benchmark](https://github.com/veterta
 - ❌ **TOON fails**: Deep hierarchies (0% one-shot accuracy)
 - ⚠️ **Prompt tax**: TOON overhead > savings for small datasets (< 1KB)
 
+## Compose with Databricks AI Functions (ai_query)
+
+toon4s does not replace platform LLM functions like Databricks `ai_query`. It composes with them:
+toon4s encodes each chunk to compact TOON (about 40% fewer tokens than JSON for tabular data),
+and `ai_query` runs the model over those chunks. Fewer tokens per call means lower cost and more
+rows per request.
+
+The encoding step uses the real encoder (`toToonDataset`), not the row-text UDFs, so the payload
+is canonical TOON.
+
+```scala
+import io.toonformat.toon4s.spark.SparkToonOps._
+
+// 1. Encode to compact TOON chunks (one string per chunk).
+val chunks = df.toToonDataset(ToonSparkOptions(key = "rows", maxRowsPerChunk = 500))
+chunks.createOrReplaceTempView("toon_chunks")
+
+// 2. Run the model over the chunks. On Databricks ai_query is built in.
+spark.sql("""
+  SELECT ai_query('my-serving-endpoint', value) AS analysis
+  FROM toon_chunks
+""")
+```
+
+Pure SQL on Databricks, once the chunks are a table or view:
+
+```sql
+SELECT ai_query('my-serving-endpoint', value) AS analysis
+FROM toon_chunks;
+```
+
+To run the recipe locally or in CI, register a stand-in for `ai_query` before the query:
+
+```scala
+spark.udf.register(
+  "ai_query",
+  (endpoint: String, prompt: String) => s"$endpoint analyzed ${prompt.length} chars",
+)
+```
+
+A runnable, verified version of this recipe lives in
+`src/test/scala/io/toonformat/toon4s/spark/AiQueryRecipeTest.scala`.
+
 ## Running Examples
 
 ### 1. Try in 5 minutes
