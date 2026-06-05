@@ -251,10 +251,13 @@ object Encoders {
       val keys = first.keys.toList
       if (keys.isEmpty) None
       else {
-        val firstKeySet = first.keySet
-        // Use iterator for early exit on non-uniform rows
+        val firstSize = first.size
+        // A row is uniform with the first when it has the same key set and only primitive values.
+        // Compare keys by size plus containment so no per-row keySet is allocated.
         val uniform = rows.iterator.forall { row =>
-          row.keySet == firstKeySet && row.valuesIterator.forall(isPrimitive)
+          row.size == firstSize &&
+          keys.forall(row.contains) &&
+          row.valuesIterator.forall(isPrimitive)
         }
         if (uniform) Some(keys) else None
       }
