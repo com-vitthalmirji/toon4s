@@ -59,9 +59,7 @@ private[toon4s] object Primitives {
   // canonical TOON tokens straight from primitive values without first wrapping them in a
   // JsonValue. Output is identical to encodePrimitive for the same value.
   //
-  // Integral, boolean, null and string values are formatted without allocating a BigDecimal.
-  // Double values still go through BigDecimal because matching the canonical plain-decimal form
-  // (no exponent) requires decimal expansion that Double.toString does not provide.
+  // None of these allocate a BigDecimal.
 
   val nullToken: String = C.NullLiteral
 
@@ -71,7 +69,83 @@ private[toon4s] object Primitives {
 
   def formatBigInt(n: BigInt): String = n.toString
 
-  def formatDouble(d: Double): String = normalizeNumber(BigDecimal(d))
+  /**
+   * Format a double in canonical TOON form (plain decimal, no exponent, no trailing zeros) without
+   * allocating a BigDecimal. Java's Double.toString already produces the shortest round-trip
+   * digits; this reformats those digits in one pass into a single buffer, so the output is
+   * byte-identical to BigDecimal(d).stripTrailingZeros.toPlainString.
+   */
+  def formatDouble(d: Double): String =
+    if (d == 0.0) "0" // covers +0.0 and -0.0
+    else {
+      val sb = new java.lang.StringBuilder(24)
+      appendCanonicalDouble(sb, d)
+      sb.toString
+    }
+
+  private def appendCanonicalDouble(sb: java.lang.StringBuilder, d: Double): Unit = {
+    val s = java.lang.Double.toString(d)
+    val n = s.length
+    var start = 0
+    if (s.charAt(0) == '-') {
+      sb.append('-')
+      start = 1
+    }
+    val dot = s.indexOf('.', start)
+    val eIdx = s.indexOf('E', start)
+    val intEnd = dot
+    val fracStart = dot + 1
+    val fracEnd = if (eIdx < 0) n else eIdx
+    val exp = if (eIdx < 0) 0 else parseExp(s, eIdx + 1, n)
+    val intLen = intEnd - start
+    val fracLen = fracEnd - fracStart
+    val totalDigits = intLen + fracLen
+    // The decimal point sits after `pointPos` significant digits once the exponent is applied.
+    val pointPos = intLen + exp
+
+    def digitAt(k: Int): Char =
+      if (k < intLen) s.charAt(start + k) else s.charAt(fracStart + (k - intLen))
+
+    if (pointPos <= 0) {
+      // All digits are fractional: 0.00...digits, with trailing zeros stripped.
+      var last = totalDigits - 1
+      while (last >= 0 && digitAt(last) == '0') last -= 1
+      sb.append('0').append('.')
+      var z = 0
+      while (z < -pointPos) { sb.append('0'); z += 1 }
+      var k = 0
+      while (k <= last) { sb.append(digitAt(k)); k += 1 }
+    } else if (pointPos >= totalDigits) {
+      // Integer value: all digits plus trailing zeros from the exponent.
+      var k = 0
+      while (k < totalDigits) { sb.append(digitAt(k)); k += 1 }
+      var z = 0
+      while (z < pointPos - totalDigits) { sb.append('0'); z += 1 }
+    } else {
+      // Mixed: integer part then fractional part with trailing zeros stripped.
+      var k = 0
+      while (k < pointPos) { sb.append(digitAt(k)); k += 1 }
+      var last = totalDigits - 1
+      while (last >= pointPos && digitAt(last) == '0') last -= 1
+      if (last >= pointPos) {
+        sb.append('.')
+        var j = pointPos
+        while (j <= last) { sb.append(digitAt(j)); j += 1 }
+      }
+    }
+  }
+
+  private def parseExp(s: String, from: Int, to: Int): Int = {
+    var i = from
+    var neg = false
+    if (s.charAt(i) == '-') { neg = true; i += 1 }
+    var v = 0
+    while (i < to) {
+      v = v * 10 + (s.charAt(i) - '0')
+      i += 1
+    }
+    if (neg) -v else v
+  }
 
   def formatBigDecimal(n: BigDecimal): String = normalizeNumber(n)
 
