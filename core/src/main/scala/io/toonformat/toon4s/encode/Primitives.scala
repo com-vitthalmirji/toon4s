@@ -59,9 +59,29 @@ private[toon4s] object Primitives {
     if (isValidUnquotedKey(key)) key else quoteAndEscape(key)
   }
 
-  private val ValidKeyRegex = "^[A-Za-z_][A-Za-z0-9_.]*$".r
+  private def isAsciiLetter(c: Char): Boolean =
+    (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')
 
-  def isValidUnquotedKey(key: String): Boolean = ValidKeyRegex.matches(key)
+  private def isAsciiDigit(c: Char): Boolean = c >= '0' && c <= '9'
+
+  // Hand-rolled scan equivalent to "^[A-Za-z_][A-Za-z0-9_.]*$". Avoids a regex Matcher per key.
+  def isValidUnquotedKey(key: String): Boolean = {
+    if (key.isEmpty) false
+    else {
+      val first = key.charAt(0)
+      if (!(isAsciiLetter(first) || first == '_')) false
+      else {
+        var i = 1
+        var ok = true
+        while (ok && i < key.length) {
+          val c = key.charAt(i)
+          if (!(isAsciiLetter(c) || isAsciiDigit(c) || c == '_' || c == '.')) ok = false
+          i += 1
+        }
+        ok
+      }
+    }
+  }
 
   def isSafeUnquoted(value: String, delim: Delimiter): Boolean = {
     val passesBasicChecks =
@@ -81,12 +101,53 @@ private[toon4s] object Primitives {
   private def isBooleanOrNull(value: String): Boolean =
     value == C.TrueLiteral || value == C.FalseLiteral || value == C.NullLiteral
 
-  private val NumericLikePattern = "^-?\\d+(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$".r
+  // Hand-rolled scan equivalent to "^-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?$". Avoids a regex Matcher
+  // per value on the encode hot path.
+  private def isPlainNumeric(value: String): Boolean = {
+    val n = value.length
+    if (n == 0) false
+    else {
+      var i = 0
+      if (value.charAt(0) == '-') i += 1
+      val intStart = i
+      while (i < n && isAsciiDigit(value.charAt(i))) i += 1
+      if (i == intStart) false
+      else {
+        if (i < n && value.charAt(i) == '.') {
+          i += 1
+          val fracStart = i
+          while (i < n && isAsciiDigit(value.charAt(i))) i += 1
+          if (i == fracStart) return false
+        }
+        if (i < n && (value.charAt(i) == 'e' || value.charAt(i) == 'E')) {
+          i += 1
+          if (i < n && (value.charAt(i) == '+' || value.charAt(i) == '-')) i += 1
+          val expStart = i
+          while (i < n && isAsciiDigit(value.charAt(i))) i += 1
+          if (i == expStart) return false
+        }
+        i == n
+      }
+    }
+  }
 
-  private val LeadingZeroPattern = "^0\\d+$".r
+  // Equivalent to "^0\d+$": a leading zero followed by one or more digits.
+  private def isLeadingZeroNumber(value: String): Boolean = {
+    val n = value.length
+    if (n < 2 || value.charAt(0) != '0') false
+    else {
+      var i = 1
+      var ok = true
+      while (ok && i < n) {
+        if (!isAsciiDigit(value.charAt(i))) ok = false
+        i += 1
+      }
+      ok
+    }
+  }
 
   private def isNumericLike(value: String): Boolean =
-    NumericLikePattern.matches(value) || LeadingZeroPattern.matches(value)
+    isPlainNumeric(value) || isLeadingZeroNumber(value)
 
   /**
    * Escape a string by converting special characters to escape sequences.
