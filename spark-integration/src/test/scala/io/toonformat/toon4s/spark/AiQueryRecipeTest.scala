@@ -32,12 +32,12 @@ class AiQueryRecipeTest extends SparkTestSuite {
     val chunks = df.toToonDataset(ToonSparkOptions(key = "rows", maxRowsPerChunk = 5))
 
     // Real TOON, not JSON: the tabular header is present.
-    assert(chunks.collect().forall(_.contains("rows[")))
+    assert(chunks.take(1000).forall(_.contains("rows[")))
 
     chunks.createOrReplaceTempView("toon_chunks")
     val responses = spark
       .sql("SELECT ai_query('my-endpoint', value) AS analysis FROM toon_chunks")
-      .collect()
+      .take(1000)
       .map(_.getString(0))
 
     assertEquals(responses.length, 2)
