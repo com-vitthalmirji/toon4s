@@ -206,6 +206,15 @@ final class LineWriter(indentSize: Int) extends EncodeLineWriter {
     }
   }
 
+  /** Append "key: value" straight into the buffer, avoiding an intermediate interpolated line. */
+  def pushKeyValuePrimitive(depth: Int, key: String, value: JsonValue, delim: Delimiter): Unit = {
+    if (!first) builder.append('\n') else first = false
+    pad(depth)
+    builder.append(Primitives.encodeKey(key))
+    builder.append(": ")
+    builder.append(Primitives.encodePrimitive(value, delim))
+  }
+
   /**
    * Get accumulated output.
    *

@@ -246,8 +246,7 @@ object Encoders {
   case JNull | JBool(_) | JNumber(_) | JString(_) =>
     writer match {
     case sw: StreamLineWriter => sw.pushKeyValuePrimitive(depth, key, value, options.delimiter)
-    case _                    =>
-      writer.push(depth, s"${encodeKey(key)}: ${encodePrimitive(value, options.delimiter)}")
+    case lw: LineWriter       => lw.pushKeyValuePrimitive(depth, key, value, options.delimiter)
     }
   case JArray(values) =>
     encodeArray(Some(key), values, writer, depth, options, allowChildFolding)
