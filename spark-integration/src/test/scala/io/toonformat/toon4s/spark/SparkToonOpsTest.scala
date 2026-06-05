@@ -529,7 +529,7 @@ class SparkToonOpsTest extends SparkTestSuite {
     toonResult.foreach { toonChunks =>
       val decodedResult = SparkToonOps.fromToon(toonChunks, schema)(spark)
       assert(decodedResult.isRight)
-      decodedResult.foreach(decodedDf => assertEquals(decodedDf.collect().head.getLong(0), big))
+      decodedResult.foreach(decodedDf => assertEquals(decodedDf.take(1000).head.getLong(0), big))
     }
   }
 
