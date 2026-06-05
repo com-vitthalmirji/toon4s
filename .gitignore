@@ -31,6 +31,7 @@ hs_err_pid*
 .idea
 .bsp
 docs/internals
+docs/talks
 .DS_Store
 # local benchmark datasets
 tmp-data/
