@@ -58,6 +58,38 @@ object Encoders {
     }
   }
 
+  /**
+   * Encode a uniform tabular array under `key` from pre-formatted row tokens. Each token must
+   * already be a canonical TOON primitive (see [[Primitives]] format methods). The output is
+   * byte-identical to encoding `JObj(key -> JArray(rows))` where every row is a flat JObj of the
+   * same `fields`.
+   *
+   * This lets typed callers (such as the Spark integration) emit tabular TOON without building an
+   * intermediate JsonValue tree.
+   */
+  def encodeTabularChunk(
+      key: String,
+      fields: Array[String],
+      rows: scala.collection.Seq[Array[String]],
+      options: EncodeOptions,
+  ): String = {
+    val writer = new LineWriter(options.indent)
+    val header = formatHeader(rows.length, Some(key), fields.toList, options.delimiter)
+    writer.push(0, header)
+    val delim = options.delimiter.char
+    rows.foreach { tokens =>
+      val sb = new StringBuilder(tokens.length * 11)
+      var i = 0
+      while (i < tokens.length) {
+        if (i > 0) sb.append(delim)
+        sb.append(tokens(i))
+        i += 1
+      }
+      writer.push(1, sb.result())
+    }
+    writer.toString
+  }
+
   private def formatHeader(
       length: Int,
       key: Option[String],
