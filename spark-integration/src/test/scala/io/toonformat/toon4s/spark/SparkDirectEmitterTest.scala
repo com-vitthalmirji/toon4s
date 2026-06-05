@@ -29,7 +29,9 @@ class SparkDirectEmitterTest extends SparkTestSuite {
       .toVector
       .map(r => SparkJsonInterop.rowToJsonValue(r, schema))
       .grouped(maxRowsPerChunk)
-      .map(chunk => Toon.encode(JObj(VectorMap(key -> JArray(chunk.toVector))), options).toOption.get)
+      .map(chunk =>
+        Toon.encode(JObj(VectorMap(key -> JArray(chunk.toVector))), options).toOption.get
+      )
       .toVector
   }
 
@@ -53,8 +55,8 @@ class SparkDirectEmitterTest extends SparkTestSuite {
       "plain",
       42,
       Long.MaxValue,
-      3.14d,
-      2.5f,
+      3.14D,
+      2.5F,
       true,
       7.toByte,
       9.toShort,
@@ -68,7 +70,7 @@ class SparkDirectEmitterTest extends SparkTestSuite {
       -1,
       -100L,
       Double.NaN,
-      -0.0f,
+      -0.0F,
       false,
       -1.toByte,
       -2.toShort,
@@ -119,4 +121,5 @@ class SparkDirectEmitterTest extends SparkTestSuite {
     val expected = reference(df, "rows", maxRowsPerChunk = 1000, EncodeOptions())
     assertEquals(actual.toOption.get, expected)
   }
+
 }
