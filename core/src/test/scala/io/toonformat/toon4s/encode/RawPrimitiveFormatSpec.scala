@@ -13,16 +13,12 @@ class RawPrimitiveFormatSpec extends FunSuite {
   private val delimiters = List(Delimiter.Comma, Delimiter.Tab, Delimiter.Pipe)
 
   private def assertParity(formatted: String, json: JsonValue): Unit =
-    delimiters.foreach { d =>
-      assertEquals(formatted, Primitives.encodePrimitive(json, d))
-    }
+    delimiters.foreach(d => assertEquals(formatted, Primitives.encodePrimitive(json, d)))
 
   test("formatLong matches encodePrimitive") {
     val values =
       List(0L, 1L, -5L, 100L, 1000000000000L, Long.MaxValue, Long.MinValue)
-    values.foreach { n =>
-      assertParity(Primitives.formatLong(n), JNumber(BigDecimal(n)))
-    }
+    values.foreach(n => assertParity(Primitives.formatLong(n), JNumber(BigDecimal(n))))
   }
 
   test("formatBigInt matches encodePrimitive for values beyond Long") {
@@ -31,23 +27,17 @@ class RawPrimitiveFormatSpec extends FunSuite {
       BigInt("-9223372036854775809"),
       BigInt("100000000000000000000000"),
     )
-    values.foreach { n =>
-      assertParity(Primitives.formatBigInt(n), JNumber(BigDecimal(n)))
-    }
+    values.foreach(n => assertParity(Primitives.formatBigInt(n), JNumber(BigDecimal(n))))
   }
 
   test("formatDouble matches encodePrimitive") {
-    val values = List(0.0d, -0.0d, 3.14d, 25.5d, 1e10d, 1e-3d, 123.456d)
-    values.foreach { d =>
-      assertParity(Primitives.formatDouble(d), JNumber(BigDecimal(d)))
-    }
+    val values = List(0.0D, -0.0D, 3.14D, 25.5D, 1e10D, 1e-3D, 123.456D)
+    values.foreach(d => assertParity(Primitives.formatDouble(d), JNumber(BigDecimal(d))))
   }
 
   test("formatBigDecimal matches encodePrimitive") {
     val values = List(BigDecimal("1.5000"), BigDecimal("1e6"), BigDecimal("-0"))
-    values.foreach { n =>
-      assertParity(Primitives.formatBigDecimal(n), JNumber(n))
-    }
+    values.foreach(n => assertParity(Primitives.formatBigDecimal(n), JNumber(n)))
   }
 
   test("formatBoolean and nullToken match encodePrimitive") {
@@ -55,4 +45,5 @@ class RawPrimitiveFormatSpec extends FunSuite {
     assertParity(Primitives.formatBoolean(false), JBool(false))
     assertParity(Primitives.nullToken, JNull)
   }
+
 }

@@ -1,7 +1,7 @@
+import com.typesafe.tools.mima.core._
 import sbt._
 import sbt.Keys._
 import sbtdynver.DynVerPlugin.autoImport._
-import com.typesafe.tools.mima.core._
 
 lazy val Scala3Latest = "3.3.3"
 
@@ -119,9 +119,15 @@ lazy val core = (project in file("core"))
     // Internal parsing methods gained an isStrict parameter in v3.3 conformance work.
     // These are implementation utilities, not part of the documented public API.
     mimaBinaryIssueFilters := Seq(
-      ProblemFilters.exclude[DirectMissingMethodProblem]("io.toonformat.toon4s.decode.Parser.parseArrayHeaderLine"),
-      ProblemFilters.exclude[DirectMissingMethodProblem]("io.toonformat.toon4s.decode.parsers.ArrayHeaderParser.parseArrayHeaderLine"),
-      ProblemFilters.exclude[DirectMissingMethodProblem]("io.toonformat.toon4s.decode.parsers.ArrayHeaderParser.parseBracketSegment"),
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+        "io.toonformat.toon4s.decode.Parser.parseArrayHeaderLine"
+      ),
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+        "io.toonformat.toon4s.decode.parsers.ArrayHeaderParser.parseArrayHeaderLine"
+      ),
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+        "io.toonformat.toon4s.decode.parsers.ArrayHeaderParser.parseBracketSegment"
+      ),
     ),
   )
 
@@ -169,11 +175,11 @@ lazy val sparkIntegration = (project in file("spark-integration"))
     // Override scalaVersion to Scala 2.13 (Spark doesn't support Scala 3)
     scalaVersion := Scala213Latest,
     libraryDependencies ++= Seq(
-      "org.apache.spark" %% "spark-sql" % SparkSqlVersion % Provided,
-      ("org.llm4s"       %% "core"      % Llm4sVersion % Provided).intransitive(),
-      "org.scalameta"    %% "munit"     % "1.2.1" % Test,
-      "org.scalacheck"   %% "scalacheck"       % "1.19.0" % Test,
-      "org.scalameta"    %% "munit-scalacheck" % "1.2.0"  % Test,
+      "org.apache.spark" %% "spark-sql"        % SparkSqlVersion % Provided,
+      ("org.llm4s"       %% "core"             % Llm4sVersion    % Provided).intransitive(),
+      "org.scalameta"    %% "munit"            % "1.2.1"         % Test,
+      "org.scalacheck"   %% "scalacheck"       % "1.19.0"        % Test,
+      "org.scalameta"    %% "munit-scalacheck" % "1.2.0"         % Test,
     ),
     scalacOptions ++= commonScalacOptions,
     // Allow Scala 2.13 compiler to read Scala 3 TASTy from toon4s-core
@@ -198,7 +204,7 @@ lazy val sparkIntegration = (project in file("spark-integration"))
       "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED",
       "--add-opens=java.base/sun.nio.cs=ALL-UNNAMED",
       "--add-opens=java.base/sun.security.action=ALL-UNNAMED",
-      "--add-opens=java.base/sun.util.calendar=ALL-UNNAMED"
+      "--add-opens=java.base/sun.util.calendar=ALL-UNNAMED",
     ),
     // ScalaDoc configuration
     Compile / doc / scalacOptions ++= Seq(
