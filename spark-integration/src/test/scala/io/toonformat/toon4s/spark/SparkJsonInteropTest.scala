@@ -267,4 +267,14 @@ class SparkJsonInteropTest extends SparkTestSuite {
     assertEquals(scores.get(2), Some("high"))
   }
 
+  test("jsonValueToValue: keep large integers as Long, not rounded Double") {
+    val big = JNumber(BigDecimal(Long.MaxValue))
+    assertEquals(SparkJsonInterop.jsonValueToValue(big), Long.MaxValue)
+  }
+
+  test("jsonValueToValue: keep fractional numbers as Double") {
+    val frac = JNumber(BigDecimal("25.5"))
+    assertEquals(SparkJsonInterop.jsonValueToValue(frac), 25.5D)
+  }
+
 }

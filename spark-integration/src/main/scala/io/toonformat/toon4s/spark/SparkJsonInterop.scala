@@ -217,12 +217,12 @@ object SparkJsonInterop {
    *   {{{
    * val json = JObj(VectorMap("name" -> JString("Alice"), "age" -> JNumber(25)))
    * val value = jsonValueToValue(json)
-   * // value: Map("name" -> "Alice", "age" -> 25.0)
+   * // value: Map("name" -> "Alice", "age" -> 25)
    *   }}}
    */
   def jsonValueToValue(json: JsonValue): Any = json match {
   case JString(s)     => s
-  case JNumber(n)     => n.toDouble // Spark uses Double for numeric types
+  case JNumber(n)     => numberToScala(n)
   case JBool(b)       => b
   case JNull          => null
   case JArray(values) =>
@@ -230,6 +230,18 @@ object SparkJsonInterop {
   case JObj(fields) =>
     fields.map { case (k, v) => k -> jsonValueToValue(v) }.toMap
   }
+
+  /**
+   * Convert a numeric JsonValue to the most faithful Scala value. Integral numbers that fit in a
+   * Long stay Long (so integers past 2^53 do not round), larger integers stay BigDecimal, and only
+   * genuinely fractional numbers become Double.
+   */
+  private def numberToScala(n: BigDecimal): Any =
+    if (n.isWhole) {
+      if (n.isValidLong) n.toLong else n
+    } else {
+      n.toDouble
+    }
 
   /**
    * Convert JsonValue to Spark Row with schema validation.
@@ -350,7 +362,7 @@ object SparkJsonInterop {
 
     // ========== Fallback ==========
     case (JString(s), _) => s
-    case (JNumber(n), _) => n.toDouble
+    case (JNumber(n), _) => numberToScala(n)
     case (JBool(b), _)   => b
     case _               => null
     }
