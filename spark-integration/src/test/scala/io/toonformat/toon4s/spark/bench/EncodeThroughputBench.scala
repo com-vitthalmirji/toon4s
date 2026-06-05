@@ -43,7 +43,7 @@ class EncodeThroughputBench extends SparkTestSuite {
     val options = ToonSparkOptions(key = "rows", maxRowsPerChunk = chunkSize)
 
     val start = System.nanoTime()
-    val chunks = df.toToonDataset(options).collect()
+    val chunks = df.toToonDataset(options).take(1000000)
     val elapsedS = (System.nanoTime() - start).toDouble / 1.0e9
     val bytes = chunks.foldLeft(0L)((acc, chunk) => acc + chunk.length.toLong)
     (elapsedS, bytes)
