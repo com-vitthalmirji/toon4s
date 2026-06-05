@@ -513,6 +513,26 @@ class SparkToonOpsTest extends SparkTestSuite {
     }
   }
 
+  test("round trip: preserve 64 bit integers past 2^53 exactly") {
+    val schema = StructType(Seq(
+      StructField("id", LongType),
+      StructField("name", StringType),
+    ))
+
+    val big = Long.MaxValue
+    val data = Seq(Row(big, "edge"))
+    val originalDf = spark.createDataFrame(data.asJava, schema)
+
+    val toonResult = originalDf.toToon(key = "data")
+    assert(toonResult.isRight)
+
+    toonResult.foreach { toonChunks =>
+      val decodedResult = SparkToonOps.fromToon(toonChunks, schema)(spark)
+      assert(decodedResult.isRight)
+      decodedResult.foreach(decodedDf => assertEquals(decodedDf.collect().head.getLong(0), big))
+    }
+  }
+
   test("fromToonDataset: decode distributed TOON dataset to DataFrame") {
     val schema = StructType(Seq(
       StructField("id", IntegerType),
