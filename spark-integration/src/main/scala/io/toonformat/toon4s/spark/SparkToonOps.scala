@@ -5,9 +5,10 @@ import scala.jdk.CollectionConverters._
 import scala.util.Try
 import scala.util.control.NonFatal
 
-import io.toonformat.toon4s.{DecodeOptions, EncodeOptions, Toon}
+import io.toonformat.toon4s.{DecodeOptions, Delimiter, EncodeOptions, Toon}
 import io.toonformat.toon4s.JsonValue
 import io.toonformat.toon4s.JsonValue._
+import io.toonformat.toon4s.encode.{Encoders => ToonEncoders, Primitives}
 import io.toonformat.toon4s.spark.error.SparkToonError
 import io.toonformat.toon4s.spark.internal.SparkConfUtils
 import io.toonformat.toon4s.spark.llm.{
@@ -21,7 +22,7 @@ import io.toonformat.toon4s.spark.llm.{
 }
 import org.apache.spark.sql.{DataFrame, Dataset, Encoders, Row, SparkSession}
 import org.apache.spark.sql.functions._
-import org.apache.spark.sql.types.StructType
+import org.apache.spark.sql.types._
 
 /**
  * Extension methods for DataFrame ↔ TOON conversion.
@@ -437,6 +438,111 @@ object SparkToonOps {
   ): Dataset[String] = {
     require(maxRowsPerChunk > 0, "maxRowsPerChunk must be greater than 0")
 
+    if (isFlatTabularSchema(df.schema)) {
+      encodeFlatChunkDataset(df, key, maxRowsPerChunk, options)
+    } else {
+      encodeNestedChunkDataset(df, key, maxRowsPerChunk, options)
+    }
+  }
+
+  /** A schema is flat-tabular when every top-level column is a primitive (no struct, array or map). */
+  private def isFlatTabularSchema(schema: StructType): Boolean =
+    schema.fields.nonEmpty && schema.fields.forall { field =>
+      field.dataType match {
+      case _: StructType | _: ArrayType | _: MapType => false
+      case _                                         => true
+      }
+    }
+
+  /**
+   * Fast path for flat schemas: format each typed cell straight to a canonical TOON token and emit
+   * the tabular block with the core writer. Avoids the per-row JsonValue, BigDecimal, VectorMap and
+   * Try of the general path.
+   */
+  private def encodeFlatChunkDataset(
+      df: DataFrame,
+      key: String,
+      maxRowsPerChunk: Int,
+      options: EncodeOptions,
+  ): Dataset[String] = {
+    val schema = df.schema
+    val fieldNames = schema.fields.map(_.name)
+    val fieldTypes = schema.fields.map(_.dataType)
+    val delim = options.delimiter
+
+    df.mapPartitions { rows =>
+      val buffer = new scala.collection.mutable.ArrayBuffer[Array[String]](maxRowsPerChunk)
+      val chunks = scala.collection.mutable.ArrayBuffer.empty[String]
+
+      def flush(force: Boolean): Unit = {
+        if (buffer.nonEmpty && (force || buffer.size >= maxRowsPerChunk)) {
+          chunks += ToonEncoders.encodeTabularChunk(key, fieldNames, buffer.toVector, options)
+          buffer.clear()
+        }
+      }
+
+      rows.foreach { row =>
+        val tokens = new Array[String](fieldTypes.length)
+        var i = 0
+        while (i < fieldTypes.length) {
+          tokens(i) = formatCell(row, i, fieldTypes(i), delim)
+          i += 1
+        }
+        buffer += tokens
+        flush(force = false)
+      }
+
+      flush(force = true)
+      chunks.iterator
+    }(Encoders.STRING)
+  }
+
+  /**
+   * Format a single typed cell to a canonical TOON token. Mirrors
+   * `SparkJsonInterop.fieldToJsonValue` followed by `encodePrimitive` so the output is identical to
+   * the general encode path.
+   */
+  private def formatCell(row: Row, i: Int, dataType: DataType, delim: Delimiter): String =
+    if (row.isNullAt(i)) Primitives.nullToken
+    else
+      dataType match {
+      case StringType  => Primitives.encodeStringLiteral(row.getString(i), delim)
+      case IntegerType => Primitives.formatLong(row.getInt(i).toLong)
+      case LongType    => Primitives.formatLong(row.getLong(i))
+      case DoubleType  =>
+        val d = row.getDouble(i)
+        if (d.isNaN || d.isInfinity) Primitives.nullToken else Primitives.formatDouble(d)
+      case FloatType =>
+        val f = row.getFloat(i)
+        if (f.isNaN || f.isInfinity) Primitives.nullToken else Primitives.formatDouble(f.toDouble)
+      case BooleanType    => Primitives.formatBoolean(row.getBoolean(i))
+      case ByteType       => Primitives.formatLong(row.getByte(i).toLong)
+      case ShortType      => Primitives.formatLong(row.getShort(i).toLong)
+      case _: DecimalType => Primitives.formatBigDecimal(BigDecimal(row.getDecimal(i)))
+      case DateType       =>
+        Primitives.encodeStringLiteral(row.getAs[java.sql.Date](i).toString, delim)
+      case TimestampType =>
+        Primitives.encodeStringLiteral(row.getAs[java.sql.Timestamp](i).toInstant.toString, delim)
+      case TimestampNTZType =>
+        val text = row.get(i) match {
+        case ldt: java.time.LocalDateTime => ldt.toString
+        case ts: java.sql.Timestamp       => ts.toLocalDateTime.toString
+        case other                        => other.toString
+        }
+        Primitives.encodeStringLiteral(text, delim)
+      case BinaryType =>
+        val encoded = java.util.Base64.getEncoder.encodeToString(row.getAs[Array[Byte]](i))
+        Primitives.encodeStringLiteral(encoded, delim)
+      case NullType => Primitives.nullToken
+      case _        => Primitives.encodeStringLiteral(row.get(i).toString, delim)
+      }
+
+  private def encodeNestedChunkDataset(
+      df: DataFrame,
+      key: String,
+      maxRowsPerChunk: Int,
+      options: EncodeOptions,
+  ): Dataset[String] = {
     val schema = df.schema
     df.mapPartitions { rows =>
       val fieldsWithIndex = schema.fields.zipWithIndex
