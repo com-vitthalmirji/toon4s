@@ -1,7 +1,10 @@
 package io.toonformat.toon4s.spark.llm
 
+import scala.annotation.nowarn
+
 import munit.FunSuite
 
+@nowarn("cat=deprecation")
 class ToonLlmResponseValidatorTest extends FunSuite {
 
   test("validate: accepts normal response") {

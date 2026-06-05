@@ -6,6 +6,7 @@ package io.toonformat.toon4s.spark.llm
  * This detects common signs that a model did not understand the TOON payload format and returned a
  * clarification request or raw JSON echo instead of the requested task output.
  */
+@deprecated("Legacy LLM response helper. Scheduled for removal.", "0.9.0")
 object ToonLlmResponseValidator {
 
   sealed trait ValidationIssue extends Product with Serializable {

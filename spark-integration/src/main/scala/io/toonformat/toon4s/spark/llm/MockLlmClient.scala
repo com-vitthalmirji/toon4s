@@ -1,6 +1,10 @@
 package io.toonformat.toon4s.spark.llm
 
+import scala.annotation.nowarn
+
 /** Mock implementation for compatibility tests. */
+@deprecated("Legacy mock for LlmClient. Scheduled for removal.", "0.9.0")
+@nowarn("cat=deprecation")
 class MockLlmClient(
     val config: LlmConfig,
     responses: Map[String, String] = Map.empty,
@@ -65,6 +69,8 @@ class MockLlmClient(
 
 }
 
+@deprecated("Legacy mock for LlmClient. Scheduled for removal.", "0.9.0")
+@nowarn("cat=deprecation")
 object MockLlmClient {
 
   /** Create mock client with default config. */
