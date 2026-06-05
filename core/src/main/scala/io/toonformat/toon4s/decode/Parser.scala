@@ -117,6 +117,10 @@ object Parser {
   def mapRowValuesToPrimitives(values: Vector[String]): Vector[JsonValue] =
     DelimitedValuesParser.mapRowValuesToPrimitives(values)
 
+  /** Delegates to [[parsers.DelimitedValuesParser.mapTokenToPrimitive]]. */
+  def mapTokenToPrimitive(token: String): JsonValue =
+    DelimitedValuesParser.mapTokenToPrimitive(token)
+
   // ========================================================================
   // Primitive value parsing
   // ========================================================================

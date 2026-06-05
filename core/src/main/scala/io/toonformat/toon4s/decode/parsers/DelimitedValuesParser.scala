@@ -144,20 +144,20 @@ object DelimitedValuesParser {
    * // Vector(JNumber(1), JNull, JNumber(3.14))
    *   }}}
    */
-  def mapRowValuesToPrimitives(values: Vector[String]): Vector[JsonValue] = {
-    values.map {
-      token =>
-        PrimitiveParser.parsePrimitiveToken(token) match {
-        case s: JsonValue.JString => s
-        case n: JsonValue.JNumber => n
-        case b: JsonValue.JBool   => b
-        case JsonValue.JNull      => JsonValue.JNull
-        case other                =>
-          throw DecodeError.Syntax(
-            s"Tabular rows must contain primitive values, but found: $other"
-          )
-        }
+  def mapRowValuesToPrimitives(values: Vector[String]): Vector[JsonValue] =
+    values.map(mapTokenToPrimitive)
+
+  /** Parse a single tabular token to a primitive JsonValue, rejecting arrays and objects. */
+  def mapTokenToPrimitive(token: String): JsonValue =
+    PrimitiveParser.parsePrimitiveToken(token) match {
+    case s: JsonValue.JString => s
+    case n: JsonValue.JNumber => n
+    case b: JsonValue.JBool   => b
+    case JsonValue.JNull      => JsonValue.JNull
+    case other                =>
+      throw DecodeError.Syntax(
+        s"Tabular rows must contain primitive values, but found: $other"
+      )
     }
-  }
 
 }
