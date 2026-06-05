@@ -84,7 +84,7 @@ object Decoders {
   ): JsonValue = {
     validateDepth(baseDepth, options)
     val isStrict = options.strictness == Strictness.Strict
-    val builder = Vector.newBuilder[(String, JsonValue)]
+    val builder = VectorMap.newBuilder[String, JsonValue]
     val seenKeys = if (isStrict) new scala.collection.mutable.HashSet[String]() else null
     var targetDepth = Option.empty[Int]
     var continue = true
@@ -111,7 +111,7 @@ object Decoders {
         } else continue = false
       }
     }
-    JObj(VectorMap.from(builder.result()))
+    JObj(builder.result())
   }
 
   private def decodeKeyValue(
@@ -370,7 +370,7 @@ object Decoders {
     val KeyValueParse(firstKey, firstValue, followDepth, firstQuoted) =
       decodeKeyValue(afterHyphen, cursor, baseDepth, options)
     val storedHeadKey = InternalKeyEncoding.encode(firstKey, firstQuoted)
-    val builder = Vector.newBuilder[(String, JsonValue)]
+    val builder = VectorMap.newBuilder[String, JsonValue]
     val seenKeys = if (isStrict) new scala.collection.mutable.HashSet[String]() else null
     if (isStrict) seenKeys += storedHeadKey
     builder += ((storedHeadKey, firstValue))
@@ -399,7 +399,7 @@ object Decoders {
       }
     }
 
-    JObj(VectorMap.from(builder.result()))
+    JObj(builder.result())
   }
 
 }
