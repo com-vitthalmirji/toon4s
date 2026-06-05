@@ -6,6 +6,10 @@ package io.toonformat.toon4s.spark.llm
  * This type is kept for migration tests only. New production paths should use
  * `writeToLlmPartitions` with llm4s clients through `LlmPartitionWriterFactory`.
  */
+@deprecated(
+  "Legacy client. Use LlmPartitionWriterFactory.fromClientFactory with an llm4s client. Scheduled for removal.",
+  "0.9.0",
+)
 trait LlmClient {
 
   // ========== Core llm4s-Compatible Methods ==========

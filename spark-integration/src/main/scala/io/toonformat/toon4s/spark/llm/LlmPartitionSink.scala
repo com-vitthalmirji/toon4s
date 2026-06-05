@@ -3,6 +3,7 @@ package io.toonformat.toon4s.spark.llm
 import java.security.MessageDigest
 import java.util.concurrent.ConcurrentHashMap
 
+import scala.annotation.nowarn
 import scala.util.Try
 
 import org.llm4s.error.{LLMError, UnknownError}
@@ -114,6 +115,11 @@ object LlmPartitionWriterFactory {
       }
     }
 
+  @deprecated(
+    "Legacy client path. Use fromClientFactory with an llm4s client. Scheduled for removal.",
+    "0.9.0",
+  )
+  @nowarn("cat=deprecation")
   def fromLegacyClientFactory(
       clientFactory: () => LlmClient,
       idempotencyStore: IdempotencyStore = IdempotencyStore.Noop,
