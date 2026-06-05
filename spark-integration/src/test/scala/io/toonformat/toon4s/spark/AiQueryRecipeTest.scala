@@ -43,4 +43,5 @@ class AiQueryRecipeTest extends SparkTestSuite {
     assertEquals(responses.length, 2)
     assert(responses.forall(_.startsWith("my-endpoint analyzed")))
   }
+
 }
