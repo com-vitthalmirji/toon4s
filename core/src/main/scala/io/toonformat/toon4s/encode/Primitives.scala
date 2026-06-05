@@ -55,6 +55,26 @@ private[toon4s] object Primitives {
     if (normalized == "-0") "0" else normalized
   }
 
+  // Raw-value primitive formatting. Lets typed callers (such as the Spark integration) emit
+  // canonical TOON tokens straight from primitive values without first wrapping them in a
+  // JsonValue. Output is identical to encodePrimitive for the same value.
+  //
+  // Integral, boolean, null and string values are formatted without allocating a BigDecimal.
+  // Double values still go through BigDecimal because matching the canonical plain-decimal form
+  // (no exponent) requires decimal expansion that Double.toString does not provide.
+
+  val nullToken: String = C.NullLiteral
+
+  def formatBoolean(b: Boolean): String = if (b) C.TrueLiteral else C.FalseLiteral
+
+  def formatLong(n: Long): String = java.lang.Long.toString(n)
+
+  def formatBigInt(n: BigInt): String = n.toString
+
+  def formatDouble(d: Double): String = normalizeNumber(BigDecimal(d))
+
+  def formatBigDecimal(n: BigDecimal): String = normalizeNumber(n)
+
   def encodeKey(key: String): String = {
     if (isValidUnquotedKey(key)) key else quoteAndEscape(key)
   }
