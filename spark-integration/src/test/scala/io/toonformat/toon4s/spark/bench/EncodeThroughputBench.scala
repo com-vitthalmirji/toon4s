@@ -6,8 +6,8 @@ import io.toonformat.toon4s.spark.testkit.SparkTestSuite
 import org.apache.spark.sql.functions._
 
 /**
- * Throughput baseline for the Spark encode path. Reports rows/sec and MB/sec for the executor
- * level encode (toToonDataset) on a uniform flat schema.
+ * Throughput baseline for the Spark encode path. Reports rows/sec and MB/sec for the executor level
+ * encode (toToonDataset) on a uniform flat schema.
  *
  * This is a measurement tool, not a correctness test. It is skipped during normal runs and only
  * executes when TOON4S_BENCH=true is set in the environment (forked test JVMs inherit env vars),
@@ -25,7 +25,8 @@ class EncodeThroughputBench extends SparkTestSuite {
   override protected def sparkMaster: String = "local[1]"
 
   private val rowCounts: Seq[Int] = Seq(50000, 200000)
-  private val chunkSize: Int      = 5000
+
+  private val chunkSize: Int = 5000
 
   private def buildDataset(rows: Int) =
     spark
@@ -34,17 +35,17 @@ class EncodeThroughputBench extends SparkTestSuite {
         col("id"),
         concat(lit("user_"), col("id")).as("name"),
         ((col("id") % lit(1000)) / lit(7.0)).as("score"),
-        (col("id") % lit(2) === lit(0)).as("active"),
+        (col("id")  % lit(2) === lit(0)).as("active"),
       )
 
   private def timeEncode(rows: Int): (Double, Long) = {
-    val df      = buildDataset(rows).repartition(1)
+    val df = buildDataset(rows).repartition(1)
     val options = ToonSparkOptions(key = "rows", maxRowsPerChunk = chunkSize)
 
-    val start    = System.nanoTime()
-    val chunks   = df.toToonDataset(options).collect()
+    val start = System.nanoTime()
+    val chunks = df.toToonDataset(options).collect()
     val elapsedS = (System.nanoTime() - start).toDouble / 1.0e9
-    val bytes    = chunks.foldLeft(0L)((acc, chunk) => acc + chunk.length.toLong)
+    val bytes = chunks.foldLeft(0L)((acc, chunk) => acc + chunk.length.toLong)
     (elapsedS, bytes)
   }
 
@@ -57,8 +58,8 @@ class EncodeThroughputBench extends SparkTestSuite {
     println("=== Spark encode throughput baseline (toToonDataset, local[1]) ===")
     rowCounts.foreach { rows =>
       val (elapsedS, bytes) = timeEncode(rows)
-      val rowsPerSec        = rows.toDouble / elapsedS
-      val mbPerSec          = (bytes.toDouble / 1.0e6) / elapsedS
+      val rowsPerSec = rows.toDouble / elapsedS
+      val mbPerSec = (bytes.toDouble / 1.0e6) / elapsedS
       println(
         f"rows=$rows%-8d time=$elapsedS%6.3fs " +
           f"rows/sec=$rowsPerSec%,12.0f MB/sec=$mbPerSec%7.2f bytes=$bytes%,d"
