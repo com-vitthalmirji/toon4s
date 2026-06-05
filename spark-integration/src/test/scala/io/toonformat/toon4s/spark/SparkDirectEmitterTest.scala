@@ -25,7 +25,7 @@ class SparkDirectEmitterTest extends SparkTestSuite {
       options: EncodeOptions,
   ): Vector[String] = {
     val schema = df.schema
-    df.collect()
+    df.take(1000)
       .toVector
       .map(r => SparkJsonInterop.rowToJsonValue(r, schema))
       .grouped(maxRowsPerChunk)
