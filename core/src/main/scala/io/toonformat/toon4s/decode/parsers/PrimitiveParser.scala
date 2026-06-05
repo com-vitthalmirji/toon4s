@@ -118,21 +118,12 @@ object PrimitiveParser {
    *
    * Examples: `42`, `-3.14`, `1.23e10`, `-5.67E-8`
    */
-  private val NumericPattern = "^-?[0-9]+(?:\\.[0-9]+)?(?:[eE][+-]?[0-9]+)?$".r
-
   /**
    * Check if a token represents a valid numeric literal.
    *
-   * ==Validation plan==
-   *   1. Reject empty strings 2. Reject leading zeros (except "0" and "0.xxx") 3. Match against
-   *      regex pattern
-   *
-   * This prevents invalid numbers like "007" while allowing "0.7".
-   *
-   * @param token
-   *   The string token to validate
-   * @return
-   *   true if the token is a valid numeric literal
+   * Equivalent to the grammar `^-?[0-9]+(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?$` with leading zeros
+   * rejected (so "007" is not a number but "0.7" is). Implemented as a single character scan
+   * instead of a regex so no Matcher is allocated per token on the decode hot path.
    *
    * @example
    *   {{{
@@ -145,12 +136,36 @@ object PrimitiveParser {
    *   }}}
    */
   private def isNumericLiteral(token: String): Boolean = {
-    if (token.isEmpty) false
+    val n = token.length
+    if (n == 0) false
     else {
-      val unsigned = if (token.head == '-' || token.head == '+') token.tail else token
-      val hasLeadingZero = unsigned.length > 1 && unsigned.head == '0' && unsigned(1).isDigit
-      unsigned.nonEmpty && !hasLeadingZero && NumericPattern.matches(token)
+      var i = 0
+      if (token.charAt(0) == '-') i += 1
+      val intStart = i
+      while (i < n && isAsciiDigit(token.charAt(i))) i += 1
+      val intLen = i - intStart
+      if (intLen == 0) false
+      else if (intLen >= 2 && token.charAt(intStart) == '0') false // leading zero
+      else {
+        var ok = true
+        if (i < n && token.charAt(i) == '.') {
+          i += 1
+          val fracStart = i
+          while (i < n && isAsciiDigit(token.charAt(i))) i += 1
+          if (i == fracStart) ok = false
+        }
+        if (ok && i < n && (token.charAt(i) == 'e' || token.charAt(i) == 'E')) {
+          i += 1
+          if (i < n && (token.charAt(i) == '+' || token.charAt(i) == '-')) i += 1
+          val expStart = i
+          while (i < n && isAsciiDigit(token.charAt(i))) i += 1
+          if (i == expStart) ok = false
+        }
+        ok && i == n
+      }
     }
   }
+
+  private def isAsciiDigit(c: Char): Boolean = c >= '0' && c <= '9'
 
 }
