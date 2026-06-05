@@ -141,10 +141,19 @@ object Encoders {
       options: EncodeOptions,
       allowFolding: Boolean = true,
   ): Unit = {
-    val prepared = prepareObjectFields(fields, options, allowFolding)
-    prepared.foreach {
-      case FieldEntry(k, v, disableChildFolding) =>
-        encodeKeyValue(k, v, writer, depth, options, allowFolding && !disableChildFolding)
+    val foldingActive =
+      allowFolding && options.keyFolding == KeyFolding.Safe && options.flattenDepth >= 2
+    if (!foldingActive) {
+      // Fast path: no key folding, so iterate fields directly without building a FieldEntry vector.
+      fields.foreach {
+        case (k, v) => encodeKeyValue(k, v, writer, depth, options, allowFolding)
+      }
+    } else {
+      val prepared = prepareObjectFields(fields, options, allowFolding)
+      prepared.foreach {
+        case FieldEntry(k, v, disableChildFolding) =>
+          encodeKeyValue(k, v, writer, depth, options, allowFolding && !disableChildFolding)
+      }
     }
   }
 
