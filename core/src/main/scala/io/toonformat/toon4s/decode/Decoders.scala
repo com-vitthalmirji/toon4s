@@ -260,9 +260,17 @@ object Decoders {
         assertExpectedCount(values.length, header.fields.length, "tabular row values")(
           options.strictness
         )
-        val primitives: Vector[JsonValue] = mapRowValuesToPrimitives(values)
-        val obj = VectorMap.from(header.fields.zip(primitives))
-        rows += JObj(obj)
+        // Build the row map directly: parse every value (so a non-primitive still errors) and
+        // insert pairs while header fields remain, matching the strict zip truncation. Avoids the
+        // intermediate primitives Vector and pair Vector per row.
+        val rowBuilder = VectorMap.newBuilder[String, JsonValue]
+        val fieldIter = header.fields.iterator
+        val valueIter = values.iterator
+        while (valueIter.hasNext) {
+          val primitive = mapTokenToPrimitive(valueIter.next())
+          if (fieldIter.hasNext) rowBuilder += ((fieldIter.next(), primitive))
+        }
+        rows += JObj(rowBuilder.result())
         cursor.current.foreach(cur => endLine = Some(cur.lineNumber))
       case Some(line) if line.depth < rowDepth =>
         continue = false
