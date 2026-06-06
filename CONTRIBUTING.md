@@ -42,9 +42,9 @@ sbt +test              # Scala 2.13 and 3.3 suites
 ./smoke-tests/run-smoke.sh
 ```
 
-Releases are fully automated, but you must complete the prerequisites in
-[`docs/releasing.md`](docs/internals/releasing.md) (namespace approval + PGP key upload)
-before the GitHub Actions workflows can publish to Maven Central.
+Releases are fully automated, but a maintainer must first complete the release prerequisites
+(namespace approval and PGP key upload) before the GitHub Actions workflows can publish to
+Maven Central.
 
 GitHub actions runs:
 
