@@ -17,13 +17,45 @@ class DoubleFormatEquivalenceSpec extends FunSuite {
   }
 
   private def check(d: Double): Unit =
-    assertEquals(Primitives.formatDouble(d), oldFormat(d), s"d=$d bits=${java.lang.Double.doubleToLongBits(d)}")
+    assertEquals(
+      Primitives.formatDouble(d),
+      oldFormat(d),
+      s"d=$d bits=${java.lang.Double.doubleToLongBits(d)}",
+    )
 
   private val curated = List(
-    0.0d, -0.0d, 1.0d, -1.0d, 0.5d, -0.5d, 3.14d, 100.0d, 0.001d, 0.0001d, 1e7d, 1e-3d, 1e-4d,
-    1e10d, 1e20d, 1e-20d, 1.5e3d, 1.23e10d, 123.456d, 9999999.0d, 10000000.0d,
-    Double.MinValue, Double.MaxValue, Double.MinPositiveValue, -Double.MinPositiveValue,
-    java.lang.Double.MIN_VALUE, 2.5d, -2.5d, 12345678.9d, 0.1d, 0.2d, 0.3d,
+    0.0D,
+    -0.0D,
+    1.0D,
+    -1.0D,
+    0.5D,
+    -0.5D,
+    3.14D,
+    100.0D,
+    0.001D,
+    0.0001D,
+    1e7D,
+    1e-3D,
+    1e-4D,
+    1e10D,
+    1e20D,
+    1e-20D,
+    1.5e3D,
+    1.23e10D,
+    123.456D,
+    9999999.0D,
+    10000000.0D,
+    Double.MinValue,
+    Double.MaxValue,
+    Double.MinPositiveValue,
+    -Double.MinPositiveValue,
+    java.lang.Double.MIN_VALUE,
+    2.5D,
+    -2.5D,
+    12345678.9D,
+    0.1D,
+    0.2D,
+    0.3D,
   )
 
   test("curated doubles are byte-identical") {
@@ -74,6 +106,9 @@ class DoubleFormatEquivalenceSpec extends FunSuite {
     (1 to 3).foreach(_ => { runNew(); runOld() })
     val t0 = System.nanoTime(); runNew(); val tn = System.nanoTime() - t0
     val t1 = System.nanoTime(); runOld(); val to = System.nanoTime() - t1
-    println(f"formatDouble new=${tn / 1e6}%.1fms old=${to / 1e6}%.1fms speedup=${to.toDouble / tn}%.2fx")
+    println(
+      f"formatDouble new=${tn / 1e6}%.1fms old=${to / 1e6}%.1fms speedup=${to.toDouble / tn}%.2fx"
+    )
   }
+
 }
