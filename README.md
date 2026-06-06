@@ -1126,6 +1126,14 @@ These are conscious design decisions:
 - **Deterministic ordering**: We use `VectorMap` instead of `HashMap` because **predictable field ordering** matters
   more than raw lookup speed. This aids debugging, testing, and spec compliance.
 
+- **Numeric domain (spec sections 2 and 4)**: The core models numbers as arbitrary-precision `BigDecimal`, so decoding
+  is lossless (the spec's recommended lossless-first policy) and no value is rounded through binary floating point.
+  Numbers are emitted in plain decimal across the entire finite range, including `|n| >= 1e21` and `|n| < 1e-6` where the
+  spec permits, but does not require, exponent notation. This is conformant and deterministic; it differs in form, not
+  value, from JavaScript-based encoders which use exponent outside that range. `NaN` and `+/-Infinity` normalize to
+  `null` (spec section 3). In the Spark integration the schema-aware decode path is lossless and large integers
+  round-trip exactly.
+
 - **No mutation**: Immutability with tailrec. Trade: ~20% throughput decrease. Gain: **zero race conditions, zero hidden
   state, composable functions**.
 
