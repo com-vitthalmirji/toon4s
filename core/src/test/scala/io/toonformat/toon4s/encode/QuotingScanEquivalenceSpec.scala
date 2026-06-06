@@ -11,8 +11,10 @@ import munit.FunSuite
  */
 class QuotingScanEquivalenceSpec extends FunSuite {
 
-  private val keyRegex  = "^[A-Za-z_][A-Za-z0-9_.]*$".r
-  private val numRegex  = "^-?\\d+(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$".r
+  private val keyRegex = "^[A-Za-z_][A-Za-z0-9_.]*$".r
+
+  private val numRegex = "^-?\\d+(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$".r
+
   private val zeroRegex = "^0\\d+$".r
 
   private val structural = Set('"', '\\', '[', ']', '{', '}', '\n', '\r', '\t')
@@ -39,10 +41,52 @@ class QuotingScanEquivalenceSpec extends FunSuite {
   }
 
   private val curated = List(
-    "", "true", "false", "null", "0", "00", "01", "007", "123", "-5", "-0", "1.5", "1.",
-    "1.5e3", "1e", "1e-3", ".5", "12.", "abc", "a_b.c", "_x", "1abc", "a-b", "a b", " a",
-    "a ", "a:b", "a,b", "a|b", "[", "{", "12.34.56", "--5", "+5", "0.0", "0e0", "1E10",
-    "name", "id", "x.y.z", "9", "-", "e5", "E", "1e+", "00.5",
+    "",
+    "true",
+    "false",
+    "null",
+    "0",
+    "00",
+    "01",
+    "007",
+    "123",
+    "-5",
+    "-0",
+    "1.5",
+    "1.",
+    "1.5e3",
+    "1e",
+    "1e-3",
+    ".5",
+    "12.",
+    "abc",
+    "a_b.c",
+    "_x",
+    "1abc",
+    "a-b",
+    "a b",
+    " a",
+    "a ",
+    "a:b",
+    "a,b",
+    "a|b",
+    "[",
+    "{",
+    "12.34.56",
+    "--5",
+    "+5",
+    "0.0",
+    "0e0",
+    "1E10",
+    "name",
+    "id",
+    "x.y.z",
+    "9",
+    "-",
+    "e5",
+    "E",
+    "1e+",
+    "00.5",
   )
 
   private val delimiters = List(Delimiter.Comma, Delimiter.Tab, Delimiter.Pipe)
@@ -72,4 +116,5 @@ class QuotingScanEquivalenceSpec extends FunSuite {
       }
     }
   }
+
 }
