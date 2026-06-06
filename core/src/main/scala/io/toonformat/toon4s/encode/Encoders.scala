@@ -60,7 +60,7 @@ object Encoders {
 
   /**
    * Encode a uniform tabular array under `key` from pre-formatted row tokens. Each token must
-   * already be a canonical TOON primitive (see [[Primitives]] format methods). The output is
+   * already be a canonical TOON primitive (see the Primitives format methods). The output is
    * byte-identical to encoding `JObj(key -> JArray(rows))` where every row is a flat JObj of the
    * same `fields`.
    *
