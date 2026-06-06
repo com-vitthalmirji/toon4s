@@ -50,6 +50,9 @@ private[toon4s] object Primitives {
     builder.result()
   }
 
+  // toPlainString emits plain decimal across the whole finite range. Spec section 2 requires plain
+  // form only for 1e-6 <= |n| < 1e21 and merely permits exponent outside it, so emitting plain
+  // everywhere is conformant and deterministic (it differs in form, not value, from JS encoders).
   private def normalizeNumber(n: BigDecimal): String = {
     val bd = n.bigDecimal
     // Fast path: integral value (no fractional digits) that fits in a long. The canonical form of

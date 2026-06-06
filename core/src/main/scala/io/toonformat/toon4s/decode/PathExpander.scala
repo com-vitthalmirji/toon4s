@@ -18,21 +18,47 @@ private[decode] object PathExpander {
 
   private def stripQuoted(value: JsonValue): JsonValue = value match {
   case JObj(fields) =>
-    val cleaned = fields.map {
-      case (k, v) =>
-        val (key, _) = InternalKeyEncoding.decode(k)
-        key -> stripQuoted(v)
+    // Fast path: if no key was quoted and no child changes, the object is already clean, so return
+    // it unchanged instead of rebuilding a new map. Unquoted keys are stored verbatim.
+    var changed = false
+    val it = fields.iterator
+    while (!changed && it.hasNext) {
+      val (k, v) = it.next()
+      if (InternalKeyEncoding.isQuoted(k)) changed = true
+      else if (!(stripQuoted(v) eq v)) changed = true
     }
-    JObj(VectorMap.from(cleaned))
-  case JArray(values) => JArray(values.map(stripQuoted))
-  case other          => other
+    if (!changed) value
+    else {
+      val cleaned = fields.map {
+        case (k, v) =>
+          val (key, _) = InternalKeyEncoding.decode(k)
+          key -> stripQuoted(v)
+      }
+      JObj(VectorMap.from(cleaned))
+    }
+  case JArray(values) =>
+    var changed = false
+    var i = 0
+    while (!changed && i < values.length) {
+      if (!(stripQuoted(values(i)) eq values(i))) changed = true
+      i += 1
+    }
+    if (!changed) value else JArray(values.map(stripQuoted))
+  case other => other
   }
 
   private def expandValue(value: JsonValue, strict: Boolean): JsonValue = value match {
   case JObj(fields) =>
-    JObj(expandObject(fields, strict))
+    val expanded = expandObject(fields, strict)
+    if (expanded eq fields) value else JObj(expanded)
   case JArray(values) =>
-    JArray(values.map(v => expandValue(v, strict)))
+    var changed = false
+    var i = 0
+    while (!changed && i < values.length) {
+      if (!(expandValue(values(i), strict) eq values(i))) changed = true
+      i += 1
+    }
+    if (!changed) value else JArray(values.map(v => expandValue(v, strict)))
   case other => other
   }
 
@@ -40,6 +66,17 @@ private[decode] object PathExpander {
       fields: VectorMap[String, JsonValue],
       strict: Boolean,
   ): VectorMap[String, JsonValue] = {
+    // Fast path: nothing to decode or expand and no child changes, so return fields unchanged.
+    var needsWork = false
+    val probe = fields.iterator
+    while (!needsWork && probe.hasNext) {
+      val (key, rawValue) = probe.next()
+      val (rawKey, wasQuoted) = InternalKeyEncoding.decode(key)
+      if (wasQuoted || (rawKey.contains(".") && isEligiblePath(rawKey))) needsWork = true
+      else if (!(expandValue(rawValue, strict) eq rawValue)) needsWork = true
+    }
+    if (!needsWork) return fields
+
     var acc = VectorMap.empty[String, JsonValue]
     fields.foreach {
       case (key, rawValue) =>

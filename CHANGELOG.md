@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.9.0] - 2026-06-06
+
+
+### Bug fixes
+- fix scaladoc link to private object that broke 2.13 doc (#97) ([`f69a174`](https://github.com/com-vitthalmirji/toon4s/commit/f69a174c8fea795cdc848597dcddba977c230943)) [#97](https://github.com/com-vitthalmirji/toon4s/pull/97) by @vim89
+
+
+
+### Build System
+- build object map directly when decoding (#89) ([`3dd72d5`](https://github.com/com-vitthalmirji/toon4s/commit/3dd72d5457d28466ff1a207b3dbdfb54cfea7a52)) [#89](https://github.com/com-vitthalmirji/toon4s/pull/89) by @vim89
+- build tabular row map directly when decoding (#90) ([`f9a9027`](https://github.com/com-vitthalmirji/toon4s/commit/f9a9027b59f54dcd385f1afc11fd0ece6bfcea94)) [#90](https://github.com/com-vitthalmirji/toon4s/pull/90) by @vim89
+
+
+
+### Documentation
+- update CHANGELOG.md for main [skip ci] ([`5fe5ed9`](https://github.com/com-vitthalmirji/toon4s/commit/5fe5ed9f9ed57d1db6fae297c2477be3826538d9)) by @github-actions[bot]
+
+
+
+### Features
+- spark-bench-harness + spark-numeric-fidelity + core-raw-primitives + spark-direct-emitter + spark-remove-legacy-llmclient + spark-aiquery-example ([`03420e0`](https://github.com/com-vitthalmirji/toon4s/commit/03420e0023583d84b01759856e728b1a618434fa)) [#83](https://github.com/com-vitthalmirji/toon4s/pull/83) by @vim89
+
+
 ## [0.8.2] - 2026-06-02
 
 
