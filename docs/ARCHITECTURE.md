@@ -664,12 +664,12 @@ This architecture makes toon4s ideal for:
 **Bottom line**: toon4s is what happens when you refuse to compromise. Use it for TOON encoding, or study it to learn
 how to build production-grade functional systems.
 
-See also: [SCALA-TOON-SPECIFICATION.md](./SCALA-TOON-SPECIFICATION.md) for encoding rules
+See also: [SCALA-TOON-SPECIFICATION.md](../SCALA-TOON-SPECIFICATION.md) for encoding rules
 
 ---
 
-<img src="docs/images/toon4s-usp2.svg" alt="toon4s Scala USP diagram" width="760" />
+<img src="images/toon4s-usp2.svg" alt="toon4s Scala USP diagram" width="760" />
 
 See
-also: [Encoding rules](./SCALA-TOON-SPECIFICATION.md#encoding-rules), [Strict mode](./SCALA-TOON-SPECIFICATION.md#strict-mode-semantics), [Delimiters & headers](./SCALA-TOON-SPECIFICATION.md#delimiters--length-markers)
+also: [Encoding rules](../SCALA-TOON-SPECIFICATION.md#encoding-rules), [Strict mode](../SCALA-TOON-SPECIFICATION.md#strict-mode-semantics), [Delimiters & headers](../SCALA-TOON-SPECIFICATION.md#delimiters--length-markers)
 
