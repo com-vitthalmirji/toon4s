@@ -315,4 +315,39 @@ class CanonicalNumberSpec extends FunSuite {
     }
   }
 
+  // Spec section 2 mandates plain form only for 1e-6 <= |n| < 1e21 and permits (but does not
+  // require) exponent notation outside that range. toon4s deliberately emits plain decimal across
+  // the whole finite range. This is conformant but an intentional choice: it differs in form (not
+  // value) from JS-based encoders, which use exponent outside the same range. These tests pin that
+  // choice so a regression toward exponent notation is caught.
+  test("numbers at or above 1e21 stay plain decimal, not exponent") {
+    val testCases = List(
+      BigDecimal("1e21") -> "1000000000000000000000",
+      BigDecimal("1e22") -> "10000000000000000000000",
+      BigDecimal("1.5e22") -> "15000000000000000000000",
+      BigDecimal("-1e21") -> "-1000000000000000000000",
+    )
+    testCases.foreach {
+      case (input, expected) =>
+        val encoded = Toon.encode(JObj(VectorMap("num" -> JNumber(input)))).getOrElse("")
+        assert(encoded.contains(expected), s"expected '$expected' in:\n$encoded")
+        assert(!encoded.contains('e') && !encoded.contains('E'), s"no exponent allowed:\n$encoded")
+    }
+  }
+
+  test("numbers below 1e-6 stay plain decimal, not exponent") {
+    val testCases = List(
+      BigDecimal("1e-7") -> "0.0000001",
+      BigDecimal("1e-8") -> "0.00000001",
+      BigDecimal("5e-7") -> "0.0000005",
+      BigDecimal("-1e-7") -> "-0.0000001",
+    )
+    testCases.foreach {
+      case (input, expected) =>
+        val encoded = Toon.encode(JObj(VectorMap("num" -> JNumber(input)))).getOrElse("")
+        assert(encoded.contains(expected), s"expected '$expected' in:\n$encoded")
+        assert(!encoded.contains('e') && !encoded.contains('E'), s"no exponent allowed:\n$encoded")
+    }
+  }
+
 }
