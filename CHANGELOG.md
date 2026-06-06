@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.1] - 2026-06-06
+
+
+### Documentation
+- update CHANGELOG.md for main [skip ci] ([`887fd07`](https://github.com/com-vitthalmirji/toon4s/commit/887fd073f6d526816541a9e6d6b908f7e7345aa0)) by @github-actions[bot]
+
+
 ## [0.9.0] - 2026-06-06
 
 
