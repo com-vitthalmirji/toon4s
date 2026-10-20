@@ -24,7 +24,10 @@ class JavaValuesSpec extends FunSuite {
   }
 
   test("a java.util.List is an array") {
-    assertEquals(encode(ordered("tags" -> Arrays.asList("jazz", "chill", "lofi"))), Right("tags[3]: jazz,chill,lofi"))
+    assertEquals(
+      encode(ordered("tags" -> Arrays.asList("jazz", "chill", "lofi"))),
+      Right("tags[3]: jazz,chill,lofi"),
+    )
   }
 
   test("a java.util.Set is an array") {
@@ -42,8 +45,12 @@ class JavaValuesSpec extends FunSuite {
   }
 
   test("Java maps of Java lists are tabular, the same as their Scala counterparts") {
-    val rows = Arrays.asList(ordered("id" -> 1, "name" -> "Ada"), ordered("id" -> 2, "name" -> "Bob"))
-    val scala = Map("users" -> Vector(VectorMap("id" -> 1, "name" -> "Ada"), VectorMap("id" -> 2, "name" -> "Bob")))
+    val rows =
+      Arrays.asList(ordered("id" -> 1, "name" -> "Ada"), ordered("id" -> 2, "name" -> "Bob"))
+    val scala = Map("users" -> Vector(
+      VectorMap("id" -> 1, "name" -> "Ada"),
+      VectorMap("id" -> 2, "name" -> "Bob"),
+    ))
     assertEquals(encode(ordered("users" -> rows)), encode(scala))
     assertEquals(encode(ordered("users" -> rows)), Right("users[2]{id,name}:\n  1,Ada\n  2,Bob"))
   }
