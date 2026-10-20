@@ -21,7 +21,10 @@ class TokenizerOptionSpec extends FunSuite {
   }
 
   test("tokenizer names are matched case-insensitively") {
-    assertEquals(parse("--encode", "--tokenizer", "O200K_BASE", "in.json").map(_.tokenizer), Some("O200K_BASE"))
+    assertEquals(
+      parse("--encode", "--tokenizer", "O200K_BASE", "in.json").map(_.tokenizer),
+      Some("O200K_BASE"),
+    )
   }
 
   List("o200", "gpt-4", "cl100k-base", "").foreach {
