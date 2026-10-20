@@ -75,14 +75,14 @@ TOON generation benchmark:
 Add to your `build.sbt`:
 
 ```scala
-libraryDependencies += "com.vitthalmirji" %% "toon4s-spark" % "<toon4s-version>"
+libraryDependencies += "com.vitthalmirji" %% "toon4s-spark" % "0.9.1"
 ```
 
 For spark applications, use `provided` scope since Spark is typically provided by the cluster:
 
 ```scala
 libraryDependencies ++= Seq(
-  "com.vitthalmirji" %% "toon4s-spark" % "<toon4s-version>",
+  "com.vitthalmirji" %% "toon4s-spark" % "0.9.1",
   "org.apache.spark" %% "spark-sql" % "<your-spark-version>" % Provided
 )
 ```
