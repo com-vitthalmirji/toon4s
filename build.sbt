@@ -139,9 +139,25 @@ lazy val cli = (project in file("cli"))
     libraryDependencies ++= Seq(
       "com.github.scopt" %% "scopt"   % "4.1.0",
       "com.knuddels"      % "jtokkit" % "1.1.0",
+      "org.scalameta"    %% "munit"   % "1.2.1" % Test,
     ),
     scalacOptions ++= commonScalacOptions,
     Compile / mainClass := Some("io.toonformat.toon4s.cli.Main"),
+    // The version --version prints, taken from the build (sbt-dynver)
+    Compile / sourceGenerators += Def.task {
+      val file =
+        (Compile / sourceManaged).value / "io" / "toonformat" / "toon4s" / "cli" / "BuildVersion.scala"
+      IO.write(
+        file,
+        s"""package io.toonformat.toon4s.cli
+           |
+           |private[cli] object BuildVersion {
+           |  val value: String = "${version.value}"
+           |}
+           |""".stripMargin,
+      )
+      Seq(file)
+    }.taskValue,
     Compile / packageDoc / publishArtifact := false,
     maintainer := "Vitthal Mirji <vitthalmirji@gmail.com>",
     publish / skip := true,

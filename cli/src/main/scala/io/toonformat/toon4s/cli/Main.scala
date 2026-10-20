@@ -12,11 +12,11 @@ object Main {
 
   sealed trait Mode
 
-  private case object EncodeMode extends Mode
+  private[cli] case object EncodeMode extends Mode
 
-  private case object DecodeMode extends Mode
+  private[cli] case object DecodeMode extends Mode
 
-  final private case class Config(
+  final private[cli] case class Config(
       mode: Option[Mode] = None,
       input: Path = Paths.get(""),
       output: Option[Path] = None,
@@ -73,7 +73,7 @@ object Main {
     }
   }
 
-  private def run(config: Config): Either[String, Unit] = config.mode match {
+  private[cli] def run(config: Config): Either[String, Unit] = config.mode match {
   case Some(EncodeMode) => runEncode(config)
   case Some(DecodeMode) => runDecode(config)
   case None             => Left("Please specify --encode or --decode")
@@ -127,13 +127,15 @@ object Main {
       .map(ex => s"Failed to write output: ${ex.getMessage}")
       .map(_ => ())
 
-  private val parser = {
+  private[cli] val parser = {
     import scopt.OParser
     val builder = OParser.builder[Config]
     import builder._
     OParser.sequence(
       programName("toon4s-cli"),
+      head("toon4s-cli", BuildVersion.value),
       help("help").text("Show help and exit."),
+      version("version").text("Print the version and exit."),
       opt[Unit]("encode")
         .action((_, c) => c.copy(mode = Some(EncodeMode)))
         .text("Encode JSON input to TOON output."),
