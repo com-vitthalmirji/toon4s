@@ -4,6 +4,7 @@
 
 [![CI](https://github.com/com-vitthalmirji/toon4s/actions/workflows/ci.yml/badge.svg)](https://github.com/com-vitthalmirji/toon4s/actions/workflows/ci.yml)
 [![Release](https://github.com/com-vitthalmirji/toon4s/actions/workflows/release.yml/badge.svg)](https://github.com/com-vitthalmirji/toon4s/actions/workflows/release.yml)
+[![Maven Central](https://img.shields.io/maven-central/v/com.vitthalmirji/toon4s-core_3)](https://central.sonatype.com/artifact/com.vitthalmirji/toon4s-core_3)
 [![Scala](https://img.shields.io/badge/Scala-2.13%20%7C%203.3-red)](https://www.scala-lang.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 
@@ -50,7 +51,7 @@ a compact, LLM-friendly data format that blends YAML-style indentation with CSV-
 
 | Theme                      | What you get                                                                                                                                                                 | Why it matters on the JVM                                                                                                                                         |
 |----------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| **Spec‑complete**          | Targets TOON v3.0.x and emits the v3 row-depth (+2) layout for tabular arrays in list-item first-field position; parity with `toon` (TS) and `JToon` (Java).                 | Mixed stacks behave the same; token math is consistent across platforms.                                                                                          |
+| **Spec‑complete**          | Targets TOON v3.3 and emits the v3 row-depth (+2) layout for tabular arrays in list-item first-field position; parity with `toon` (TS) and `JToon` (Java).                   | Mixed stacks behave the same; token math is consistent across platforms.                                                                                          |
 | **Typed APIs (2 & 3)**     | Scala 3 derivation for `Encoder`/`Decoder`; Scala 2.13 typeclasses via `ToonTyped`.                                                                                          | Compile‑time guarantees, no `Any`; safer refactors and zero-cost abstractions.                                                                                    |
 | **Pure & total**           | All encoders/decoders are pure functions; decode returns `Either[DecodeError, JsonValue]`.                                                                                   | Idiomatic FP: easy to compose in Cats/ZIO/FS2; referentially transparent.                                                                                         |
 | **Deterministic ADTs**     | `JsonValue` as a sealed ADT with `VectorMap` for objects; stable field ordering.                                                                                             | Exhaustive pattern matching; predictable serialization for testing/debugging.                                                                                     |
@@ -68,7 +69,7 @@ a compact, LLM-friendly data format that blends YAML-style indentation with CSV-
 
 ```scala
 // build.sbt
-libraryDependencies += "com.vitthalmirji" %% "toon4s-core" % "<toon4s-version>"
+libraryDependencies += "com.vitthalmirji" %% "toon4s-core" % "0.9.1"
 ```
 
 **Media type:** `text/toon` (provisional, spec §17). File extension: `.toon`. Charset: always UTF-8.
@@ -78,6 +79,39 @@ Prefer CLI only? Ship the staged script (diagram below):
 ```bash
 sbt cli/stage                            # builds ./cli/target/universal/stage/bin/toon4s-cli
 ./cli/target/universal/stage/bin/toon4s-cli --encode sample.json -o sample.toon
+```
+
+### Other build tools
+
+The artifact carries the Scala binary version: `toon4s-core_3` for Scala 3 (and for Java or Kotlin
+projects), `toon4s-core_2.13` for Scala 2.13.
+
+Maven:
+
+```xml
+<dependency>
+  <groupId>com.vitthalmirji</groupId>
+  <artifactId>toon4s-core_3</artifactId>
+  <version>0.9.1</version>
+</dependency>
+```
+
+Gradle (Kotlin DSL):
+
+```kotlin
+implementation("com.vitthalmirji:toon4s-core_3:0.9.1")
+```
+
+Mill 1.x:
+
+```scala
+def mvnDeps = Seq(mvn"com.vitthalmirji::toon4s-core:0.9.1")
+```
+
+scala-cli:
+
+```scala
+//> using dep com.vitthalmirji::toon4s-core:0.9.1
 ```
 
 <img src="docs/images/toon4s-usp.svg"  alt="USP"/>
@@ -108,12 +142,36 @@ println(json)
 
 ### JVM ergonomics
 
-- Works with Scala 3.3.3 and Scala 2.13.14 (tested in CI).
+- Works with Scala 3.3.8 and Scala 2.13.18 (tested in CI).
 - Accepts Scala collections, Java collections, `java.time.*`, `Option`, `Either`, `Product` (case classes, tuples), and
   `IterableOnce`.
 - Deterministic ordering when encoding maps via `VectorMap`.
 - Scala 3 derivation: `codec.Encoder` and `codec.Decoder` derive for case classes. Prefer typed
   `ToonTyped.encode[A: Encoder]` / `ToonTyped.decodeAs[A: Decoder]` over `Any`-based methods.
+
+### From Java
+
+`JToon4s` takes Java collections and returns a `ToonResult` instead of an `Either`
+(Maven or Gradle coordinates: `com.vitthalmirji:toon4s-core_3`):
+
+```java
+import io.toonformat.toon4s.JToon4s;
+import io.toonformat.toon4s.ToonResult;
+import io.toonformat.toon4s.error.EncodeError;
+
+Map<String, Object> ada = new LinkedHashMap<>();   // LinkedHashMap keeps field order
+ada.put("id", 1);
+ada.put("name", "Ada");
+
+ToonResult<EncodeError, String> result = JToon4s.encode(Map.of("users", List.of(ada)));
+if (result.isSuccess()) System.out.println(result.getValue());
+// users[1]{id,name}:
+//   1,Ada
+```
+
+`JToon4s.decode(toon)` returns a `ToonResult<DecodeError, JsonValue>` the same way. A runnable version
+of this example is compiled with the build:
+[`JavaQuickstart.java`](./core/src/test/java/io/toonformat/toon4s/JavaQuickstart.java).
 
 ---
 
@@ -125,13 +183,16 @@ toon4s-cli --encode data.json --indent 4 --delimiter tab -o data.toon
 
 # Decode TOON -> JSON (strict mode on by default; pass lenient if needed)
 toon4s-cli --decode data.toon --strictness lenient -o roundtrip.json
+
+# Read standard input with - so the CLI fits in a pipeline
+cat data.json | toon4s-cli --encode -
 ```
 
 Available flags:
 
 | Flag                                      | Description                                                                   |
 |-------------------------------------------|-------------------------------------------------------------------------------|
-| `--encode` / `--decode`                   | Required: choose direction explicitly.                                        |
+| `--encode` / `--decode`                   | Direction; when omitted, a `.json` input encodes and a `.toon` input decodes. |
 | `--indent <n>`                            | Pretty-print indentation (default `2`).                                       |
 | `--delimiter <comma\|tab\|pipe>`          | Column delimiter for tabular arrays.                                          |
 | `--key-folding <off\|safe>`               | Fold single-key object chains into dotted paths (safe mode respects quoting). |
@@ -142,6 +203,7 @@ Available flags:
 | `--stats`                                 | Print input/output token counts and savings to stderr.                        |
 | `--tokenizer <cl100k\|o200k\|p50k\|r50k>` | Select tokenizer for `--stats` (default `cl100k`).                            |
 | `-o, --output <file>`                     | Target file (stdout when omitted).                                            |
+| `--version`                               | Print the version and exit.                                                   |
 
 Use `--stats` to measure token impact. Choose a tokenizer with `--tokenizer` (e.g., `o200k`).
 
@@ -494,7 +556,10 @@ right abstraction.
 
 ---
 
-## Upgrading to v3.0.x
+## Upgrading from toon4s 0.3.x
+
+toon4s 0.4.0 moved to the TOON spec v3 layout. If you are on 0.3.x or earlier, these are the changes
+you will notice (see the [0.4.0 changelog](./CHANGELOG.md#040---2025-12-04)):
 
 - CLI flag rename: `--strict` is deprecated; use `--strictness strict|lenient`. The old flag still works with a warning
   for now.

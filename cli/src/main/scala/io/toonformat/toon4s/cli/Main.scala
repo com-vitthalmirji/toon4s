@@ -1,5 +1,6 @@
 package io.toonformat.toon4s.cli
 
+import java.io.InputStream
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path, Paths}
 
@@ -12,11 +13,11 @@ object Main {
 
   sealed trait Mode
 
-  private case object EncodeMode extends Mode
+  private[cli] case object EncodeMode extends Mode
 
-  private case object DecodeMode extends Mode
+  private[cli] case object DecodeMode extends Mode
 
-  final private case class Config(
+  final private[cli] case class Config(
       mode: Option[Mode] = None,
       input: Path = Paths.get(""),
       output: Option[Path] = None,
@@ -45,9 +46,13 @@ object Main {
     }
   }
 
-  private def readUtf8(path: Path): Either[String, String] =
+  // "-" reads standard input, so the CLI can sit in a pipeline
+  private[cli] def readUtf8(path: Path, stdin: => InputStream = System.in): Either[String, String] =
     scala.util
-      .Try(Files.readString(path, StandardCharsets.UTF_8))
+      .Try {
+        if (path.toString == "-") new String(stdin.readAllBytes(), StandardCharsets.UTF_8)
+        else Files.readString(path, StandardCharsets.UTF_8)
+      }
       .toEither
       .left
       .map(t => s"Failed to read input: ${t.getMessage}")
@@ -73,10 +78,21 @@ object Main {
     }
   }
 
-  private def run(config: Config): Either[String, Unit] = config.mode match {
+  private[cli] def run(config: Config): Either[String, Unit] = config.mode match {
   case Some(EncodeMode) => runEncode(config)
   case Some(DecodeMode) => runDecode(config)
-  case None             => Left("Please specify --encode or --decode")
+  case None             =>
+    inferMode(config.input)
+      .map(mode => run(config.copy(mode = Some(mode))))
+      .getOrElse(Left("Please specify --encode or --decode (or use a .json or .toon input file)"))
+  }
+
+  // Without --encode or --decode, the input's extension says which way to go.
+  private[cli] def inferMode(input: Path): Option[Mode] = {
+    val name = Option(input.getFileName).map(_.toString.toLowerCase).getOrElse("")
+    if (name.endsWith(".json")) Some(EncodeMode)
+    else if (name.endsWith(".toon")) Some(DecodeMode)
+    else None
   }
 
   private def runEncode(config: Config): Either[String, Unit] = {
@@ -92,7 +108,7 @@ object Main {
         flattenDepth = config.flattenDepth,
       )
       opt <- if (config.optimize) optimize(scalaValue, base, config.tokenizer) else Right(base)
-      encoded <- Toon.encode(scalaValue, opt).left.map(_.message)
+      encoded <- Toon.encode(scalaValue, opt).left.map(_.getMessage)
       _ <- emitWithStats(jsonInput, encoded, config.output, config.stats, config.tokenizer)
     } yield ()
   }
@@ -105,7 +121,8 @@ object Main {
     )
     for {
       toonInput <- readUtf8(config.input)
-      json <- Toon.decode(toonInput, options).left.map(_.message)
+      // getMessage, not message: a decode error adds its line, column and snippet there
+      json <- Toon.decode(toonInput, options).left.map(_.getMessage)
       rendered = SimpleJson.stringify(json)
       _ <- emitWithStats(toonInput, rendered, config.output, config.stats, config.tokenizer)
     } yield ()
@@ -127,19 +144,21 @@ object Main {
       .map(ex => s"Failed to write output: ${ex.getMessage}")
       .map(_ => ())
 
-  private val parser = {
+  private[cli] val parser = {
     import scopt.OParser
     val builder = OParser.builder[Config]
     import builder._
     OParser.sequence(
       programName("toon4s-cli"),
+      head("toon4s-cli", BuildVersion.value),
       help("help").text("Show help and exit."),
+      version("version").text("Print the version and exit."),
       opt[Unit]("encode")
         .action((_, c) => c.copy(mode = Some(EncodeMode)))
-        .text("Encode JSON input to TOON output."),
+        .text("Encode JSON input to TOON output (the default for a .json input)."),
       opt[Unit]("decode")
         .action((_, c) => c.copy(mode = Some(DecodeMode)))
-        .text("Decode TOON input to JSON output."),
+        .text("Decode TOON input to JSON output (the default for a .toon input)."),
       opt[String]('o', "output")
         .valueName("<file>")
         .action((path, c) => c.copy(output = Some(Paths.get(path))))
@@ -168,7 +187,7 @@ object Main {
         .action((v, c) => c.copy(strictness = v.toLowerCase))
         .text(
           "Strictness mode (default: strict). " +
-            "'strict' enforces TOON v2.1 §14: count mismatches, indentation errors, etc. " +
+            "'strict' enforces TOON v3.3 §14 (strict mode errors): count mismatches, indentation errors, etc. " +
             "'lenient' accepts malformed input when possible."
         ),
       opt[String]("delimiter")
@@ -213,12 +232,18 @@ object Main {
         .text("Print GPT token counts for input/output to stderr."),
       opt[String]("tokenizer")
         .valueName("cl100k|o200k|p50k|r50k")
+        .validate(name =>
+          if (token.TokenEstimator.isSupported(name)) success
+          else failure(
+            "tokenizer must be cl100k, o200k, p50k or r50k (a _base suffix is also accepted)"
+          )
+        )
         .action((name, c) => c.copy(tokenizer = name))
         .text("Tokenizer to use with --stats (default: cl100k)."),
       arg[String]("<input>")
         .required()
         .action((path, c) => c.copy(input = Paths.get(path)))
-        .text("Input file path."),
+        .text("Input file path, or - to read standard input."),
     )
   }
 

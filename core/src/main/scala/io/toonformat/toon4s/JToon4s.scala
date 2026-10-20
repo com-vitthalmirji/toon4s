@@ -15,6 +15,9 @@ object JToon4s {
     case Left(err)   => ToonResult.failure(err)
     }
 
+  /** Encodes with the default options; Java has no default arguments. */
+  def encode(value: Any): ToonResult[EncodeError, String] = encode(value, EncodeOptions())
+
   def encodeTo(
       value: Any,
       out: Writer,
@@ -33,6 +36,9 @@ object JToon4s {
     case Right(value) => ToonResult.success(value)
     case Left(err)    => ToonResult.failure(err)
     }
+
+  /** Decodes with the default options; Java has no default arguments. */
+  def decode(input: String): ToonResult[DecodeError, JsonValue] = decode(input, DecodeOptions())
 
   def decodeFrom(
       in: java.io.Reader,

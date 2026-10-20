@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.9.2] - 2026-10-20
+
+
+### Build System
+- build with Scala 3.3.8 LTS (#111) ([`56f0f51`](https://github.com/com-vitthalmirji/toon4s/commit/56f0f513bb3c5299a4b3b9ef3f0395fa647cccaa)) by @kannupriyakalra
+
+
+
+### Documentation
+- update CHANGELOG.md for main [skip ci] ([`35d5cf4`](https://github.com/com-vitthalmirji/toon4s/commit/35d5cf4783deaadf95f2b78dc683a4d8267005ac)) by @github-actions[bot]
+
+
+
+### Tests
+- test the Scala 2.13 version the build publishes with (#109) ([`83092d3`](https://github.com/com-vitthalmirji/toon4s/commit/83092d34636a03c76da890ea9a61f79cb2bf6f5b)) by @kannupriyakalra
+
+
 ## [0.9.1] - 2026-06-06
 
 

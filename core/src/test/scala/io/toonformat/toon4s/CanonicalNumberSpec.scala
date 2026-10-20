@@ -207,6 +207,37 @@ class CanonicalNumberSpec extends FunSuite {
     }
   }
 
+  // The inputs the former debug specs only printed, pinned to their exact output.
+  private val exactCases = List(
+    BigDecimal("1e6") -> "1000000",
+    BigDecimal("1.5000") -> "1.5",
+    BigDecimal("-0") -> "0",
+    BigDecimal("42") -> "42",
+  )
+
+  test("a number field encodes to exactly its canonical form") {
+    exactCases.foreach {
+      case (input, expected) =>
+        assertEquals(
+          Toon.encode(JObj(VectorMap("value" -> JNumber(input)))).left.map(_.message),
+          Right(s"value: $expected"),
+          s"input $input",
+        )
+    }
+  }
+
+  test("a number field decodes back to the same one-field object") {
+    exactCases.foreach {
+      case (input, expected) =>
+        val decoded = Toon.encode(JObj(VectorMap("num" -> JNumber(input)))).flatMap(Toon.decode(_))
+        assertEquals(
+          decoded.left.map(_.message),
+          Right(JObj(VectorMap("num" -> JNumber(BigDecimal(expected))))),
+          s"input $input",
+        )
+    }
+  }
+
   // Helper to extract number from potentially nested structure
   private def extractNumber(json: JsonValue): Option[BigDecimal] = json match {
   case JNumber(n)                       => Some(n)

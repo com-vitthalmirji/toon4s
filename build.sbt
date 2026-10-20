@@ -3,9 +3,9 @@ import sbt._
 import sbt.Keys._
 import sbtdynver.DynVerPlugin.autoImport._
 
-lazy val Scala3Latest = "3.3.3"
+lazy val Scala3Latest = "3.3.8"
 
-lazy val Scala213Latest = "2.13.16"
+lazy val Scala213Latest = "2.13.18"
 
 lazy val SparkSqlDefaultVersion = "3.5.0"
 
@@ -13,7 +13,7 @@ lazy val SparkSqlVersion =
   sys.props.getOrElse("toon4s.spark.version", SparkSqlDefaultVersion)
 
 lazy val Llm4sVersion =
-  sys.props.getOrElse("toon4s.llm4s.version", "0.1.16")
+  sys.props.getOrElse("toon4s.llm4s.version", "0.5.1")
 
 ThisBuild / organization := "com.vitthalmirji"
 
@@ -112,22 +112,9 @@ lazy val core = (project in file("core"))
           version.value,
         )
     },
-    // MiMa configuration for binary compatibility checking
+    // MiMa configuration for binary compatibility checking, against the latest release
     mimaPreviousArtifacts := Set(
-      organization.value %% moduleName.value % "0.7.0"
-    ),
-    // Internal parsing methods gained an isStrict parameter in v3.3 conformance work.
-    // These are implementation utilities, not part of the documented public API.
-    mimaBinaryIssueFilters := Seq(
-      ProblemFilters.exclude[DirectMissingMethodProblem](
-        "io.toonformat.toon4s.decode.Parser.parseArrayHeaderLine"
-      ),
-      ProblemFilters.exclude[DirectMissingMethodProblem](
-        "io.toonformat.toon4s.decode.parsers.ArrayHeaderParser.parseArrayHeaderLine"
-      ),
-      ProblemFilters.exclude[DirectMissingMethodProblem](
-        "io.toonformat.toon4s.decode.parsers.ArrayHeaderParser.parseBracketSegment"
-      ),
+      organization.value %% moduleName.value % "0.9.1"
     ),
   )
 
@@ -139,9 +126,25 @@ lazy val cli = (project in file("cli"))
     libraryDependencies ++= Seq(
       "com.github.scopt" %% "scopt"   % "4.1.0",
       "com.knuddels"      % "jtokkit" % "1.1.0",
+      "org.scalameta"    %% "munit"   % "1.2.1" % Test,
     ),
     scalacOptions ++= commonScalacOptions,
     Compile / mainClass := Some("io.toonformat.toon4s.cli.Main"),
+    // The version --version prints, taken from the build (sbt-dynver)
+    Compile / sourceGenerators += Def.task {
+      val file =
+        (Compile / sourceManaged).value / "io" / "toonformat" / "toon4s" / "cli" / "BuildVersion.scala"
+      IO.write(
+        file,
+        s"""package io.toonformat.toon4s.cli
+           |
+           |private[cli] object BuildVersion {
+           |  val value: String = "${version.value}"
+           |}
+           |""".stripMargin,
+      )
+      Seq(file)
+    }.taskValue,
     Compile / packageDoc / publishArtifact := false,
     maintainer := "Vitthal Mirji <vitthalmirji@gmail.com>",
     publish / skip := true,
@@ -176,7 +179,7 @@ lazy val sparkIntegration = (project in file("spark-integration"))
     scalaVersion := Scala213Latest,
     libraryDependencies ++= Seq(
       "org.apache.spark" %% "spark-sql"        % SparkSqlVersion % Provided,
-      ("org.llm4s"       %% "core"             % Llm4sVersion    % Provided).intransitive(),
+      ("org.llm4s"       %% "llm4s-core"       % Llm4sVersion    % Provided).cross(CrossVersion.for2_13Use3),
       "org.scalameta"    %% "munit"            % "1.2.1"         % Test,
       "org.scalacheck"   %% "scalacheck"       % "1.19.0"        % Test,
       "org.scalameta"    %% "munit-scalacheck" % "1.2.0"         % Test,
@@ -214,9 +217,9 @@ lazy val sparkIntegration = (project in file("spark-integration"))
       "-doc-version",
       version.value,
     ),
-    // MiMa configuration for binary compatibility checking
+    // MiMa configuration for binary compatibility checking, against the latest release
     mimaPreviousArtifacts := Set(
-      organization.value %% moduleName.value % "0.7.0"
+      organization.value %% moduleName.value % "0.9.1"
     ),
     // Exclude known binary incompatible changes (add as needed)
     mimaBinaryIssueFilters := Seq(

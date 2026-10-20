@@ -2,7 +2,8 @@ package io.toonformat.toon4s.visitor
 
 import java.io.Writer
 
-import io.toonformat.toon4s.{EncodeOptions, JsonValue}
+import io.toonformat.toon4s.{Delimiter, EncodeOptions, JsonValue}
+import io.toonformat.toon4s.encode.Primitives
 
 /**
  * High-performance streaming encoder using the Visitor Pattern.
@@ -106,16 +107,9 @@ object StreamingEncoder {
  */
 final class StreamingStringifyVisitor(writer: Writer, indent: Int = 2) extends Visitor[Unit] {
 
-  override def visitString(value: String): Unit = {
-    if (needsQuoting(value)) {
-      writer.write('"')
-      // TODO: Use Primitives.escapeString once we expose it
-      writer.write(value)
-      writer.write('"')
-    } else {
-      writer.write(value)
-    }
-  }
+  // Same quoting and escaping as the tree encoder, so a streamed string decodes back unchanged.
+  override def visitString(value: String): Unit =
+    Primitives.writeStringLiteral(value, Delimiter.Comma, writer)
 
   override def visitNumber(value: BigDecimal): Unit = {
     writer.write(value.toString)
@@ -137,14 +131,6 @@ final class StreamingStringifyVisitor(writer: Writer, indent: Int = 2) extends V
 
   override def visitObject(): ObjectVisitor[Unit] = {
     new StreamingObjectVisitor(writer, indent)
-  }
-
-  private def needsQuoting(s: String): Boolean = {
-    s.isEmpty ||
-    s != s.trim ||
-    s.contains(' ') ||
-    s.exists(c => c == '"' || c == ':' || c == '\n' || c == '\r' || c == '\t') ||
-    s == "null" || s == "true" || s == "false"
   }
 
 }

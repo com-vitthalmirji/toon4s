@@ -75,14 +75,14 @@ TOON generation benchmark:
 Add to your `build.sbt`:
 
 ```scala
-libraryDependencies += "com.vitthalmirji" %% "toon4s-spark" % "<toon4s-version>"
+libraryDependencies += "com.vitthalmirji" %% "toon4s-spark" % "0.9.1"
 ```
 
 For spark applications, use `provided` scope since Spark is typically provided by the cluster:
 
 ```scala
 libraryDependencies ++= Seq(
-  "com.vitthalmirji" %% "toon4s-spark" % "<toon4s-version>",
+  "com.vitthalmirji" %% "toon4s-spark" % "0.9.1",
   "org.apache.spark" %% "spark-sql" % "<your-spark-version>" % Provided
 )
 ```
@@ -98,7 +98,7 @@ Published artifacts compile against Spark `3.5.0` APIs and are validated on Spar
 | Module              | Scala | Spark support | JDK |
 |---------------------|-------|---------------|-----|
 | `toon4s-spark`      | 2.13  | 3.5.x, 4.0.x  | 21  |
-| `toon4s` root build | 2.13, 3.3.3 | N/A | 21  |
+| `toon4s` root build | 2.13, 3.3.8 | N/A | 21  |
 
 See `spark-integration/docs/COMPATIBILITY_MATRIX.md` for full policy and notes.
 
@@ -429,6 +429,43 @@ val metrics = df.writeToLlmPartitions(
 
 `writeToLlmPartitions` performs encode and send inside executor tasks.
 Use `LlmPartitionSink` with llm4s clients for production pipelines.
+
+#### Adding llm4s to a Spark job
+
+Since 0.5, llm4s is split into modules: `llm4s-core` (the `LLMClient` API and configuration) and one
+module per provider (`llm4s-openai`, `llm4s-anthropic`, `llm4s-ollama`, ...). llm4s is published for
+Scala 3 only, and a Spark job is Scala 2.13, so add the Scala 3 artifacts and let Scala 2.13 read
+them with `-Ytasty-reader`:
+
+```scala
+// build.sbt of your Spark job (Scala 2.13)
+libraryDependencies ++= Seq(
+  ("org.llm4s" %% "llm4s-core"   % "0.5.1").cross(CrossVersion.for2_13Use3),
+  ("org.llm4s" %% "llm4s-openai" % "0.5.1").cross(CrossVersion.for2_13Use3), // one per provider you use
+)
+scalacOptions += "-Ytasty-reader"
+```
+
+llm4s's `using` parameters become an explicit second argument list in Scala 2.13. A client factory
+for the provider named by `llm4s.providers.provider` in your `application.conf`:
+
+```scala
+import org.llm4s.config.Llm4sConfig
+import org.llm4s.llmconnect.{LLMClient, LLMConnect}
+import org.llm4s.llmconnect.spi.ProviderRegistry
+
+def myLlmClient(): LLMClient = {
+  val registry = ProviderRegistry.default
+  val client = for {
+    models <- Llm4sConfig.modelRegistryService()
+    config <- Llm4sConfig.defaultProvider()(registry)
+    client <- LLMConnect.getClient(config)(models, registry)
+  } yield client
+  client.fold(error => throw new IllegalStateException(error.message), identity)
+}
+```
+
+Scala 2.13 can call the llm4s API but cannot subclass `LLMClient`; take clients from `LLMConnect`.
 
 For legacy local tests, standalone helpers remain under `io.toonformat.toon4s.spark.llm`,
 but new integrations should prefer the partition sink path above.
