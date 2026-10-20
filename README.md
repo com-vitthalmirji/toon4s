@@ -4,6 +4,7 @@
 
 [![CI](https://github.com/com-vitthalmirji/toon4s/actions/workflows/ci.yml/badge.svg)](https://github.com/com-vitthalmirji/toon4s/actions/workflows/ci.yml)
 [![Release](https://github.com/com-vitthalmirji/toon4s/actions/workflows/release.yml/badge.svg)](https://github.com/com-vitthalmirji/toon4s/actions/workflows/release.yml)
+[![Maven Central](https://img.shields.io/maven-central/v/com.vitthalmirji/toon4s-core_3)](https://central.sonatype.com/artifact/com.vitthalmirji/toon4s-core_3)
 [![Scala](https://img.shields.io/badge/Scala-2.13%20%7C%203.3-red)](https://www.scala-lang.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 
@@ -68,7 +69,7 @@ a compact, LLM-friendly data format that blends YAML-style indentation with CSV-
 
 ```scala
 // build.sbt
-libraryDependencies += "com.vitthalmirji" %% "toon4s-core" % "<toon4s-version>"
+libraryDependencies += "com.vitthalmirji" %% "toon4s-core" % "0.9.1"
 ```
 
 **Media type:** `text/toon` (provisional, spec §17). File extension: `.toon`. Charset: always UTF-8.
