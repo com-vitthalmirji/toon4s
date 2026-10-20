@@ -6,10 +6,9 @@ import java.util.concurrent.ConcurrentLinkedQueue
 import scala.jdk.CollectionConverters._
 
 import munit.FunSuite
-import org.llm4s.error.{LLMError, NetworkError}
 import org.llm4s.config.Llm4sConfig
+import org.llm4s.error.{LLMError, NetworkError}
 import org.llm4s.llmconnect.{LLMClient, LLMConnect}
-import org.llm4s.llmconnect.spi.ProviderRegistry
 import org.llm4s.llmconnect.model.{
   AssistantMessage,
   Completion,
@@ -18,6 +17,7 @@ import org.llm4s.llmconnect.model.{
   SystemMessage,
   UserMessage,
 }
+import org.llm4s.llmconnect.spi.ProviderRegistry
 
 /**
  * Drives `LlmPartitionWriterFactory.fromClientFactory` with an llm4s `LLMClient`, from Scala 2.13
@@ -74,7 +74,8 @@ class LlmPartitionWriterFactoryTest extends FunSuite {
         )
       )
 
-  private val request = LlmChunkRequest("key-1", partitionId = 0, chunkIndex = 0, toonChunk = "a: 1")
+  private val request =
+    LlmChunkRequest("key-1", partitionId = 0, chunkIndex = 0, toonChunk = "a: 1")
 
   test("sends the system prompt and the TOON chunk with its idempotency key") {
     val client = new RecordingClient(ok)
@@ -133,7 +134,9 @@ class LlmPartitionWriterFactoryTest extends FunSuite {
   // The client setup the spark-integration README shows, run from Scala 2.13. No provider module
   // or provider section is on the test classpath, so it must end in an llm4s error - a Left -
   // rather than a linkage error thrown from the Scala 3 configuration code.
-  test("the README's client setup runs from Scala 2.13 and reports a missing provider as an error") {
+  test(
+    "the README's client setup runs from Scala 2.13 and reports a missing provider as an error"
+  ) {
     val registry = ProviderRegistry.default
     val result = for {
       models <- Llm4sConfig.modelRegistryService()
