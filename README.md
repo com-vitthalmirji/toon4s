@@ -145,6 +145,7 @@ Available flags:
 | `--stats`                                 | Print input/output token counts and savings to stderr.                        |
 | `--tokenizer <cl100k\|o200k\|p50k\|r50k>` | Select tokenizer for `--stats` (default `cl100k`).                            |
 | `-o, --output <file>`                     | Target file (stdout when omitted).                                            |
+| `--version`                               | Print the version and exit.                                                   |
 
 Use `--stats` to measure token impact. Choose a tokenizer with `--tokenizer` (e.g., `o200k`).
 

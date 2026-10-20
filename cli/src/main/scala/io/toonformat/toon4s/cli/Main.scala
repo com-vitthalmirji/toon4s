@@ -139,7 +139,9 @@ object Main {
     import builder._
     OParser.sequence(
       programName("toon4s-cli"),
+      head("toon4s-cli", BuildVersion.value),
       help("help").text("Show help and exit."),
+      version("version").text("Print the version and exit."),
       opt[Unit]("encode")
         .action((_, c) => c.copy(mode = Some(EncodeMode)))
         .text("Encode JSON input to TOON output."),
