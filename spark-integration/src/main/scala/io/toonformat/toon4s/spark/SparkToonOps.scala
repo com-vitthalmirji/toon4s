@@ -826,6 +826,10 @@ object SparkToonOps {
               sentChunks += 1L
             case Right(LlmSendStatus.Duplicate) =>
               duplicateChunks += 1L
+            case Right(LlmSendStatus.SentButUnrecorded(reason)) =>
+              registerFailure(
+                s"chunk reached the LLM but its idempotency key was not recorded: $reason"
+              )
             case Left(err) =>
               registerFailure(err.formatted)
             }
