@@ -176,7 +176,7 @@ object Main {
         .action((v, c) => c.copy(strictness = v.toLowerCase))
         .text(
           "Strictness mode (default: strict). " +
-            "'strict' enforces TOON v2.1 §14: count mismatches, indentation errors, etc. " +
+            "'strict' enforces TOON v3.3 §14 (strict mode errors): count mismatches, indentation errors, etc. " +
             "'lenient' accepts malformed input when possible."
         ),
       opt[String]("delimiter")
