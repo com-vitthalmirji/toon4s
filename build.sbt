@@ -112,22 +112,9 @@ lazy val core = (project in file("core"))
           version.value,
         )
     },
-    // MiMa configuration for binary compatibility checking
+    // MiMa configuration for binary compatibility checking, against the latest release
     mimaPreviousArtifacts := Set(
-      organization.value %% moduleName.value % "0.7.0"
-    ),
-    // Internal parsing methods gained an isStrict parameter in v3.3 conformance work.
-    // These are implementation utilities, not part of the documented public API.
-    mimaBinaryIssueFilters := Seq(
-      ProblemFilters.exclude[DirectMissingMethodProblem](
-        "io.toonformat.toon4s.decode.Parser.parseArrayHeaderLine"
-      ),
-      ProblemFilters.exclude[DirectMissingMethodProblem](
-        "io.toonformat.toon4s.decode.parsers.ArrayHeaderParser.parseArrayHeaderLine"
-      ),
-      ProblemFilters.exclude[DirectMissingMethodProblem](
-        "io.toonformat.toon4s.decode.parsers.ArrayHeaderParser.parseBracketSegment"
-      ),
+      organization.value %% moduleName.value % "0.9.1"
     ),
   )
 
@@ -214,9 +201,9 @@ lazy val sparkIntegration = (project in file("spark-integration"))
       "-doc-version",
       version.value,
     ),
-    // MiMa configuration for binary compatibility checking
+    // MiMa configuration for binary compatibility checking, against the latest release
     mimaPreviousArtifacts := Set(
-      organization.value %% moduleName.value % "0.7.0"
+      organization.value %% moduleName.value % "0.9.1"
     ),
     // Exclude known binary incompatible changes (add as needed)
     mimaBinaryIssueFilters := Seq(
