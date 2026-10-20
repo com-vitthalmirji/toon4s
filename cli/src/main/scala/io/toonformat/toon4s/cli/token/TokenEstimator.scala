@@ -7,6 +7,12 @@ object TokenEstimator {
 
   private def registry = Encodings.newDefaultEncodingRegistry()
 
+  /** Tokenizer names accepted by `--tokenizer`, matched case-insensitively. */
+  val supportedNames: List[String] =
+    List("cl100k", "cl100k_base", "o200k", "o200k_base", "p50k", "p50k_base", "r50k", "r50k_base")
+
+  def isSupported(name: String): Boolean = supportedNames.contains(name.toLowerCase)
+
   private def encodingTypeFor(name: String): EncodingType =
     name.toLowerCase match {
     case "o200k" | "o200k_base" => EncodingType.O200K_BASE

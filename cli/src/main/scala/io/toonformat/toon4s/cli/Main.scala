@@ -16,7 +16,7 @@ object Main {
 
   private case object DecodeMode extends Mode
 
-  final private case class Config(
+  final private[cli] case class Config(
       mode: Option[Mode] = None,
       input: Path = Paths.get(""),
       output: Option[Path] = None,
@@ -127,7 +127,7 @@ object Main {
       .map(ex => s"Failed to write output: ${ex.getMessage}")
       .map(_ => ())
 
-  private val parser = {
+  private[cli] val parser = {
     import scopt.OParser
     val builder = OParser.builder[Config]
     import builder._
@@ -213,6 +213,12 @@ object Main {
         .text("Print GPT token counts for input/output to stderr."),
       opt[String]("tokenizer")
         .valueName("cl100k|o200k|p50k|r50k")
+        .validate(name =>
+          if (token.TokenEstimator.isSupported(name)) success
+          else failure(
+            "tokenizer must be cl100k, o200k, p50k or r50k (a _base suffix is also accepted)"
+          )
+        )
         .action((name, c) => c.copy(tokenizer = name))
         .text("Tokenizer to use with --stats (default: cl100k)."),
       arg[String]("<input>")
