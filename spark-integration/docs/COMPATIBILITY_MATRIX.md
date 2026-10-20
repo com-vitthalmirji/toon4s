@@ -18,7 +18,7 @@
 | Area                           | Status                |
 |--------------------------------|-----------------------|
 | Spark integration module Scala | 2.13                  |
-| Root project Scala             | 2.13 and 3.3.3        |
+| Root project Scala             | 2.13 and 3.3.8        |
 | CI operating systems           | Linux, macOS, Windows |
 | CI JDK                         | 21                    |
 | Spark compatibility checks     | 3.5.0 and 4.0.1       |

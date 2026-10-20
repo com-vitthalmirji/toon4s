@@ -98,7 +98,7 @@ Published artifacts compile against Spark `3.5.0` APIs and are validated on Spar
 | Module              | Scala | Spark support | JDK |
 |---------------------|-------|---------------|-----|
 | `toon4s-spark`      | 2.13  | 3.5.x, 4.0.x  | 21  |
-| `toon4s` root build | 2.13, 3.3.3 | N/A | 21  |
+| `toon4s` root build | 2.13, 3.3.8 | N/A | 21  |
 
 See `spark-integration/docs/COMPATIBILITY_MATRIX.md` for full policy and notes.
 

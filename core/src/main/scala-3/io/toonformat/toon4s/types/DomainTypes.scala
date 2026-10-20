@@ -1,5 +1,7 @@
 package io.toonformat.toon4s.types
 
+import scala.annotation.nowarn
+
 /**
  * Domain types using Scala 3 opaque types for zero-cost type safety.
  *
@@ -180,6 +182,9 @@ object DomainTypes {
 
       def >=(n: Int): Boolean = length >= n
 
+      // Never selected: the universal `==` on the underlying Int always wins, with the same result.
+      // Kept so the published binary keeps the method (MiMa); newer 3.3.x compilers warn about it.
+      @nowarn("msg=will never be selected")
       def ==(n: Int): Boolean = length == n
 
     }

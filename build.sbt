@@ -3,9 +3,9 @@ import sbt._
 import sbt.Keys._
 import sbtdynver.DynVerPlugin.autoImport._
 
-lazy val Scala3Latest = "3.3.3"
+lazy val Scala3Latest = "3.3.8"
 
-lazy val Scala213Latest = "2.13.16"
+lazy val Scala213Latest = "2.13.18"
 
 lazy val SparkSqlDefaultVersion = "3.5.0"
 

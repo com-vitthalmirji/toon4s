@@ -109,6 +109,14 @@ object Decoder:
     val labels = constValueTuple[m.MirroredElemLabels]
     val decs = summonAll[m.MirroredElemTypes]
     val flags = optionFlags[m.MirroredElemTypes]
+    productDecoder[A](labels, decs, flags)
+
+  // Built by a regular method so the decoder class is compiled once, not at every derivation site.
+  private def productDecoder[A](
+      labels: List[String],
+      decs: List[Decoder[_]],
+      flags: List[Boolean],
+  )(using m: Mirror.ProductOf[A]): Decoder[A] =
     new Decoder[A] {
       def apply(v: JsonValue) = v match
       case JObj(fields) =>
