@@ -13,7 +13,7 @@ lazy val SparkSqlVersion =
   sys.props.getOrElse("toon4s.spark.version", SparkSqlDefaultVersion)
 
 lazy val Llm4sVersion =
-  sys.props.getOrElse("toon4s.llm4s.version", "0.1.16")
+  sys.props.getOrElse("toon4s.llm4s.version", "0.5.1")
 
 ThisBuild / organization := "com.vitthalmirji"
 
@@ -164,7 +164,7 @@ lazy val sparkIntegration = (project in file("spark-integration"))
     scalaVersion := Scala213Latest,
     libraryDependencies ++= Seq(
       "org.apache.spark" %% "spark-sql"        % SparkSqlVersion % Provided,
-      ("org.llm4s"       %% "core"             % Llm4sVersion    % Provided).intransitive(),
+      ("org.llm4s"       %% "llm4s-core"       % Llm4sVersion    % Provided).cross(CrossVersion.for2_13Use3),
       "org.scalameta"    %% "munit"            % "1.2.1"         % Test,
       "org.scalacheck"   %% "scalacheck"       % "1.19.0"        % Test,
       "org.scalameta"    %% "munit-scalacheck" % "1.2.0"         % Test,
