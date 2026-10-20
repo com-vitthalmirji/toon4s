@@ -13,7 +13,8 @@ class InferModeSpec extends FunSuite {
     Files.write(path, content.getBytes(StandardCharsets.UTF_8))
   }
 
-  private def read(path: Path): String = new String(Files.readAllBytes(path), StandardCharsets.UTF_8)
+  private def read(path: Path): String =
+    new String(Files.readAllBytes(path), StandardCharsets.UTF_8)
 
   private def run(input: Path, mode: Option[Main.Mode] = None): (Either[String, Unit], String) = {
     val output = tempFile(".out", "")
@@ -40,7 +41,10 @@ class InferModeSpec extends FunSuite {
   }
 
   test("running without a flag encodes a .json file") {
-    assertEquals(run(tempFile(".json", """{"tags":["jazz","chill"]}""")), (Right(()), "tags[2]: jazz,chill"))
+    assertEquals(
+      run(tempFile(".json", """{"tags":["jazz","chill"]}""")),
+      (Right(()), "tags[2]: jazz,chill"),
+    )
   }
 
   test("running without a flag decodes a .toon file") {
@@ -49,12 +53,18 @@ class InferModeSpec extends FunSuite {
 
   test("an explicit flag wins over the extension") {
     // TOON content in a .json file, decoded because --decode says so
-    assertEquals(run(tempFile(".json", "name: Ada"), Some(Main.DecodeMode)), (Right(()), """{"name":"Ada"}"""))
+    assertEquals(
+      run(tempFile(".json", "name: Ada"), Some(Main.DecodeMode)),
+      (Right(()), """{"name":"Ada"}"""),
+    )
   }
 
   test("an unknown extension without a flag asks for --encode or --decode") {
     val (result, _) = run(tempFile(".txt", "name: Ada"))
-    assertEquals(result, Left("Please specify --encode or --decode (or use a .json or .toon input file)"))
+    assertEquals(
+      result,
+      Left("Please specify --encode or --decode (or use a .json or .toon input file)"),
+    )
   }
 
 }
