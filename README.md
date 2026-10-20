@@ -109,7 +109,7 @@ println(json)
 
 ### JVM ergonomics
 
-- Works with Scala 3.3.3 and Scala 2.13.16 (tested in CI).
+- Works with Scala 3.3.8 and Scala 2.13.18 (tested in CI).
 - Accepts Scala collections, Java collections, `java.time.*`, `Option`, `Either`, `Product` (case classes, tuples), and
   `IterableOnce`.
 - Deterministic ordering when encoding maps via `VectorMap`.

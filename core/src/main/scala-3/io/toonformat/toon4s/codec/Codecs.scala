@@ -21,10 +21,14 @@ object Encoder {
     inline m match
     case p: Mirror.ProductOf[A] => productEncoder(p)
 
+  // Only the labels need inlining; the encoder itself is built by a regular method, so its class is
+  // compiled once instead of being duplicated at every derivation site.
   private inline def productEncoder[A](p: Mirror.ProductOf[A]): Encoder[A] =
+    productEncoderFor[A](constValueTuple[p.MirroredElemLabels])
+
+  private def productEncoderFor[A](labels: List[String]): Encoder[A] =
     new Encoder[A] {
       def apply(a: A): JsonValue =
-        val labels = constValueTuple[p.MirroredElemLabels]
         val values = a.asInstanceOf[Product].productIterator.toList
         val kvs = labels.zip(values).map {
           case (k, v) => k -> toJson(v)
