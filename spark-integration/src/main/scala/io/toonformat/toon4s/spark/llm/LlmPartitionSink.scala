@@ -30,6 +30,10 @@ object LlmSendStatus {
 
   case object Duplicate extends LlmSendStatus
 
+  // The chunk reached the LLM, but the idempotency store failed to record it. Retrying the
+  // send would re-deliver the chunk to the LLM, so this is reported rather than retried.
+  final case class SentButUnrecorded(reason: String) extends LlmSendStatus
+
 }
 
 trait IdempotencyStore extends Serializable {
@@ -106,13 +110,22 @@ object LlmPartitionWriterFactory {
                     )
                   )
                   .flatMap(conv => client.complete(conv, completionOptions))
-                  .flatMap(_ => idempotencyStore.markSent(request.idempotencyKey))
-                  .map(_ => LlmSendStatus.Sent)
+                  .map(_ => markSentOrReport(idempotencyStore, request.idempotencyKey))
             }
           }
           override def close(): Unit = client.close()
         }
       }
+    }
+
+  // Called only after the chunk has already reached the LLM. A failure to record it must not
+  // be surfaced as a Left: the caller's retry would re-send the chunk, since the idempotency
+  // key would still look unsent. Reporting it as a status instead keeps that resend from
+  // happening while still telling the caller the dedup guarantee is compromised for this key.
+  private def markSentOrReport(store: IdempotencyStore, key: String): LlmSendStatus =
+    store.markSent(key) match {
+    case Right(_)  => LlmSendStatus.Sent
+    case Left(err) => LlmSendStatus.SentButUnrecorded(err.formatted)
     }
 
   @deprecated(
@@ -145,8 +158,7 @@ object LlmPartitionWriterFactory {
                   )
                   .left
                   .map(toLlm4sError)
-                  .flatMap(_ => idempotencyStore.markSent(request.idempotencyKey))
-                  .map(_ => LlmSendStatus.Sent)
+                  .map(_ => markSentOrReport(idempotencyStore, request.idempotencyKey))
             }
           }
           override def close(): Unit = client.close()

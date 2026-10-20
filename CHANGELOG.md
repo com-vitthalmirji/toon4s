@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.3] - 2026-10-20
+
+
+### Documentation
+- update CHANGELOG.md for main [skip ci] ([`5402c83`](https://github.com/com-vitthalmirji/toon4s/commit/5402c83334475728ba7bad80274680c6fedafa31)) by @github-actions[bot]
+
+
 ## [0.9.2] - 2026-10-20
 
 

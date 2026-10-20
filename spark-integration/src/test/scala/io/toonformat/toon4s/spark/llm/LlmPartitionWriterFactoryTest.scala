@@ -123,6 +123,22 @@ class LlmPartitionWriterFactoryTest extends FunSuite {
     assertEquals(store.isSent("key-1"), Right(false))
   }
 
+  test("a markSent failure after a successful send is reported, not retried as a resend") {
+    val client = new RecordingClient(ok)
+    val storeFailure = NetworkError("store unavailable", None, "idempotency-store")
+    val store = new IdempotencyStore {
+      def isSent(key: String): Either[LLMError, Boolean] = Right(false)
+      def markSent(key: String): Either[LLMError, Unit] = Left(storeFailure)
+    }
+    val writer = LlmPartitionWriterFactory.fromClientFactory(() => client.client, store).create()
+
+    assertEquals(
+      writer.send(request),
+      Right(LlmSendStatus.SentButUnrecorded(storeFailure.formatted)),
+    )
+    assertEquals(client.conversations.size, 1)
+  }
+
   test("closing the writer closes the client") {
     val client = new RecordingClient(ok)
     val writer = LlmPartitionWriterFactory.fromClientFactory(() => client.client).create()
