@@ -115,6 +115,30 @@ println(json)
 - Scala 3 derivation: `codec.Encoder` and `codec.Decoder` derive for case classes. Prefer typed
   `ToonTyped.encode[A: Encoder]` / `ToonTyped.decodeAs[A: Decoder]` over `Any`-based methods.
 
+### From Java
+
+`JToon4s` takes Java collections and returns a `ToonResult` instead of an `Either`
+(Maven or Gradle coordinates: `com.vitthalmirji:toon4s-core_3`):
+
+```java
+import io.toonformat.toon4s.JToon4s;
+import io.toonformat.toon4s.ToonResult;
+import io.toonformat.toon4s.error.EncodeError;
+
+Map<String, Object> ada = new LinkedHashMap<>();   // LinkedHashMap keeps field order
+ada.put("id", 1);
+ada.put("name", "Ada");
+
+ToonResult<EncodeError, String> result = JToon4s.encode(Map.of("users", List.of(ada)));
+if (result.isSuccess()) System.out.println(result.getValue());
+// users[1]{id,name}:
+//   1,Ada
+```
+
+`JToon4s.decode(toon)` returns a `ToonResult<DecodeError, JsonValue>` the same way. A runnable version
+of this example is compiled with the build:
+[`JavaQuickstart.java`](./core/src/test/java/io/toonformat/toon4s/JavaQuickstart.java).
+
 ---
 
 ## CLI usage
