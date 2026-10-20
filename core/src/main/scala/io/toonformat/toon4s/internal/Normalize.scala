@@ -7,7 +7,6 @@ import java.time.temporal.{ChronoField, TemporalAccessor}
 
 import scala.collection.{Map => ScalaMap}
 import scala.collection.immutable.VectorMap
-import scala.jdk.CollectionConverters._
 import scala.util.Try
 
 import io.toonformat.toon4s.JsonValue._
@@ -53,26 +52,6 @@ private[toon4s] object Normalize {
     JString(date.toInstant.toString)
   case it: Iterable[_] =>
     iteratorToJArray(it.iterator)
-  // Java types, for callers using JToon4s or passing Java values through the Scala API
-  case m: java.util.Map[_, _] =>
-    val iter = m.entrySet.iterator
-    if (!iter.hasNext) JObj(VectorMap.empty)
-    else {
-      val builder = VectorMap.newBuilder[String, JsonValue]
-      while (iter.hasNext) {
-        val entry = iter.next()
-        builder.addOne(stringifyKey(entry.getKey), toJson(entry.getValue))
-      }
-      JObj(builder.result())
-    }
-  case it: java.lang.Iterable[_] =>
-    iteratorToJArray(it.iterator.asScala)
-  case bd: java.math.BigDecimal =>
-    JNumber(BigDecimal(bd))
-  case bi: java.math.BigInteger =>
-    normalizeBigInt(BigInt(bi))
-  case opt: java.util.Optional[_] =>
-    if (opt.isPresent) toJson(opt.get) else JNull
   case p: Product =>
     val names = p.productElementNames
     val elems = p.productIterator
@@ -85,7 +64,9 @@ private[toon4s] object Normalize {
       JObj(builder.result())
     }
   case other =>
-    JString(String.valueOf(other))
+    JavaNormalize
+      .toJson(other)(toJson, stringifyKey, normalizeBigInt)
+      .getOrElse(JString(String.valueOf(other)))
   }
 
   private def iteratorToJArray(iter: Iterator[_]): JArray = {
