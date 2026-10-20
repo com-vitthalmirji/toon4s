@@ -1,5 +1,6 @@
 package io.toonformat.toon4s.cli
 
+import java.io.InputStream
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path, Paths}
 
@@ -45,9 +46,13 @@ object Main {
     }
   }
 
-  private def readUtf8(path: Path): Either[String, String] =
+  // "-" reads standard input, so the CLI can sit in a pipeline
+  private[cli] def readUtf8(path: Path, stdin: => InputStream = System.in): Either[String, String] =
     scala.util
-      .Try(Files.readString(path, StandardCharsets.UTF_8))
+      .Try {
+        if (path.toString == "-") new String(stdin.readAllBytes(), StandardCharsets.UTF_8)
+        else Files.readString(path, StandardCharsets.UTF_8)
+      }
       .toEither
       .left
       .map(t => s"Failed to read input: ${t.getMessage}")
@@ -225,7 +230,7 @@ object Main {
       arg[String]("<input>")
         .required()
         .action((path, c) => c.copy(input = Paths.get(path)))
-        .text("Input file path."),
+        .text("Input file path, or - to read standard input."),
     )
   }
 

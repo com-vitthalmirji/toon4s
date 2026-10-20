@@ -125,6 +125,9 @@ toon4s-cli --encode data.json --indent 4 --delimiter tab -o data.toon
 
 # Decode TOON -> JSON (strict mode on by default; pass lenient if needed)
 toon4s-cli --decode data.toon --strictness lenient -o roundtrip.json
+
+# Read standard input with - so the CLI fits in a pipeline
+cat data.json | toon4s-cli --encode -
 ```
 
 Available flags:
