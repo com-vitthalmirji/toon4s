@@ -17,10 +17,14 @@ class StdinInputSpec extends FunSuite {
     Files.write(path, content.getBytes(StandardCharsets.UTF_8))
   }
 
-  private def read(path: Path): String = new String(Files.readAllBytes(path), StandardCharsets.UTF_8)
+  private def read(path: Path): String =
+    new String(Files.readAllBytes(path), StandardCharsets.UTF_8)
 
   test("- reads standard input as UTF-8") {
-    assertEquals(Main.readUtf8(Paths.get("-"), stream("""{"name":"Zoë"}""")), Right("""{"name":"Zoë"}"""))
+    assertEquals(
+      Main.readUtf8(Paths.get("-"), stream("""{"name":"Zoë"}""")),
+      Right("""{"name":"Zoë"}"""),
+    )
   }
 
   test("a file path is still read from the file, not standard input") {
@@ -40,7 +44,11 @@ class StdinInputSpec extends FunSuite {
     val original = System.in
     System.setIn(stream("""{"tags":["jazz","chill","lofi"]}"""))
     val result =
-      try Main.run(Main.Config(mode = Some(Main.EncodeMode), input = Paths.get("-"), output = Some(output)))
+      try Main.run(Main.Config(
+          mode = Some(Main.EncodeMode),
+          input = Paths.get("-"),
+          output = Some(output),
+        ))
       finally System.setIn(original)
     assertEquals(result, Right(()))
     assertEquals(read(output), "tags[3]: jazz,chill,lofi")
@@ -51,7 +59,11 @@ class StdinInputSpec extends FunSuite {
     val original = System.in
     System.setIn(stream("name: Ada\nage: 36"))
     val result =
-      try Main.run(Main.Config(mode = Some(Main.DecodeMode), input = Paths.get("-"), output = Some(output)))
+      try Main.run(Main.Config(
+          mode = Some(Main.DecodeMode),
+          input = Paths.get("-"),
+          output = Some(output),
+        ))
       finally System.setIn(original)
     assertEquals(result, Right(()))
     assertEquals(read(output), """{"name":"Ada","age":36}""")
