@@ -12,11 +12,11 @@ object Main {
 
   sealed trait Mode
 
-  private case object EncodeMode extends Mode
+  private[cli] case object EncodeMode extends Mode
 
-  private case object DecodeMode extends Mode
+  private[cli] case object DecodeMode extends Mode
 
-  final private case class Config(
+  final private[cli] case class Config(
       mode: Option[Mode] = None,
       input: Path = Paths.get(""),
       output: Option[Path] = None,
@@ -73,7 +73,7 @@ object Main {
     }
   }
 
-  private def run(config: Config): Either[String, Unit] = config.mode match {
+  private[cli] def run(config: Config): Either[String, Unit] = config.mode match {
   case Some(EncodeMode) => runEncode(config)
   case Some(DecodeMode) => runDecode(config)
   case None             => Left("Please specify --encode or --decode")
@@ -92,7 +92,7 @@ object Main {
         flattenDepth = config.flattenDepth,
       )
       opt <- if (config.optimize) optimize(scalaValue, base, config.tokenizer) else Right(base)
-      encoded <- Toon.encode(scalaValue, opt).left.map(_.message)
+      encoded <- Toon.encode(scalaValue, opt).left.map(_.getMessage)
       _ <- emitWithStats(jsonInput, encoded, config.output, config.stats, config.tokenizer)
     } yield ()
   }
@@ -105,7 +105,8 @@ object Main {
     )
     for {
       toonInput <- readUtf8(config.input)
-      json <- Toon.decode(toonInput, options).left.map(_.message)
+      // getMessage, not message: a decode error adds its line, column and snippet there
+      json <- Toon.decode(toonInput, options).left.map(_.getMessage)
       rendered = SimpleJson.stringify(json)
       _ <- emitWithStats(toonInput, rendered, config.output, config.stats, config.tokenizer)
     } yield ()
