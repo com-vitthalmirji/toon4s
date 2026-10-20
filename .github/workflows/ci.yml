@@ -75,7 +75,7 @@ jobs:
             scala: 3.3.3
             java: 21
           - os: ubuntu-latest
-            scala: 2.13.14
+            scala: 2.13.16
             java: 21
           - os: macos-latest
             scala: 3.3.3
