@@ -51,7 +51,7 @@ a compact, LLM-friendly data format that blends YAML-style indentation with CSV-
 
 | Theme                      | What you get                                                                                                                                                                 | Why it matters on the JVM                                                                                                                                         |
 |----------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| **Spec‑complete**          | Targets TOON v3.0.x and emits the v3 row-depth (+2) layout for tabular arrays in list-item first-field position; parity with `toon` (TS) and `JToon` (Java).                 | Mixed stacks behave the same; token math is consistent across platforms.                                                                                          |
+| **Spec‑complete**          | Targets TOON v3.3 and emits the v3 row-depth (+2) layout for tabular arrays in list-item first-field position; parity with `toon` (TS) and `JToon` (Java).                   | Mixed stacks behave the same; token math is consistent across platforms.                                                                                          |
 | **Typed APIs (2 & 3)**     | Scala 3 derivation for `Encoder`/`Decoder`; Scala 2.13 typeclasses via `ToonTyped`.                                                                                          | Compile‑time guarantees, no `Any`; safer refactors and zero-cost abstractions.                                                                                    |
 | **Pure & total**           | All encoders/decoders are pure functions; decode returns `Either[DecodeError, JsonValue]`.                                                                                   | Idiomatic FP: easy to compose in Cats/ZIO/FS2; referentially transparent.                                                                                         |
 | **Deterministic ADTs**     | `JsonValue` as a sealed ADT with `VectorMap` for objects; stable field ordering.                                                                                             | Exhaustive pattern matching; predictable serialization for testing/debugging.                                                                                     |
@@ -499,7 +499,10 @@ right abstraction.
 
 ---
 
-## Upgrading to v3.0.x
+## Upgrading from toon4s 0.3.x
+
+toon4s 0.4.0 moved to the TOON spec v3 layout. If you are on 0.3.x or earlier, these are the changes
+you will notice (see the [0.4.0 changelog](./CHANGELOG.md#040---2025-12-04)):
 
 - CLI flag rename: `--strict` is deprecated; use `--strictness strict|lenient`. The old flag still works with a warning
   for now.
