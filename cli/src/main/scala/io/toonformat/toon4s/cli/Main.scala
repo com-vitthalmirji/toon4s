@@ -81,7 +81,18 @@ object Main {
   private[cli] def run(config: Config): Either[String, Unit] = config.mode match {
   case Some(EncodeMode) => runEncode(config)
   case Some(DecodeMode) => runDecode(config)
-  case None             => Left("Please specify --encode or --decode")
+  case None             =>
+    inferMode(config.input)
+      .map(mode => run(config.copy(mode = Some(mode))))
+      .getOrElse(Left("Please specify --encode or --decode (or use a .json or .toon input file)"))
+  }
+
+  // Without --encode or --decode, the input's extension says which way to go.
+  private[cli] def inferMode(input: Path): Option[Mode] = {
+    val name = Option(input.getFileName).map(_.toString.toLowerCase).getOrElse("")
+    if (name.endsWith(".json")) Some(EncodeMode)
+    else if (name.endsWith(".toon")) Some(DecodeMode)
+    else None
   }
 
   private def runEncode(config: Config): Either[String, Unit] = {
@@ -144,10 +155,10 @@ object Main {
       version("version").text("Print the version and exit."),
       opt[Unit]("encode")
         .action((_, c) => c.copy(mode = Some(EncodeMode)))
-        .text("Encode JSON input to TOON output."),
+        .text("Encode JSON input to TOON output (the default for a .json input)."),
       opt[Unit]("decode")
         .action((_, c) => c.copy(mode = Some(DecodeMode)))
-        .text("Decode TOON input to JSON output."),
+        .text("Decode TOON input to JSON output (the default for a .toon input)."),
       opt[String]('o', "output")
         .valueName("<file>")
         .action((path, c) => c.copy(output = Some(Paths.get(path))))

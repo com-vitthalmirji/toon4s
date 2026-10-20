@@ -134,7 +134,7 @@ Available flags:
 
 | Flag                                      | Description                                                                   |
 |-------------------------------------------|-------------------------------------------------------------------------------|
-| `--encode` / `--decode`                   | Required: choose direction explicitly.                                        |
+| `--encode` / `--decode`                   | Direction; when omitted, a `.json` input encodes and a `.toon` input decodes. |
 | `--indent <n>`                            | Pretty-print indentation (default `2`).                                       |
 | `--delimiter <comma\|tab\|pipe>`          | Column delimiter for tabular arrays.                                          |
 | `--key-folding <off\|safe>`               | Fold single-key object chains into dotted paths (safe mode respects quoting). |
