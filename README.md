@@ -80,6 +80,39 @@ sbt cli/stage                            # builds ./cli/target/universal/stage/b
 ./cli/target/universal/stage/bin/toon4s-cli --encode sample.json -o sample.toon
 ```
 
+### Other build tools
+
+The artifact carries the Scala binary version: `toon4s-core_3` for Scala 3 (and for Java or Kotlin
+projects), `toon4s-core_2.13` for Scala 2.13.
+
+Maven:
+
+```xml
+<dependency>
+  <groupId>com.vitthalmirji</groupId>
+  <artifactId>toon4s-core_3</artifactId>
+  <version>0.9.1</version>
+</dependency>
+```
+
+Gradle (Kotlin DSL):
+
+```kotlin
+implementation("com.vitthalmirji:toon4s-core_3:0.9.1")
+```
+
+Mill 1.x:
+
+```scala
+def mvnDeps = Seq(mvn"com.vitthalmirji::toon4s-core:0.9.1")
+```
+
+scala-cli:
+
+```scala
+//> using dep com.vitthalmirji::toon4s-core:0.9.1
+```
+
 <img src="docs/images/toon4s-usp.svg"  alt="USP"/>
 
 ---
