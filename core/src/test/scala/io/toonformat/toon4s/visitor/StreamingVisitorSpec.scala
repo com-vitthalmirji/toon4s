@@ -4,7 +4,7 @@ import java.io.StringWriter
 
 import scala.collection.immutable.VectorMap
 
-import io.toonformat.toon4s.{EncodeOptions, JsonValue}
+import io.toonformat.toon4s.{EncodeOptions, JsonValue, Toon}
 import io.toonformat.toon4s.JsonValue._
 
 class StreamingVisitorSpec extends munit.FunSuite {
@@ -67,6 +67,48 @@ class StreamingVisitorSpec extends munit.FunSuite {
     StreamingEncoder.encodeTo(json, writer, EncodeOptions())
     // Should be available immediately after encodeTo
     assertEquals(writer.toString, "42")
+  }
+
+  // Strings the encoder must quote, escape, or both.
+  private val stringsNeedingCare = List(
+    "a double quote" -> "say \"hi\"",
+    "a backslash" -> "back\\slash",
+    "a newline" -> "line\nbreak",
+    "a carriage return" -> "carriage\rreturn",
+    "a tab" -> "tab\there",
+    "a control character" -> "bell\u0007",
+    "a colon" -> "a: b",
+    "surrounding spaces" -> " padded ",
+    "the empty string" -> "",
+    "the word null" -> "null",
+    "the word true" -> "true",
+    "a number" -> "42",
+    "a negative number" -> "-1",
+    "a leading hyphen" -> "-dash",
+    "brackets" -> "[1]",
+    "braces" -> "{x}",
+    "the delimiter" -> "a,b",
+  )
+
+  stringsNeedingCare.foreach {
+    case (label, s) =>
+      test(s"StreamingEncoder - a string with $label matches Toon.encode and decodes back") {
+        val writer = new StringWriter()
+        StreamingEncoder.encodeTo(JString(s), writer, EncodeOptions())
+        val streamed = writer.toString
+        assertEquals(Right(streamed), Toon.encode(JString(s)).left.map(_.message))
+        assertEquals(Toon.decode(streamed).left.map(_.message), Right(JString(s)))
+      }
+  }
+
+  test("StreamingEncoder - string values inside an object are escaped") {
+    val writer = new StringWriter()
+    StreamingEncoder.encodeTo(
+      JObj(VectorMap("quote" -> JString("say \"hi\""))),
+      writer,
+      EncodeOptions(),
+    )
+    assert(writer.toString.contains("\"say \\\"hi\\\"\""), writer.toString)
   }
 
   // ===== JsonRepairVisitor Tests =====
