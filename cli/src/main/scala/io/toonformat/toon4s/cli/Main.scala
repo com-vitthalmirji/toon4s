@@ -12,11 +12,11 @@ object Main {
 
   sealed trait Mode
 
-  private case object EncodeMode extends Mode
+  private[cli] case object EncodeMode extends Mode
 
-  private case object DecodeMode extends Mode
+  private[cli] case object DecodeMode extends Mode
 
-  final private case class Config(
+  final private[cli] case class Config(
       mode: Option[Mode] = None,
       input: Path = Paths.get(""),
       output: Option[Path] = None,
@@ -73,7 +73,7 @@ object Main {
     }
   }
 
-  private def run(config: Config): Either[String, Unit] = config.mode match {
+  private[cli] def run(config: Config): Either[String, Unit] = config.mode match {
   case Some(EncodeMode) => runEncode(config)
   case Some(DecodeMode) => runDecode(config)
   case None             => Left("Please specify --encode or --decode")
@@ -127,7 +127,7 @@ object Main {
       .map(ex => s"Failed to write output: ${ex.getMessage}")
       .map(_ => ())
 
-  private val parser = {
+  private[cli] val parser = {
     import scopt.OParser
     val builder = OParser.builder[Config]
     import builder._
@@ -168,7 +168,7 @@ object Main {
         .action((v, c) => c.copy(strictness = v.toLowerCase))
         .text(
           "Strictness mode (default: strict). " +
-            "'strict' enforces TOON v2.1 §14: count mismatches, indentation errors, etc. " +
+            "'strict' enforces TOON v3.3 §14 (strict mode errors): count mismatches, indentation errors, etc. " +
             "'lenient' accepts malformed input when possible."
         ),
       opt[String]("delimiter")
