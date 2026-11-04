@@ -58,6 +58,16 @@ difference:
 - Use clear commit messages.
 - Be respectful and practical in review discussions.
 
+## Dependency updates
+
+Dependencies, sbt plugins and Scala versions are updated by [Scala Steward](https://github.com/scala-steward-org/scala-steward),
+configured in `.scala-steward.conf`. Its pull requests run the same CI as any other. Two lines are pinned:
+
+- Scala 3 stays on the 3.3.x LTS line, so downstream users are not forced onto a newer Scala 3.
+- Spark in the default build stays on 3.5.x; the `spark-compat` CI job covers the other supported Spark lines.
+
+To move either line, change the pin in `.scala-steward.conf` in the same pull request that updates the version.
+
 ## Issues and support
 
 - Use GitHub Issues for bugs, regressions, and feature requests.
