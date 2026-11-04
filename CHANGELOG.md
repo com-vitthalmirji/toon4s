@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.9.4] - 2026-11-04
+
+
+### Build System
+- add Scala Steward configuration (#113) ([`d29eac6`](https://github.com/com-vitthalmirji/toon4s/commit/d29eac6b81f05e752edf76230ba86e021a7c860d)) by @kannupriyakalra
+
+
+
+### Documentation
+- update CHANGELOG.md for main [skip ci] ([`dbdfb28`](https://github.com/com-vitthalmirji/toon4s/commit/dbdfb28b66bc59ca67419c29681174412fa2f055)) by @github-actions[bot]
+- add a first contribution section to CONTRIBUTING (#117) ([`67aab5c`](https://github.com/com-vitthalmirji/toon4s/commit/67aab5c1530aaa0c0f5f66ae7798559876d77229)) by @kannupriyakalra
+- add a runnable scala-cli quickstart example (#115) ([`78b3237`](https://github.com/com-vitthalmirji/toon4s/commit/78b32376080621055d722fdb922907f0b080ca3f)) by @kannupriyakalra
+
+
+
+### Tests
+- cover option parsing, round trips and failure paths (#105) ([`c5b3f59`](https://github.com/com-vitthalmirji/toon4s/commit/c5b3f5965e4569cb1066b5dc1214e9f12a680d73)) by @kannupriyakalra
+- format MainSpec ([`67dc30f`](https://github.com/com-vitthalmirji/toon4s/commit/67dc30f059af6201f1fa2a1e9c4df8281f1e41df)) by @kannupriyakalra
+
+
+
+### Tools
+- add a parser for workload measurement logs (#71) ([`7d78642`](https://github.com/com-vitthalmirji/toon4s/commit/7d78642c4213242b7c9ff53c974ca56ef39062a5)) by @kannupriyakalra
+
+
 ## [0.9.3] - 2026-10-20
 
 
