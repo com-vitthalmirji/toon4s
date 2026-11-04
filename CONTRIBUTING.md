@@ -2,6 +2,44 @@
 
 Thanks for your interest in contributing to toon4s.
 
+## Your first contribution
+
+You need JDK 21 and sbt. From a fresh clone:
+
+```bash
+git clone https://github.com/com-vitthalmirji/toon4s.git
+cd toon4s
+sbt test                            # core and cli on the default Scala (3.3), and spark-integration on 2.13
+```
+
+While you work, run only the suite you are changing, then format:
+
+```bash
+sbt "core/testOnly *DecodeSpec"     # one suite; the pattern matches the class name
+sbt "cli/testOnly *InferModeSpec"
+sbt scalafmtAll                     # format main and test sources; CI fails on unformatted code
+```
+
+Before you push, run what CI runs:
+
+```bash
+sbt scalafmtCheckAll +test          # +test covers both Scala 2.13 and 3.3
+./smoke-tests/run-smoke.sh          # CLI round trip
+```
+
+### Conformance fixtures
+
+`core/src/test/resources/conformance/{encode,decode}` holds JSON fixtures copied verbatim from the
+[TOON spec](https://github.com/toon-format/spec), and `ConformanceSuite` runs every one of them. Do not edit a
+fixture by hand: if behaviour should change, the change belongs in the spec first. To move to a newer spec
+revision, copy its `tests/fixtures/{encode,decode}` directories over ours, update `SPEC_REF` in
+`scripts/check-spec-fixtures-sync.sh`, and run the script, which clones the spec at that ref and fails on any
+difference:
+
+```bash
+./scripts/check-spec-fixtures-sync.sh
+```
+
 ## Before you open a pull request
 
 - Open an issue first for large changes.
@@ -19,6 +57,16 @@ Thanks for your interest in contributing to toon4s.
 - Follow existing code style and project docs.
 - Use clear commit messages.
 - Be respectful and practical in review discussions.
+
+## Dependency updates
+
+Dependencies, sbt plugins and Scala versions are updated by [Scala Steward](https://github.com/scala-steward-org/scala-steward),
+configured in `.scala-steward.conf`. Its pull requests run the same CI as any other. Two lines are pinned:
+
+- Scala 3 stays on the 3.3.x LTS line, so downstream users are not forced onto a newer Scala 3.
+- Spark in the default build stays on 3.5.x; the `spark-compat` CI job covers the other supported Spark lines.
+
+To move either line, change the pin in `.scala-steward.conf` in the same pull request that updates the version.
 
 ## Issues and support
 

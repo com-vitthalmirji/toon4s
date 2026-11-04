@@ -81,6 +81,30 @@ spark-submit \
 
 Store findings in `spark-integration/docs/WORKLOAD_MEASUREMENT_TEMPLATE.md`.
 
+### Turning a run log into JSON and a table row
+
+Save the run's console output, then parse it:
+
+```bash
+spark-submit --class examples.WorkloadMeasurementRunner <jar> --csv /path/to/file.csv --key workload \
+  > workload-run.log 2>&1
+scripts/parse-workload-measurement.sh --header workload-run.log
+```
+
+The script reads the `=== TOON workload measurement ===` block and ignores the Spark and sbt log lines
+around it. It prints one JSON object (for a results file or a CI artifact) and a markdown row in the
+order of the template's "Measured output" section. `--header` adds the header and separator rows:
+
+```
+{"rows": 2000, "chunkCount": 4, "avgChunkBytes": 12132.75, "jsonBytes": 108407, "toonBytes": 48531, "bytesSavingsPct": 55.23, "jsonTokens": 27325, "toonTokens": 12134, "tokenSavingsPct": 55.59, "jsonEncodeMs": 342, "toonEncodeMs": 100, "overheadPctVsJson": -70.76}
+| Rows | Chunks | Avg chunk bytes | JSON bytes | TOON bytes | Byte savings % | JSON tokens | TOON tokens | Token savings % | JSON encode ms | TOON encode ms | TOON overhead % |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 2000 | 4 | 12132.75 | 108407 | 48531 | 55.23 | 27325 | 12134 | 55.59 | 342 | 100 | -70.76 |
+```
+
+Percentages are printed without the `%` sign. When a log holds several runs, the last block is used. The
+script exits non-zero, naming the field, when the block is missing or incomplete, so it can gate a CI step.
+
 Reference example note:
 
 - `spark-integration/docs/WORKLOAD_MEASUREMENT_2026-02-21.md`
