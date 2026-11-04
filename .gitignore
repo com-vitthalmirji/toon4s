@@ -38,3 +38,6 @@ tmp-data/
 .claude
 .claude/
 CLAUDE.md
+
+# scala-cli build output (examples/scala-cli)
+.scala-build/

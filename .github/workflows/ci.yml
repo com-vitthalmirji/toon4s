@@ -178,6 +178,12 @@ jobs:
       - name: CLI smoke test
         run: ./smoke-tests/run-smoke.sh
 
+      - uses: VirtusLab/scala-cli-setup@v1.18.0
+
+      # the one-file example resolves the published artifact, so it keeps the README's coordinates honest
+      - name: scala-cli quickstart
+        run: scala-cli run examples/scala-cli/quickstart.scala --server=false
+
   budget:
     name: Budget Gate
     runs-on: ubuntu-latest

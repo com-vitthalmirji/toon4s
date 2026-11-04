@@ -120,6 +120,14 @@ scala-cli:
 
 ## Quick start (library)
 
+To try it without an sbt project, run the one-file example with [scala-cli](https://scala-cli.virtuslab.org/):
+
+```bash
+scala-cli run examples/scala-cli/quickstart.scala
+```
+
+It encodes the payload below, prints the TOON, and decodes it back ([source](examples/scala-cli/quickstart.scala)).
+
 ```scala
 import io.toonformat.toon4s._
 
