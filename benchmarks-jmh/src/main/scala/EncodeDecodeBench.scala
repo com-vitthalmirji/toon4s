@@ -2,7 +2,11 @@ package io.toonformat.toon4s.jmh
 
 import java.util.concurrent.TimeUnit
 
+import scala.collection.immutable.VectorMap
+
 import io.toonformat.toon4s._
+import io.toonformat.toon4s.JsonValue._
+import io.toonformat.toon4s.internal.JObjMap
 import io.toonformat.toon4s.json.SimpleJson
 import org.openjdk.jmh.annotations._
 
@@ -105,5 +109,25 @@ class EncodeDecodeBench {
 
   @Benchmark def encode_real_world(): String =
     Toon.encode(scalaRealWorld, encOpts).fold(throw _, identity)
+
+  // Allocation comparison: building a small ordered map (5 fields), VectorMap vs JObjMap.
+  private val mapKeys = Array("id", "name", "email", "age", "active")
+
+  private val mapVals: Array[JsonValue] =
+    Array(JNumber(1), JString("Alice"), JString("a@b.c"), JNumber(30), JBool(true))
+
+  @Benchmark def build_vectormap(): VectorMap[String, JsonValue] = {
+    val b = VectorMap.newBuilder[String, JsonValue]
+    var i = 0
+    while (i < 5) { b += ((mapKeys(i), mapVals(i))); i += 1 }
+    b.result()
+  }
+
+  @Benchmark def build_jobjmap(): JObjMap = {
+    val b = JObjMap.newBuilder
+    var i = 0
+    while (i < 5) { b.add(mapKeys(i), mapVals(i)); i += 1 }
+    b.result()
+  }
 
 }
