@@ -430,6 +430,89 @@ val metrics = df.writeToLlmPartitions(
 `writeToLlmPartitions` performs encode and send inside executor tasks.
 Use `LlmPartitionSink` with llm4s clients for production pipelines.
 
+#### Idempotency keys: retrying without sending a chunk twice
+
+Spark retries work: a failed send is retried inside the task (`LlmPartitionWriteOptions.maxRetries`), and a
+failed task or stage is run again on an executor. Without protection, a retry can send a chunk the LLM has
+already received, and you pay for it twice.
+
+Every chunk therefore gets an idempotency key:
+
+```
+<idempotencyPrefix>:<options.key>:p<partitionId>:c<chunkIndex>:h<sha256 of the chunk>
+toon4s:events:p3:c0:h9f2c...
+```
+
+Before sending a chunk, the writer asks the `IdempotencyStore` whether its key was already sent. If it was,
+the chunk is skipped and counted in `duplicateChunks`. After the LLM answers, the key is recorded. A rerun of
+the same data produces the same keys, so chunks that already went out are skipped instead of resent. The key
+is also sent to the LLM as the first line of the prompt (`idempotency_key=...`), so the receiving side can
+deduplicate too.
+
+Which store to use:
+
+- `IdempotencyStore.Noop` (the default) records nothing. Every retry resends.
+- `IdempotencyStore.InMemory` is serialized into each task, so it only protects the retries inside one task.
+  Use it for tests and local runs.
+- For production, use a store that all executors share and that outlives a task, such as a database table,
+  Redis or a key-value service. Implement the two methods; the store must be `Serializable`, so open
+  connections inside the methods, not in the constructor:
+
+```scala
+import java.sql.DriverManager
+import scala.util.Using
+import org.llm4s.error.{LLMError, UnknownError}
+import io.toonformat.toon4s.spark.llm._
+
+// Table: CREATE TABLE llm_sent (key VARCHAR(512) PRIMARY KEY)
+final class JdbcIdempotencyStore(url: String) extends IdempotencyStore {
+
+  def isSent(key: String): Either[LLMError, Boolean] =
+    attempt { conn =>
+      Using.resource(conn.prepareStatement("SELECT 1 FROM llm_sent WHERE key = ?")) { st =>
+        st.setString(1, key)
+        Using.resource(st.executeQuery())(_.next())
+      }
+    }
+
+  def markSent(key: String): Either[LLMError, Unit] =
+    attempt { conn =>
+      Using.resource(conn.prepareStatement("INSERT INTO llm_sent (key) VALUES (?) ON CONFLICT DO NOTHING")) { st =>
+        st.setString(1, key)
+        st.executeUpdate()
+        ()
+      }
+    }
+
+  private def attempt[A](f: java.sql.Connection => A): Either[LLMError, A] =
+    Using(DriverManager.getConnection(url))(f).toEither.left.map(e => UnknownError(e.getMessage, e))
+}
+
+val writerFactory = LlmPartitionWriterFactory.fromClientFactory(
+  clientFactory = () => myLlmClient(),
+  idempotencyStore = new JdbcIdempotencyStore("jdbc:postgresql://db/pipeline"),
+)
+
+val metrics = df.writeToLlmPartitions(
+  writerFactory = writerFactory,
+  llmOptions = LlmPartitionWriteOptions(maxRetries = 2, idempotencyPrefix = "daily-events-2026-10-24"),
+  options = ToonSparkOptions(key = "events", maxRowsPerChunk = 1000),
+)
+println(s"sent=${metrics.sentChunks} skipped=${metrics.duplicateChunks} failed=${metrics.failedChunks}")
+```
+
+Things to know:
+
+- **Keep the input order stable.** The key contains the partition id, the chunk position and a hash of the
+  chunk. If a rerun sees the rows in a different order or partitioning, the chunks differ, the keys differ, and
+  the chunks are sent again. Sort within partitions, or read from a stable snapshot, if exact deduplication
+  matters.
+- **Pick `idempotencyPrefix` per logical run.** Keys are only compared within one prefix and `key`. Use a run
+  or date identifier, as above, when the same data is meant to be sent again on another day.
+- **A send that reached the LLM but could not be recorded** is not retried. Retrying would resend it. Instead
+  it is counted as a failure with the message `chunk reached the LLM but its idempotency key was not recorded`,
+  so you can see that deduplication is not guaranteed for that chunk.
+
 #### Adding llm4s to a Spark job
 
 Since 0.5, llm4s is split into modules: `llm4s-core` (the `LLMClient` API and configuration) and one
